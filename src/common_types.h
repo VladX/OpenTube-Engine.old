@@ -100,6 +100,10 @@ typedef struct
 		int tempfd;
 		int pipefd[2];
 		uint pos;
+		buf_t * filepath;
+		int sendfile_fd;
+		size_t sendfile_count;
+		size_t sendfile_total;
 	} temp;
 } request_t;
 
@@ -114,4 +118,5 @@ typedef struct
 	const char * user;
 	const char * group;
 	const char * temp_dir;
+	u_str_t document_root;
 } config_t;

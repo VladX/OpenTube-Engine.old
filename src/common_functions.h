@@ -45,7 +45,7 @@
 #define IS_SYM(X) ((X) >= ' ' && (X) <= '~')
 #define TO_LOWER(X) (((X) >= 'A' && (X) <= 'Z') ? (X) + 32 : (X))
 #define IS_SPACE(X) ((X) == ' ' || (X) == '\t' || (X) == '\n')
-#define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':')
+#define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':')
 
 void set_str (str_t * str, char * src);
 

@@ -33,7 +33,7 @@ typedef struct
 	int line;
 } conf_elem;
 
-static const char * required_directives[] = {"listen", "user", "group", "http-temp-dir"};
+static const char * required_directives[] = {"listen", "user", "group", "http-temp-dir", "http-document-root"};
 
 
 static void process_directive (conf_elem * el)
@@ -76,6 +76,17 @@ static void process_directive (conf_elem * el)
 		config.group = el->value;
 	else if (strcmp(el->key, "http-temp-dir") == 0)
 		config.temp_dir = el->value;
+	else if (strcmp(el->key, "http-document-root") == 0)
+	{
+		config.document_root.str = (uchar *) el->value;
+		config.document_root.len = strlen(el->value);
+		
+		if (config.document_root.str[config.document_root.len - 1] == '/')
+		{
+			config.document_root.len--;
+			config.document_root.str[config.document_root.len] = '\0';
+		}
+	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
 }

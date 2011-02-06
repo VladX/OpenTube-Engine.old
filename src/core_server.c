@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <netdb.h>
 #include <resolv.h>
+#include <sys/sendfile.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include "common_functions.h"
@@ -20,12 +21,23 @@ bool ipv6_addr = false;
 pid_t worker_pid = 0;
 buf_t * uri_map;
 static int sockfd;
+static int epfd;
+
+void set_epollout_event_mask (int sock)
+{
+	struct epoll_event ev;
+	
+	ev.events = EPOLLOUT | EPOLLET;
+	ev.data.fd = sock;
+	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
+}
 
 static void event_routine (void)
 {
 	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
-	int epfd, n, i, it;
+	int n, i, it;
+	ssize_t res;
 	socklen_t client_name_len;
 	request_t * request[maxevents];
 	struct epoll_event e[maxevents], ev;
@@ -82,7 +94,7 @@ static void event_routine (void)
 				}
 				continue;
 			}
-			else
+			else if (e[i].events == EPOLLIN)
 			{
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == e[i].data.fd)
@@ -110,6 +122,32 @@ static void event_routine (void)
 					close(request[it]->sock);
 					http_cleanup(request[it]);
 				}
+			}
+			else
+			{
+				for (it = 0; it < maxevents; it++)
+					if (request[it]->sock == e[i].data.fd)
+					{
+						res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, NULL, request[it]->temp.sendfile_count);
+						
+						if (res == -1)
+						{
+							perr("sendfile(): %d", (int) res);
+							close(request[it]->sock);
+							http_cleanup(request[it]);
+							break;
+						}
+						
+						request[it]->temp.sendfile_total += res;
+						
+						if (request[it]->temp.sendfile_total >= request[it]->temp.sendfile_count)
+						{
+							close(request[it]->sock);
+							http_cleanup(request[it]);
+						}
+						debug_print_3("epollout %d", e[i].data.fd);
+						break;
+					}
 			}
 		}
 	}

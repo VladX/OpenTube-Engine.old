@@ -3,11 +3,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/stat.h>
 #include <sys/sendfile.h>
 #include <fcntl.h>
-#include <unistd.h> 
+#include <unistd.h>
+#include <time.h>
 #include "common_functions.h"
+#include "core_server.h"
+#include "mime.h"
 
 #define HTTP_HTML_PAGE_TEMPLATE_TOP \
 	"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" \
@@ -78,7 +82,7 @@ static inline void http_append_headers (request_t * r)
 	http_append_to_output_buf(r, "Content-Length: ", 16);
 	int_to_str(r->out.content_length, temp, 10);
 	http_append_str(r, temp);
-	http_append_to_output_buf(r, CLRF CLRF, 4);
+	http_append_to_output_buf(r, CLRF, 2);
 }
 
 static inline void http_send (request_t * r)
@@ -87,14 +91,20 @@ static inline void http_send (request_t * r)
 		perr("writev(): %d", -1);
 }
 
-static void http_error (request_t * r, ushort code)
+static inline void http_set_status_code (request_t * r, ushort code)
 {
-	r->out.content_length = http_error_message_len[code];
 	r->out.status.str = (char *) http_status_code[code];
 	r->out.status.len = http_status_code_len[code];
+}
+
+static void http_error (request_t * r, ushort code)
+{
+	http_set_status_code(r, code);
+	r->out.content_length = http_error_message_len[code];
 	r->out.content_type.str = (uchar *) HTTP_ERROR_CONTENT_TYPE;
 	r->out.content_type.len = HTTP_ERROR_CONTENT_TYPE_LEN;
 	http_append_headers(r);
+	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, (void *) http_error_message[code], r->out.content_length);
 	http_send(r);
 }
@@ -152,32 +162,179 @@ static bool http_divide_uri (request_t * r)
 	else
 		r->in.query_string.len = 0;
 	
-	debug_print_3("%s %d", r->in.query_string.str, r->in.query_string.len);
-	
 	return true;
 }
 
-static void http_response (request_t * r)
+static const char * days_three_sym[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const char * months_three_sym[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+static inline void http_rfc822_date (char * str, struct tm * ctime)
+{
+	sprintf(str, "%s, %02d %s %04d %02d:%02d:%02d GMT", days_three_sym[ctime->tm_wday], ctime->tm_mday, months_three_sym[ctime->tm_mon], ctime->tm_year + 1900, ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
+}
+
+static bool http_response (request_t * r)
 {
 	uint i;
 	uri_map_t * m = (uri_map_t *) uri_map->data;
 	
 	if (!http_divide_uri(r))
-		return;
+		return true;
 	
 	/*for (i = 0; i < uri_map->cur_len; i++)
 		if (strcmp(r->in.uri.str, m[i].uri) == 0)
 		{
 			m[i].func();
 			return;
+		}*/
+	
+	struct stat st;
+	uchar * fileext;
+	int fd;
+	const int enable = 1;
+	const int disable = 1;
+	
+	buf_expand(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
+	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
+	
+	fd = open((const char *) r->temp.filepath->data, O_RDONLY);
+	
+	if (fd == -1)
+	{
+		if (errno == ENOENT || errno == ENOTDIR)
+		{
+			http_error(r, 404);
+			
+			return true;
+		}
+		
+		if (errno == EACCES)
+		{
+			http_error(r, 403);
+			
+			return true;
+		}
+		
+		http_error(r, 500);
+		
+		return true;
+	}
+	
+	if (fstat(fd, &st) == -1)
+	{
+		perr("fstat(): %d", -1);
+		http_error(r, 500);
+		close(fd);
+		
+		return true;
+	}
+	
+	if (!(S_ISREG(st.st_mode)))
+	{
+		http_error(r, 403);
+		close(fd);
+		
+		return true;
+	}
+	
+	fileext = r->in.path.str + r->in.path.len;
+	
+	for (i = r->in.path.len - 1; i > 0; i--)
+		if (r->in.path.str[i] == '.')
+		{
+			fileext = r->in.path.str + i;
+			break;
 		}
 	
-	struct stat file_stat;
-	int fd;
+	for (i = 0; * (http_mime_types[i]); i += 3)
+	{
+		if (strcmp((const char *) http_mime_types[i], (const char *) fileext) == 0)
+			break;
+	}
 	
-	fd = open("", O_RDONLY);*/
+	r->out.content_type.str = (uchar *) http_mime_types[i + 1];
+	r->out.content_type.len = * (http_mime_types[i + 2]);
+	r->out.content_length = st.st_size;
 	
-	http_error(r, 404);
+	ssize_t res;
+	header_t * hdr;
+	char rfc822_date_str[60];
+	bool not_modified = false;
+	struct tm c_time, m_time;
+	time_t curtime;
+	
+	gmtime_r(&(st.st_mtime), &m_time);
+	http_rfc822_date(rfc822_date_str, &m_time);
+	
+	for (i = 0; i < r->in.p->cur_len; i++)
+	{
+		hdr = (header_t *) r->in.p->data[i];
+		if (hdr->key.len == 17 && smemcmp(hdr->key.str, (uchar *) "if-modified-since", 17))
+		{
+			if (hdr->value.len == 29 && smemcmp(hdr->value.str, (uchar *) rfc822_date_str, 29))
+			{
+				http_set_status_code(r, 304);
+				not_modified = true;
+			}
+			break;
+		}
+	}
+	
+	if (!not_modified)
+		http_set_status_code(r, 200);
+	
+	http_append_headers(r);
+	
+	http_append_to_output_buf(r, "Last-Modified: ", 15);
+	http_append_to_output_buf(r, rfc822_date_str, 29);
+	http_append_to_output_buf(r, CLRF, 2);
+	
+	curtime = time(NULL);
+	gmtime_r(&curtime, &c_time);
+	http_rfc822_date(rfc822_date_str + 30, &c_time);
+	http_append_to_output_buf(r, "Date: ", 6);
+	http_append_to_output_buf(r, rfc822_date_str + 30, 29);
+	http_append_to_output_buf(r, CLRF CLRF, 4);
+	
+	if (not_modified)
+	{
+		http_send(r);
+		close(fd);
+		
+		return true;
+	}
+	
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
+		perr("setsockopt(): %d", -1);
+	
+	http_send(r);
+	res = sendfile(r->sock, fd, NULL, st.st_size);
+	
+	if (res == -1 && errno != EAGAIN)
+	{
+		perr("sendfile(): %d", (int) res);
+		
+		return true;
+	}
+	if (res < st.st_size)
+	{
+		r->temp.sendfile_fd = fd;
+		r->temp.sendfile_count = st.st_size;
+		if (res == -1 && errno == EAGAIN)
+			r->temp.sendfile_total = 0;
+		else
+			r->temp.sendfile_total = res;
+		set_epollout_event_mask(r->sock);
+		
+		return false;
+	}
+	
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+		perr("setsockopt(): %d", -1);
+	
+	close(fd);
+	
+	return true;
 }
 
 static ushort http_parse_headers (request_t * r)
@@ -303,11 +460,7 @@ bool http_serve_client (request_t * request)
 						return true;
 					}
 					if (!(request->in.method_post))
-					{
-						http_response(request);
-						
-						return true;
-					}
+						return http_response(request);
 					else
 					{
 						last = buf + r;
@@ -402,9 +555,7 @@ bool http_serve_client (request_t * request)
 			return false;
 		}
 		
-		http_response(request);
-		
-		return true;
+		return http_response(request);
 		
 		_loop_end:;
 		
@@ -481,6 +632,8 @@ void http_cleanup (request_t * r)
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
 	
+	buf_free(r->temp.filepath);
+	
 	buf_free(r->out_vec);
 	
 	pool_free(r->p, HTTP_POOL_RESERVED_FRAGMENTS);
@@ -495,6 +648,12 @@ void http_cleanup (request_t * r)
 
 void http_init_constants (void)
 {
+	/* 2xx */
+	http_status_code[200] = "200 OK";
+	http_status_code_len[200] = strlen(http_status_code[200]);
+	/* 3xx */
+	http_status_code[304] = "304 Not Modified";
+	http_status_code_len[304] = strlen(http_status_code[304]);
 	/* 4xx */
 	http_error_message[400] = HTTP_HTML_PAGE_TEMPLATE_TOP
 	                          "400 - Bad Request"
@@ -692,6 +851,9 @@ void http_prepare (request_t * r)
 	r->in.content_length = NULL;
 	r->temp.tempfd = -1;
 	r->temp.pos = 0;
+	
+	r->temp.filepath = buf_create(1, config.document_root.len + 128);
+	memcpy(r->temp.filepath->data, config.document_root.str, config.document_root.len);
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);
 	
