@@ -11,40 +11,18 @@
 #include <time.h>
 #include "common_functions.h"
 #include "core_server.h"
+#include "error_page.h"
 #include "mime.h"
 
-#define HTTP_HTML_PAGE_TEMPLATE_TOP \
-	"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n" \
-	"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n" \
-	"<head>\n" \
-	"	<title>"
 
-#define HTTP_HTML_PAGE_TEMPLATE_CON \
-	"</title>\n" \
-	"</head>\n\n" \
-	"<body>\n" \
-	"	<div align=\"center\">\n" \
-	"		<h1>"
-
-#define HTTP_HTML_PAGE_TEMPLATE_BOT \
-	"</h1>\n" \
-	"	</div>\n" \
-	"	<hr />\n" \
-	"	" SERVER_STRING "\n" \
-	"</body>\n" \
-	"</html>\n"
-
-#define HTTP_ERROR_CONTENT_TYPE "text/html"
-#define HTTP_ERROR_CONTENT_TYPE_LEN 9
-
-#define HTTP_OUTPUT_VECTOR_START_SIZE 64
+#define HTTP_OUTPUT_VECTOR_START_SIZE 128
 
 
 static const char * http_error_message[506];
 static const char * http_status_code[506];
 static ushort http_error_message_len[506];
 static uchar http_status_code_len[506];
-static uchar server_string_len;
+static str_t header_server_string;
 
 
 static inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
@@ -74,7 +52,7 @@ static inline void http_append_headers (request_t * r)
 	http_append_to_output_buf(r, "HTTP/1.1 ", 9);
 	http_append_to_output_buf(r, r->out.status.str, r->out.status.len);
 	http_append_to_output_buf(r, CLRF, 2);
-	http_append_to_output_buf(r, "Server: " SERVER_STRING, server_string_len);
+	http_append_to_output_buf(r, header_server_string.str, header_server_string.len);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, "Content-Type: ", 14);
 	http_append_to_output_buf(r, r->out.content_type.str, r->out.content_type.len);
@@ -173,31 +151,16 @@ static inline void http_rfc822_date (char * str, struct tm * ctime)
 	sprintf(str, "%s, %02d %s %04d %02d:%02d:%02d GMT", days_three_sym[ctime->tm_wday], ctime->tm_mday, months_three_sym[ctime->tm_mon], ctime->tm_year + 1900, ctime->tm_hour, ctime->tm_min, ctime->tm_sec);
 }
 
-static bool http_response (request_t * r)
+static inline bool http_send_file (request_t * r, const char * filepath)
 {
-	uint i;
-	uri_map_t * m = (uri_map_t *) uri_map->data;
-	
-	if (!http_divide_uri(r))
-		return true;
-	
-	/*for (i = 0; i < uri_map->cur_len; i++)
-		if (strcmp(r->in.uri.str, m[i].uri) == 0)
-		{
-			m[i].func();
-			return;
-		}*/
-	
+	uint i, it;
 	struct stat st;
 	uchar * fileext;
-	int fd;
+	int fd, t;
 	const int enable = 1;
 	const int disable = 1;
 	
-	buf_expand(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
-	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
-	
-	fd = open((const char *) r->temp.filepath->data, O_RDONLY);
+	fd = open(filepath, O_RDONLY);
 	
 	if (fd == -1)
 	{
@@ -254,14 +217,16 @@ static bool http_response (request_t * r)
 	
 	r->out.content_type.str = (uchar *) http_mime_types[i + 1];
 	r->out.content_type.len = * (http_mime_types[i + 2]);
-	r->out.content_length = st.st_size;
 	
+	ushort code = 200;
 	ssize_t res;
 	header_t * hdr;
 	char rfc822_date_str[60];
-	bool not_modified = false;
 	struct tm c_time, m_time;
 	time_t curtime;
+	
+	r->temp.sendfile_last = st.st_size;
+	r->temp.sendfile_offset = 0;
 	
 	gmtime_r(&(st.st_mtime), &m_time);
 	http_rfc822_date(rfc822_date_str, &m_time);
@@ -269,19 +234,43 @@ static bool http_response (request_t * r)
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
 		hdr = (header_t *) r->in.p->data[i];
-		if (hdr->key.len == 17 && smemcmp(hdr->key.str, (uchar *) "if-modified-since", 17))
+		if (hdr->key.len == 17 && hdr->value.len == 29 && smemcmp(hdr->key.str, (uchar *) "if-modified-since", 17) && smemcmp(hdr->value.str, (uchar *) rfc822_date_str, 29))
 		{
-			if (hdr->value.len == 29 && smemcmp(hdr->value.str, (uchar *) rfc822_date_str, 29))
-			{
-				http_set_status_code(r, 304);
-				not_modified = true;
-			}
+			code = 304;
 			break;
+		}
+		else if (hdr->key.len == 5 && smemcmp(hdr->key.str, (uchar *) "range", 5) && hdr->value.len > 6 && smemcmp(hdr->value.str, (uchar *) "bytes=", 6))
+		{
+			for (it = 6; it < hdr->value.len; it++)
+				if (hdr->value.str[it] == '-')
+				{
+					hdr->value.str[it] = '\0';
+					if (hdr->value.str[it + 1])
+					{
+						t = atoi((const char *) hdr->value.str + it + 1);
+						r->temp.sendfile_last = max(0, t);
+						r->temp.sendfile_last++;
+						r->temp.sendfile_last = min(st.st_size, r->temp.sendfile_last);
+					}
+					break;
+				}
+			r->temp.sendfile_offset = atoi((const char *) hdr->value.str + 6);
+			if (r->temp.sendfile_offset >= st.st_size)
+			{
+				http_error(r, 416);
+				close(fd);
+				
+				return true;
+			}
+			if (r->temp.sendfile_offset > r->temp.sendfile_last)
+				r->temp.sendfile_last = r->temp.sendfile_offset + 1;
+			code = 206;
 		}
 	}
 	
-	if (!not_modified)
-		http_set_status_code(r, 200);
+	r->out.content_length = r->temp.sendfile_last - r->temp.sendfile_offset;
+	
+	http_set_status_code(r, code);
 	
 	http_append_headers(r);
 	
@@ -294,9 +283,24 @@ static bool http_response (request_t * r)
 	http_rfc822_date(rfc822_date_str + 30, &c_time);
 	http_append_to_output_buf(r, "Date: ", 6);
 	http_append_to_output_buf(r, rfc822_date_str + 30, 29);
-	http_append_to_output_buf(r, CLRF CLRF, 4);
+	http_append_to_output_buf(r, CLRF, 2);
 	
-	if (not_modified)
+	curtime += HTTP_STATIC_EXPIRES;
+	gmtime_r(&curtime, &c_time);
+	http_rfc822_date(r->out.expires.str, &c_time);
+	http_append_to_output_buf(r, "Expires: ", 9);
+	http_append_to_output_buf(r, r->out.expires.str, r->out.expires.len);
+	http_append_to_output_buf(r, CLRF, 2);
+	
+	if (code == 206)
+	{
+		sprintf(r->out.content_range.str, "Content-Range: bytes %u-%u/%u" CLRF, (uint) r->temp.sendfile_offset, r->temp.sendfile_last - 1, (uint) st.st_size);
+		http_append_str(r, r->out.content_range.str);
+	}
+	
+	http_append_to_output_buf(r, "Accept-Ranges: bytes" CLRF CLRF, 24);
+	
+	if (code == 304)
 	{
 		http_send(r);
 		close(fd);
@@ -308,7 +312,7 @@ static bool http_response (request_t * r)
 		perr("setsockopt(): %d", -1);
 	
 	http_send(r);
-	res = sendfile(r->sock, fd, NULL, st.st_size);
+	res = sendfile(r->sock, fd, &(r->temp.sendfile_offset), (size_t) r->out.content_length);
 	
 	if (res == -1 && errno != EAGAIN)
 	{
@@ -316,14 +320,9 @@ static bool http_response (request_t * r)
 		
 		return true;
 	}
-	if (res < st.st_size)
+	if (res < r->out.content_length)
 	{
 		r->temp.sendfile_fd = fd;
-		r->temp.sendfile_count = st.st_size;
-		if (res == -1 && errno == EAGAIN)
-			r->temp.sendfile_total = 0;
-		else
-			r->temp.sendfile_total = res;
 		set_epollout_event_mask(r->sock);
 		
 		return false;
@@ -335,6 +334,27 @@ static bool http_response (request_t * r)
 	close(fd);
 	
 	return true;
+}
+
+static bool http_response (request_t * r)
+{
+	uint i;
+	uri_map_t * m = (uri_map_t *) uri_map->data;
+	
+	if (!http_divide_uri(r))
+		return true;
+	
+	/*for (i = 0; i < uri_map->cur_len; i++)
+		if (strcmp(r->in.uri.str, m[i].uri) == 0)
+		{
+			m[i].func();
+			return;
+		}*/
+	
+	buf_expand(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
+	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
+	
+	return http_send_file(r, (const char *) r->temp.filepath->data);
 }
 
 static ushort http_parse_headers (request_t * r)
@@ -646,194 +666,14 @@ void http_cleanup (request_t * r)
 	}
 }
 
-void http_init_constants (void)
-{
-	/* 2xx */
-	http_status_code[200] = "200 OK";
-	http_status_code_len[200] = strlen(http_status_code[200]);
-	/* 3xx */
-	http_status_code[304] = "304 Not Modified";
-	http_status_code_len[304] = strlen(http_status_code[304]);
-	/* 4xx */
-	http_error_message[400] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "400 - Bad Request"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Bad Request"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[400] = strlen(http_error_message[400]);
-	http_status_code[400] = "400 Bad Request";
-	http_status_code_len[400] = strlen(http_status_code[400]);
-	http_error_message[401] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "401 - Unauthorized"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Unauthorized"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[401] = strlen(http_error_message[401]);
-	http_status_code[401] = "401 Unauthorized";
-	http_status_code_len[401] = strlen(http_status_code[401]);
-	http_error_message[402] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "402 - Payment Required"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Payment Required"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[402] = strlen(http_error_message[402]);
-	http_status_code[402] = "402 Payment Required";
-	http_status_code_len[402] = strlen(http_status_code[402]);
-	http_error_message[403] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "403 - Forbidden"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Forbidden"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[403] = strlen(http_error_message[403]);
-	http_status_code[403] = "403 Forbidden";
-	http_status_code_len[403] = strlen(http_status_code[403]);
-	http_error_message[404] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "404 - Not Found"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Not Found"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[404] = strlen(http_error_message[404]);
-	http_status_code[404] = "404 Not Found";
-	http_status_code_len[404] = strlen(http_status_code[404]);
-	http_error_message[405] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "405 - Method Not Allowed"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Method Not Allowed"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[405] = strlen(http_error_message[405]);
-	http_status_code[405] = "405 Method Not Allowed";
-	http_status_code_len[405] = strlen(http_status_code[405]);
-	http_error_message[406] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "406 - Not Acceptable"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Not Acceptable"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[406] = strlen(http_error_message[406]);
-	http_status_code[406] = "406 Not Acceptable";
-	http_status_code_len[406] = strlen(http_status_code[406]);
-	http_error_message[408] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "408 - Request Timeout"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Request Timeout"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[408] = strlen(http_error_message[408]);
-	http_status_code[408] = "408 Request Timeout";
-	http_status_code_len[408] = strlen(http_status_code[408]);
-	http_error_message[411] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "411 - Length Required"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Length Required"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[411] = strlen(http_error_message[411]);
-	http_status_code[411] = "411 Length Required";
-	http_status_code_len[411] = strlen(http_status_code[411]);
-	http_error_message[413] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "413 - Request Entity Too Large"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Request Entity Too Large"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[413] = strlen(http_error_message[413]);
-	http_status_code[413] = "413 Request Entity Too Large";
-	http_status_code_len[413] = strlen(http_status_code[413]);
-	http_error_message[414] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "414 - Request-URL Too Long"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Request-URL Too Long"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[414] = strlen(http_error_message[414]);
-	http_status_code[414] = "414 Request-URL Too Long";
-	http_status_code_len[414] = strlen(http_status_code[414]);
-	http_error_message[415] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "415 - Unsupported Media Type"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Unsupported Media Type"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[415] = strlen(http_error_message[415]);
-	http_status_code[415] = "415 Unsupported Media Type";
-	http_status_code_len[415] = strlen(http_status_code[415]);
-	http_error_message[416] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "416 - Requested Range Not Satisfiable"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Requested Range Not Satisfiable"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[416] = strlen(http_error_message[416]);
-	http_status_code[416] = "416 Requested Range Not Satisfiable";
-	http_status_code_len[416] = strlen(http_status_code[416]);
-	/* 5xx */
-	http_error_message[500] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "500 - Internal Server Error"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Internal Server Error"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[500] = strlen(http_error_message[500]);
-	http_status_code[500] = "500 Internal Server Error";
-	http_status_code_len[500] = strlen(http_status_code[500]);
-	http_error_message[501] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "501 - Not Implemented"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Not Implemented"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[501] = strlen(http_error_message[501]);
-	http_status_code[501] = "501 Not Implemented";
-	http_status_code_len[501] = strlen(http_status_code[501]);
-	http_error_message[502] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "502 - Bad Gateway"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Bad Gateway"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[502] = strlen(http_error_message[502]);
-	http_status_code[502] = "502 Bad Gateway";
-	http_status_code_len[502] = strlen(http_status_code[502]);
-	http_error_message[503] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "503 - Service Unavailable"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Service Unavailable"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[503] = strlen(http_error_message[503]);
-	http_status_code[503] = "503 Service Unavailable";
-	http_status_code_len[503] = strlen(http_status_code[503]);
-	http_error_message[504] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "504 - Gateway Timeout"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "Gateway Timeout"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[504] = strlen(http_error_message[504]);
-	http_status_code[504] = "504 Gateway Timeout";
-	http_status_code_len[504] = strlen(http_status_code[504]);
-	http_error_message[505] = HTTP_HTML_PAGE_TEMPLATE_TOP
-	                          "505 - HTTP Version Not Supported"
-	                          HTTP_HTML_PAGE_TEMPLATE_CON
-	                          "HTTP Version Not Supported"
-	                          HTTP_HTML_PAGE_TEMPLATE_BOT
-	;
-	http_error_message_len[505] = strlen(http_error_message[505]);
-	http_status_code[505] = "505 HTTP Version Not Supported";
-	http_status_code_len[505] = strlen(http_status_code[505]);
-}
+static void http_init_constants (void);
 
 void http_prepare (request_t * r)
 {
 	http_init_constants();
 	
-	server_string_len = strlen(SERVER_STRING) + 8;
+	header_server_string.str = "Server: " SERVER_STRING;
+	header_server_string.len = strlen(header_server_string.str);
 	
 	r->temp.temppath = (char *) malloc(512);
 	r->temp.temppath_len = strlen(config.temp_dir);
@@ -852,6 +692,11 @@ void http_prepare (request_t * r)
 	r->temp.tempfd = -1;
 	r->temp.pos = 0;
 	
+	r->out.content_range.str = (char *) malloc(64);
+	r->out.content_range.len = 0;
+	r->out.expires.str = (char *) malloc(29);
+	r->out.expires.len = 29;
+	
 	r->temp.filepath = buf_create(1, config.document_root.len + 128);
 	memcpy(r->temp.filepath->data, config.document_root.str, config.document_root.len);
 	
@@ -860,4 +705,227 @@ void http_prepare (request_t * r)
 	r->p = pool_create(HTTP_POOL_FRAGMENT_SIZE, HTTP_POOL_RESERVED_FRAGMENTS);
 	r->in.p = pool_create(sizeof(header_t), HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
 	r->in.body.b = buf_create(1, HTTP_POST_BUFFER_RESERVED_SIZE);
+}
+
+static void http_init_constants (void)
+{
+	/* 2xx */
+	http_status_code[200] = "200 OK";
+	http_status_code_len[200] = strlen(http_status_code[200]);
+	http_status_code[206] = "206 Partial Content";
+	http_status_code_len[206] = strlen(http_status_code[206]);
+	/* 3xx */
+	http_status_code[304] = "304 Not Modified";
+	http_status_code_len[304] = strlen(http_status_code[304]);
+	/* 4xx */
+	http_error_message[400] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "400 - Bad Request"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "400"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Bad Request"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[400] = strlen(http_error_message[400]);
+	http_status_code[400] = "400 Bad Request";
+	http_status_code_len[400] = strlen(http_status_code[400]);
+	http_error_message[401] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "401 - Unauthorized"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "401"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Unauthorized"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[401] = strlen(http_error_message[401]);
+	http_status_code[401] = "401 Unauthorized";
+	http_status_code_len[401] = strlen(http_status_code[401]);
+	http_error_message[402] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "402 - Payment Required"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "402"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Payment Required"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[402] = strlen(http_error_message[402]);
+	http_status_code[402] = "402 Payment Required";
+	http_status_code_len[402] = strlen(http_status_code[402]);
+	http_error_message[403] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "403 - Forbidden"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "403"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Forbidden"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[403] = strlen(http_error_message[403]);
+	http_status_code[403] = "403 Forbidden";
+	http_status_code_len[403] = strlen(http_status_code[403]);
+	http_error_message[404] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "404 - Not Found"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "404"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Not Found"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[404] = strlen(http_error_message[404]);
+	http_status_code[404] = "404 Not Found";
+	http_status_code_len[404] = strlen(http_status_code[404]);
+	http_error_message[405] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "405 - Method Not Allowed"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "405"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Method Not Allowed"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[405] = strlen(http_error_message[405]);
+	http_status_code[405] = "405 Method Not Allowed";
+	http_status_code_len[405] = strlen(http_status_code[405]);
+	http_error_message[406] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "406 - Not Acceptable"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "406"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Not Acceptable"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[406] = strlen(http_error_message[406]);
+	http_status_code[406] = "406 Not Acceptable";
+	http_status_code_len[406] = strlen(http_status_code[406]);
+	http_error_message[408] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "408 - Request Timeout"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "408"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Request Timeout"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[408] = strlen(http_error_message[408]);
+	http_status_code[408] = "408 Request Timeout";
+	http_status_code_len[408] = strlen(http_status_code[408]);
+	http_error_message[411] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "411 - Length Required"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "411"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Length Required"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[411] = strlen(http_error_message[411]);
+	http_status_code[411] = "411 Length Required";
+	http_status_code_len[411] = strlen(http_status_code[411]);
+	http_error_message[413] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "413 - Request Entity Too Large"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "413"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Request Entity Too Large"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[413] = strlen(http_error_message[413]);
+	http_status_code[413] = "413 Request Entity Too Large";
+	http_status_code_len[413] = strlen(http_status_code[413]);
+	http_error_message[414] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "414 - Request-URL Too Long"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "414"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Request-URL Too Long"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[414] = strlen(http_error_message[414]);
+	http_status_code[414] = "414 Request-URL Too Long";
+	http_status_code_len[414] = strlen(http_status_code[414]);
+	http_error_message[415] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "415 - Unsupported Media Type"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "415"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Unsupported Media Type"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[415] = strlen(http_error_message[415]);
+	http_status_code[415] = "415 Unsupported Media Type";
+	http_status_code_len[415] = strlen(http_status_code[415]);
+	http_error_message[416] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "416 - Requested Range Not Satisfiable"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "416"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Requested Range Not Satisfiable"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[416] = strlen(http_error_message[416]);
+	http_status_code[416] = "416 Requested Range Not Satisfiable";
+	http_status_code_len[416] = strlen(http_status_code[416]);
+	/* 5xx */
+	http_error_message[500] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "500 - Internal Server Error"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "500"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Internal Server Error"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[500] = strlen(http_error_message[500]);
+	http_status_code[500] = "500 Internal Server Error";
+	http_status_code_len[500] = strlen(http_status_code[500]);
+	http_error_message[501] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "501 - Not Implemented"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "501"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Not Implemented"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[501] = strlen(http_error_message[501]);
+	http_status_code[501] = "501 Not Implemented";
+	http_status_code_len[501] = strlen(http_status_code[501]);
+	http_error_message[502] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "502 - Bad Gateway"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "502"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Bad Gateway"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[502] = strlen(http_error_message[502]);
+	http_status_code[502] = "502 Bad Gateway";
+	http_status_code_len[502] = strlen(http_status_code[502]);
+	http_error_message[503] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "503 - Service Unavailable"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "503"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Service Unavailable"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[503] = strlen(http_error_message[503]);
+	http_status_code[503] = "503 Service Unavailable";
+	http_status_code_len[503] = strlen(http_status_code[503]);
+	http_error_message[504] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "504 - Gateway Timeout"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "504"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "Gateway Timeout"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[504] = strlen(http_error_message[504]);
+	http_status_code[504] = "504 Gateway Timeout";
+	http_status_code_len[504] = strlen(http_status_code[504]);
+	http_error_message[505] = HTTP_HTML_PAGE_TEMPLATE_TOP
+	                          "505 - HTTP Version Not Supported"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON1
+	                          "505"
+	                          HTTP_HTML_PAGE_TEMPLATE_CON2
+	                          "HTTP Version Not Supported"
+	                          HTTP_HTML_PAGE_TEMPLATE_BOT
+	;
+	http_error_message_len[505] = strlen(http_error_message[505]);
+	http_status_code[505] = "505 HTTP Version Not Supported";
+	http_status_code_len[505] = strlen(http_status_code[505]);
 }

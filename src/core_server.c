@@ -128,7 +128,7 @@ static void event_routine (void)
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == e[i].data.fd)
 					{
-						res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, NULL, request[it]->temp.sendfile_count);
+						res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
 						
 						if (res == -1)
 						{
@@ -138,9 +138,7 @@ static void event_routine (void)
 							break;
 						}
 						
-						request[it]->temp.sendfile_total += res;
-						
-						if (request[it]->temp.sendfile_total >= request[it]->temp.sendfile_count)
+						if (request[it]->temp.sendfile_offset >= request[it]->temp.sendfile_last)
 						{
 							close(request[it]->sock);
 							http_cleanup(request[it]);

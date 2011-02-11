@@ -84,6 +84,8 @@ typedef struct
 	u_str_t http_version;
 	ulong long content_length;
 	u_str_t content_type;
+	str_t content_range;
+	str_t expires;
 } headers_out_t;
 
 typedef struct
@@ -102,8 +104,8 @@ typedef struct
 		uint pos;
 		buf_t * filepath;
 		int sendfile_fd;
-		size_t sendfile_count;
-		size_t sendfile_total;
+		uint sendfile_last;
+		off_t sendfile_offset;
 	} temp;
 } request_t;
 
