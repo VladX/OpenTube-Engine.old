@@ -45,6 +45,7 @@
 #define IS_SYM(X) ((X) >= ' ' && (X) <= '~')
 #define TO_LOWER(X) (((X) >= 'A' && (X) <= 'Z') ? (X) + 32 : (X))
 #define IS_SPACE(X) ((X) == ' ' || (X) == '\t' || (X) == '\n')
+#define IS_DIGIT(X) ((X) >= '0' && (X) <= '9')
 #define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':')
 
 void set_str (str_t * str, char * src);
@@ -70,5 +71,7 @@ void buf_expand (buf_t * b, uint add);
 void buf_free (buf_t * b);
 
 void int_to_str (int value, char * result, int base);
+
+bool is_num (char * str);
 
 bool smemcmp (uchar * p1, uchar * p2, uint len);

@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <dirent.h>
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
@@ -40,7 +41,36 @@ static void setprocname (char * procname, const char * newprocname)
 
 static void quit_worker (int prm)
 {
-	// TODO: do some clear and close all connections
+	int res, len;
+	char * tmp;
+	DIR * dir;
+	struct dirent * d;
+	
+	dir = opendir(config.temp_dir);
+	
+	if (dir != NULL)
+	{
+		len = strlen(config.temp_dir);
+		tmp = (char *) malloc(len + 256);
+		memcpy(tmp, config.temp_dir, len);
+		tmp[len] = '/';
+		len++;
+		
+		while ((d = readdir(dir)) != NULL)
+			if (is_num(d->d_name))
+			{
+				memcpy(tmp + len, d->d_name, strlen(d->d_name) + 1);
+				res = unlink(tmp);
+				if (res == -1)
+					perr("unlink(\"%s\"): %d", tmp, res);
+			}
+		
+		free(tmp);
+		closedir(dir);
+	}
+	else
+		perr("opendir(): %s", "NULL");
+	
 	exit(0);
 }
 

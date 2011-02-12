@@ -133,6 +133,18 @@ void int_to_str (int value, char * result, int base)
 	}
 }
 
+bool is_num (char * str)
+{
+	if (* str == '-')
+		str++;
+	
+	for (; * str != '\0'; str++)
+		if (!IS_DIGIT(* str))
+			return false;
+	
+	return true;
+}
+
 bool smemcmp (uchar * p1, uchar * p2, uint len)
 {
 	uint i;

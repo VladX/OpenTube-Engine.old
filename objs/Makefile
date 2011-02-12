@@ -1,5 +1,5 @@
 CC= gcc
-LIBS= -pthread
+LIBS= 
 PARAMS= -Wall -Wunused -Wundef -Wpointer-arith -O2 $(DEBUG_PARAMS) $(LIBS)
 
 build:

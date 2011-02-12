@@ -80,9 +80,8 @@ typedef struct
 
 typedef struct
 {
-	str_t status;
 	u_str_t http_version;
-	ulong long content_length;
+	ulong content_length;
 	u_str_t content_type;
 	str_t content_range;
 	str_t expires;
@@ -101,18 +100,24 @@ typedef struct
 		int temppath_len;
 		int tempfd;
 		int pipefd[2];
+		long writev_total;
+		struct iovec * out_vec;
+		uint out_vec_len;
 		uint pos;
 		buf_t * filepath;
 		int sendfile_fd;
 		uint sendfile_last;
 		off_t sendfile_offset;
+		char dates[60];
 	} temp;
 } request_t;
+
+typedef buf_t * (* web_func_t) (request_t *);
 
 typedef struct
 {
 	const char * uri;
-	void * func;
+	web_func_t func;
 } uri_map_t;
 
 typedef struct

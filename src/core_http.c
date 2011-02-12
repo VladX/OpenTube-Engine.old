@@ -3,7 +3,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sys/stat.h>
 #include <sys/sendfile.h>
 #include <fcntl.h>
@@ -25,7 +24,7 @@ static uchar http_status_code_len[506];
 static str_t header_server_string;
 
 
-static inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
+inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
 {
 	struct iovec * iov;
 	uint offset;
@@ -38,19 +37,21 @@ static inline void http_append_to_output_buf (request_t * r, void * pointer, uin
 	
 	iov[offset].iov_base = pointer;
 	iov[offset].iov_len = len;
+	
+	r->temp.writev_total += len;
 }
 
-static inline void http_append_str (request_t * r, char * str)
+inline void http_append_str (request_t * r, char * str)
 {
 	http_append_to_output_buf(r, str, strlen((const char *) str));
 }
 
-static inline void http_append_headers (request_t * r)
+static inline void http_append_headers (request_t * r, ushort code)
 {
 	char temp[16];
 	
 	http_append_to_output_buf(r, "HTTP/1.1 ", 9);
-	http_append_to_output_buf(r, r->out.status.str, r->out.status.len);
+	http_append_to_output_buf(r, (void *) http_status_code[code], http_status_code_len[code]);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, header_server_string.str, header_server_string.len);
 	http_append_to_output_buf(r, CLRF, 2);
@@ -63,28 +64,66 @@ static inline void http_append_headers (request_t * r)
 	http_append_to_output_buf(r, CLRF, 2);
 }
 
-static inline void http_send (request_t * r)
+static inline bool http_send (request_t * r)
 {
-	if (writev(r->sock, (struct iovec *) r->out_vec->data, r->out_vec->cur_len) == -1)
+	ssize_t res;
+	uint size, i, d;
+	struct iovec * data;
+	
+	data = (struct iovec *) r->out_vec->data;
+	
+	res = writev(r->sock, data, r->out_vec->cur_len);
+	
+	if (res == -1 && errno != EAGAIN)
+	{
 		perr("writev(): %d", -1);
+		
+		return true;
+	}
+	
+	if (res < r->temp.writev_total)
+	{
+		if (res > 0)
+		{
+			r->temp.writev_total -= res;
+			
+			for (i = 0, size = 0; i < r->out_vec->cur_len; i++)
+			{
+				size += data[i].iov_len;
+				
+				if (size >= res)
+				{
+					data += i;
+					d = data[0].iov_len - (size - res);
+					data[0].iov_base = ((uchar *) data[0].iov_base) + d;
+					data[0].iov_len -= d;
+					r->temp.out_vec_len = r->out_vec->cur_len - i;
+					r->temp.out_vec = data;
+					break;
+				}
+			}
+		}
+		
+		set_epollout_event_mask(r->sock);
+		
+		return false;
+	}
+	else
+		r->temp.writev_total = 0;
+	
+	return true;
 }
 
-static inline void http_set_status_code (request_t * r, ushort code)
+static bool http_error (request_t * r, ushort code)
 {
-	r->out.status.str = (char *) http_status_code[code];
-	r->out.status.len = http_status_code_len[code];
-}
-
-static void http_error (request_t * r, ushort code)
-{
-	http_set_status_code(r, code);
 	r->out.content_length = http_error_message_len[code];
 	r->out.content_type.str = (uchar *) HTTP_ERROR_CONTENT_TYPE;
 	r->out.content_type.len = HTTP_ERROR_CONTENT_TYPE_LEN;
-	http_append_headers(r);
+	http_append_headers(r, code);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, (void *) http_error_message[code], r->out.content_length);
-	http_send(r);
+	
+	return http_send(r);
 }
 
 static inline uchar http_hex_to_ascii (uchar * c)
@@ -120,11 +159,7 @@ static bool http_divide_uri (request_t * r)
 		else if (IS_VALID_PATH_CHARACTER(d[i]))
 			* c = d[i];
 		else
-		{
-			http_error(r, 400);
-			
 			return false;
-		}
 	}
 	
 	* c = '\0';
@@ -154,50 +189,39 @@ static inline void http_rfc822_date (char * str, struct tm * ctime)
 static inline bool http_send_file (request_t * r, const char * filepath)
 {
 	uint i, it;
+	bool ret;
 	struct stat st;
 	uchar * fileext;
 	int fd, t;
-	const int enable = 1;
-	const int disable = 1;
 	
 	fd = open(filepath, O_RDONLY);
 	
 	if (fd == -1)
 	{
 		if (errno == ENOENT || errno == ENOTDIR)
-		{
-			http_error(r, 404);
-			
-			return true;
-		}
+			return http_error(r, 404);
 		
 		if (errno == EACCES)
-		{
-			http_error(r, 403);
-			
-			return true;
-		}
+			return http_error(r, 403);
 		
-		http_error(r, 500);
-		
-		return true;
+		return http_error(r, 500);
 	}
 	
 	if (fstat(fd, &st) == -1)
 	{
 		perr("fstat(): %d", -1);
-		http_error(r, 500);
+		ret = http_error(r, 500);
 		close(fd);
 		
-		return true;
+		return ret;
 	}
 	
 	if (!(S_ISREG(st.st_mode)))
 	{
-		http_error(r, 403);
+		ret = http_error(r, 403);
 		close(fd);
 		
-		return true;
+		return ret;
 	}
 	
 	fileext = r->in.path.str + r->in.path.len;
@@ -221,9 +245,10 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	ushort code = 200;
 	ssize_t res;
 	header_t * hdr;
-	char rfc822_date_str[60];
 	struct tm c_time, m_time;
 	time_t curtime;
+	
+	char * rfc822_date_str = r->temp.dates;
 	
 	r->temp.sendfile_last = st.st_size;
 	r->temp.sendfile_offset = 0;
@@ -257,10 +282,10 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 			r->temp.sendfile_offset = atoi((const char *) hdr->value.str + 6);
 			if (r->temp.sendfile_offset >= st.st_size)
 			{
-				http_error(r, 416);
+				ret = http_error(r, 416);
 				close(fd);
 				
-				return true;
+				return ret;
 			}
 			if (r->temp.sendfile_offset > r->temp.sendfile_last)
 				r->temp.sendfile_last = r->temp.sendfile_offset + 1;
@@ -270,9 +295,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	r->out.content_length = r->temp.sendfile_last - r->temp.sendfile_offset;
 	
-	http_set_status_code(r, code);
-	
-	http_append_headers(r);
+	http_append_headers(r, code);
 	
 	http_append_to_output_buf(r, "Last-Modified: ", 15);
 	http_append_to_output_buf(r, rfc822_date_str, 29);
@@ -302,16 +325,19 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	if (code == 304)
 	{
-		http_send(r);
+		ret = http_send(r);
 		close(fd);
 		
-		return true;
+		return ret;
 	}
 	
-	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
-		perr("setsockopt(): %d", -1);
+	if (http_send(r) == false)
+	{
+		r->temp.sendfile_fd = fd;
+		
+		return false;
+	}
 	
-	http_send(r);
 	res = sendfile(r->sock, fd, &(r->temp.sendfile_offset), (size_t) r->out.content_length);
 	
 	if (res == -1 && errno != EAGAIN)
@@ -328,9 +354,6 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 		return false;
 	}
 	
-	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
-		perr("setsockopt(): %d", -1);
-	
 	close(fd);
 	
 	return true;
@@ -339,17 +362,36 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 static bool http_response (request_t * r)
 {
 	uint i;
+	buf_t * buf;
+	struct tm c_time;
+	time_t curtime;
 	uri_map_t * m = (uri_map_t *) uri_map->data;
 	
 	if (!http_divide_uri(r))
-		return true;
+		return http_error(r, 400);
 	
-	/*for (i = 0; i < uri_map->cur_len; i++)
-		if (strcmp(r->in.uri.str, m[i].uri) == 0)
+	for (i = 0; i < uri_map->cur_len; i++)
+		if (strcmp((char *) r->in.uri.str, m[i].uri) == 0)
 		{
-			m[i].func();
-			return;
-		}*/
+			r->out.content_type.str = (uchar *) "text/html";
+			r->out.content_type.len = 9;
+			r->out.content_length = 0;
+			
+			buf = m[i].func(r);
+			
+			http_append_headers(r, 200);
+			
+			curtime = time(NULL);
+			gmtime_r(&curtime, &c_time);
+			http_rfc822_date(r->temp.dates, &c_time);
+			http_append_to_output_buf(r, "Date: ", 6);
+			http_append_to_output_buf(r, r->temp.dates, 29);
+			http_append_to_output_buf(r, CLRF CLRF, 4);
+			
+			http_append_to_output_buf(r, buf->data, buf->cur_len);
+			
+			return http_send(r);
+		}
 	
 	buf_expand(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
 	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
@@ -462,10 +504,7 @@ bool http_serve_client (request_t * request)
 		if (request->in.uri.len == 0)
 		{
 			if (request->in.buf_pos + r > HTTP_MAX_HEADERS_SIZE)
-			{
-				http_error(request, 414);
-				return true;
-			}
+				return http_error(request, 414);
 			memcpy(request->in.buf + request->in.buf_pos, buf, r);
 			
 			for (i = 4; i < r; i++)
@@ -474,11 +513,10 @@ bool http_serve_client (request_t * request)
 				{
 					request->in.buf[request->in.buf_pos + i - 1] = 1;
 					code = http_parse_headers(request);
+					
 					if (code)
-					{
-						http_error(request, code);
-						return true;
-					}
+						return http_error(request, code);
+					
 					if (!(request->in.method_post))
 						return http_response(request);
 					else
@@ -494,36 +532,25 @@ bool http_serve_client (request_t * request)
 							else if (hdr->key.len == 14 && request->in.content_length == NULL && smemcmp(hdr->key.str, (uchar *) "content-length", 14))
 								request->in.content_length = hdr;
 						}
+						
 						if (request->in.content_type == NULL)
-						{
-							http_error(request, 400);
-							
-							return true;
-						}
+							return http_error(request, 400);
+						
 						if (request->in.content_length == NULL)
-						{
-							http_error(request, 411);
-							
-							return true;
-						}
+							return http_error(request, 411);
+						
 						request->in.multipart = (request->in.urlenc = false);
 						if (request->in.content_type->value.len == 33 && smemcmp(request->in.content_type->value.str, (uchar *) "application/x-www-form-urlencoded", 33))
 							request->in.urlenc = true;
 						else if (request->in.content_type->value.len > 19 && smemcmp(request->in.content_type->value.str, (uchar *) "multipart/form-data", 19))
 							request->in.multipart = true;
 						else
-						{
-							http_error(request, 415);
-							
-							return true;
-						}
+							return http_error(request, 415);
+						
 						request->in.content_length_val = (uint) atoi((const char *) request->in.content_length->value.str);
 						if (request->in.content_length_val > HTTP_MAX_REQUEST_BODY_SIZE)
-						{
-							http_error(request, 413);
-							
-							return true;
-						}
+							return http_error(request, 413);
+						
 						goto _post_parse;
 					}
 				}
@@ -637,9 +664,7 @@ bool http_temp_file (request_t * r)
 	close(r->temp.pipefd[1]);
 	close(r->temp.tempfd);
 	
-	http_response(r);
-	
-	return true;
+	return http_response(r);
 }
 
 void http_cleanup (request_t * r)
@@ -651,6 +676,9 @@ void http_cleanup (request_t * r)
 	r->in.buf_pos = 0;
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
+	
+	r->temp.writev_total = 0;
+	r->temp.sendfile_fd = -1;
 	
 	buf_free(r->temp.filepath);
 	
@@ -691,6 +719,8 @@ void http_prepare (request_t * r)
 	r->in.content_length = NULL;
 	r->temp.tempfd = -1;
 	r->temp.pos = 0;
+	r->temp.writev_total = 0;
+	r->temp.sendfile_fd = -1;
 	
 	r->out.content_range.str = (char *) malloc(64);
 	r->out.content_range.len = 0;

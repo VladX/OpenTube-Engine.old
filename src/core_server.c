@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <signal.h>
@@ -15,6 +16,7 @@
 #include "common_functions.h"
 #include "core_process.h"
 #include "core_http.h"
+#include "web.h"
 
 
 bool ipv6_addr = false;
@@ -27,7 +29,7 @@ void set_epollout_event_mask (int sock)
 {
 	struct epoll_event ev;
 	
-	ev.events = EPOLLOUT | EPOLLET;
+	ev.events = EPOLLOUT;
 	ev.data.fd = sock;
 	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
 }
@@ -36,7 +38,10 @@ static void event_routine (void)
 {
 	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
+	const int enable = 1;
+	const int disable = 0;
 	int n, i, it;
+	uint t, d, size;
 	ssize_t res;
 	socklen_t client_name_len;
 	request_t * request[maxevents];
@@ -53,6 +58,8 @@ static void event_routine (void)
 	addr = (struct sockaddr *) malloc(client_name_len);
 	
 	uri_map = buf_create(sizeof(uri_map_t), 10);
+	
+	web_init();
 	
 	for (i = 0; i < maxevents; i++)
 	{
@@ -91,6 +98,9 @@ static void event_routine (void)
 					debug_print_3("accept(): %d", ev.data.fd);
 					ev.events = EPOLLIN;
 					epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
+					
+					if (* http_server_tcp_addr.str && setsockopt(ev.data.fd, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
+						perr("setsockopt(): %d", -1);
 				}
 				continue;
 			}
@@ -111,6 +121,8 @@ static void event_routine (void)
 				{
 					if (http_temp_file(request[it]))
 					{
+						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+							perr("setsockopt(): %d", -1);
 						close(request[it]->sock);
 						http_cleanup(request[it]);
 					}
@@ -119,6 +131,8 @@ static void event_routine (void)
 				
 				if (http_serve_client(request[it]))
 				{
+					if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+						perr("setsockopt(): %d", -1);
 					close(request[it]->sock);
 					http_cleanup(request[it]);
 				}
@@ -128,90 +142,64 @@ static void event_routine (void)
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == e[i].data.fd)
 					{
-						res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
-						
-						if (res == -1)
+						if (request[it]->temp.writev_total > 0)
 						{
-							perr("sendfile(): %d", (int) res);
-							close(request[it]->sock);
-							http_cleanup(request[it]);
+							res = writev(request[it]->sock, request[it]->temp.out_vec, request[it]->temp.out_vec_len);
+							if (res == -1)
+							{
+								perr("writev(): %d", -1);
+								close(request[it]->sock);
+								http_cleanup(request[it]);
+								break;
+							}
+							
+							request[it]->temp.writev_total -= res;
+							
+							for (t = 0, size = 0; t < request[it]->temp.out_vec_len; t++)
+							{
+								size += request[it]->temp.out_vec[t].iov_len;
+								
+								if (size >= res)
+								{
+									request[it]->temp.out_vec += t;
+									d = request[it]->temp.out_vec[0].iov_len - (size - res);
+									request[it]->temp.out_vec[0].iov_base = ((uchar *) request[it]->temp.out_vec[0].iov_base) + d;
+									request[it]->temp.out_vec[0].iov_len -= d;
+									request[it]->temp.out_vec_len = request[it]->temp.out_vec_len - t;
+									break;
+								}
+							}
+							
 							break;
 						}
 						
-						if (request[it]->temp.sendfile_offset >= request[it]->temp.sendfile_last)
+						if (request[it]->temp.sendfile_fd != -1)
 						{
-							close(request[it]->sock);
-							http_cleanup(request[it]);
+							res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
+						
+							if (res == -1)
+							{
+								perr("sendfile(): %d", (int) res);
+								close(request[it]->sock);
+								http_cleanup(request[it]);
+								break;
+							}
+							
+							if (request[it]->temp.sendfile_offset < request[it]->temp.sendfile_last)
+								break;
 						}
-						debug_print_3("epollout %d", e[i].data.fd);
+						
+						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+							perr("setsockopt(): %d", -1);
+						close(request[it]->sock);
+						http_cleanup(request[it]);
+						
 						break;
 					}
 			}
 		}
 	}
 }
-
-/*static void * request_handler_thread (void * ptr)
-{
-	request_t * request;
-	char * temppath;
-	socklen_t client_name_len;
-	const int srvfd = sockfd;
-	const int enable = 1;
-	const int disable = 0;
-	
-	#if IPV6_SUPPORT
-	if (ipv6_addr)
-		client_name_len = sizeof(struct sockaddr_in6);
-	else
-	#endif
-		client_name_len = sizeof(struct sockaddr_in);
-	
-	request = (request_t *) malloc(sizeof(request_t));
-	request->p = pool_create(HTTP_POOL_FRAGMENT_SIZE, HTTP_POOL_RESERVED_FRAGMENTS);
-	request->in.p = pool_create(sizeof(header_t), 32);
-	request->addr = (struct sockaddr *) malloc(client_name_len);
-	
-	temppath = (char *) malloc(512);
-	memcpy(temppath, HTTP_TEMP_DIR, sizeof(HTTP_TEMP_DIR));
-	temppath[sizeof(HTTP_TEMP_DIR) - 1] = '/';
-	temppath[sizeof(HTTP_TEMP_DIR)] = '\0';
-	
-	http_prepare(request);
-	
-	debug_print_2("start accepting: %d", sockfd);
-	
-	for (;;)
-	{
-		request->sock = accept(srvfd, request->addr, &client_name_len);
-		
-		if (request->sock == -1)
-			continue;
-		
-		debug_print_3("accept(): %d", request->sock);
-		
-		#ifdef TCP_CORK
-		if (* http_server_tcp_addr.str && setsockopt(request->sock, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
-			perr("setsockopt(): %d", -1);
-		#endif
-		
-		http_serve_client(request, temppath);
-		
-		#ifdef TCP_CORK
-		if (* http_server_tcp_addr.str && setsockopt(request->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
-			perr("setsockopt(): %d", -1);
-		#endif
-		
-		pool_free(request->p, HTTP_POOL_RESERVED_FRAGMENTS);
-		pool_free(request->in.p, 32);
-		
-		close(request->sock);
-		
-		debug_print_3("close(): %d", request->sock);
-	}
-	
-	return NULL;
-}*/
 
 static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 {
