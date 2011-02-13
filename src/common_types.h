@@ -1,3 +1,5 @@
+#include "libs/zlib.h"
+
 #ifndef  __cplusplus
  #define bool unsigned char
  #define true 1
@@ -109,6 +111,9 @@ typedef struct
 		uint sendfile_last;
 		off_t sendfile_offset;
 		char dates[60];
+		buf_t * gzip_buf;
+		z_stream * gzip_stream;
+		__uint32_t gzip_ending[2];
 	} temp;
 } request_t;
 
@@ -126,4 +131,6 @@ typedef struct
 	const char * group;
 	const char * temp_dir;
 	u_str_t document_root;
+	bool gzip;
+	uchar gzip_level;
 } config_t;

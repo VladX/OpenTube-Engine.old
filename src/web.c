@@ -5,15 +5,13 @@
 
 buf_t * test_func (request_t * r)
 {
-	const char * hello_world = "Hello World!\n";
+	const char * hello_world = "Hello World!";
 	
 	buf_t * b = buf_create(1, 0);
 	int l = strlen(hello_world);
 	
 	b->data = (void *) hello_world;
 	b->cur_len = l;
-	
-	r->out.content_length = l;
 	
 	return b;
 }

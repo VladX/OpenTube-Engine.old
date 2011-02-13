@@ -21,6 +21,8 @@
 
 #include "common_functions.h"
 
+#define CONFIG_IS_FLAG_ENABLED(F) (strcmp(F, "on") == 0 || strcmp(F, "enable") == 0 || strcmp(F, "1") == 0)
+
 
 config_t config;
 int http_port;
@@ -35,6 +37,12 @@ typedef struct
 
 static const char * required_directives[] = {"listen", "user", "group", "http-temp-dir", "http-document-root"};
 
+
+static void default_config (void)
+{
+	config.gzip = false;
+	config.gzip_level = 6;
+}
 
 static void process_directive (conf_elem * el)
 {
@@ -86,6 +94,22 @@ static void process_directive (conf_elem * el)
 			config.document_root.len--;
 			config.document_root.str[config.document_root.len] = '\0';
 		}
+	}
+	else if (strcmp(el->key, "gzip") == 0)
+	{
+		if (CONFIG_IS_FLAG_ENABLED(el->value))
+			config.gzip = true;
+		else
+			config.gzip = false;
+	}
+	else if (strcmp(el->key, "gzip-compression-level") == 0)
+	{
+		uchar gzip_compress_level;
+		
+		gzip_compress_level = (uchar) atoi(el->value);
+		if (gzip_compress_level < 1 || gzip_compress_level > 9)
+			eerr(1, "%s", "The gzip compression level must be between 1 and 9.");
+		config.gzip_level = gzip_compress_level;
 	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
@@ -154,6 +178,8 @@ void load_config (const char * path)
 	
 	if (c == NULL)
 		peerr(1, "Load configuration file \"%s\"", path);
+	
+	default_config();
 	
 	els = buf_create(sizeof(conf_elem *), 32);
 	

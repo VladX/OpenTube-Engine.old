@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
+#include "libs/zlib.h"
 #include "common_functions.h"
 #include "core_server.h"
 #include "error_page.h"
@@ -22,6 +23,7 @@ static const char * http_status_code[506];
 static ushort http_error_message_len[506];
 static uchar http_status_code_len[506];
 static str_t header_server_string;
+static const char gzip_header[] = {0x1F, 0x8B, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3};
 
 
 inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
@@ -362,7 +364,9 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 static bool http_response (request_t * r)
 {
 	uint i;
+	int res;
 	buf_t * buf;
+	bool accept_gzip = false;
 	struct tm c_time;
 	time_t curtime;
 	uri_map_t * m = (uri_map_t *) uri_map->data;
@@ -375,11 +379,70 @@ static bool http_response (request_t * r)
 		{
 			r->out.content_type.str = (uchar *) "text/html";
 			r->out.content_type.len = 9;
-			r->out.content_length = 0;
 			
 			buf = m[i].func(r);
 			
-			http_append_headers(r, 200);
+			if (config.gzip && buf->cur_len > 64)
+			{
+				header_t * hdr;
+				
+				for (i = 0; i < r->in.p->cur_len; i++)
+				{
+					hdr = (header_t *) r->in.p->data[i];
+					if (hdr->key.len == 15 && smemcmp(hdr->key.str, (uchar *) "accept-encoding", 15))
+					{
+						if (strstr((const char *) hdr->value.str, "gzip") != NULL)
+							accept_gzip = true;
+					}
+				}
+			}
+			
+			if (accept_gzip)
+			{
+				z_stream * z = r->temp.gzip_stream;
+				buf_expand(r->temp.gzip_buf, buf->cur_len);
+				z->avail_in = buf->cur_len;
+				z->next_in  = buf->data;
+				z->avail_out = r->temp.gzip_buf->cur_len;
+				z->next_out = r->temp.gzip_buf->data;
+				
+				do
+				{
+					res = deflate(z, Z_FINISH);
+					
+					if (res == Z_STREAM_END)
+						break;
+					
+					if (res == Z_OK)
+					{
+						buf_expand(r->temp.gzip_buf, 256);
+						z->avail_out = 256;
+						z->next_out = (uchar *) r->temp.gzip_buf->data + r->temp.gzip_buf->cur_len - 256;
+						
+						continue;
+					}
+					else
+					{
+						err("deflate(): %d", res);
+						
+						return http_error(r, 500);
+					}
+				}
+				while (z->avail_out == 0);
+				
+				i = r->temp.gzip_buf->cur_len - z->avail_out;
+				r->out.content_length = i + 18;
+				
+				(void) deflateReset(z);
+				
+				http_append_headers(r, 200);
+				http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
+			}
+			else
+			{
+				r->out.content_length = buf->cur_len;
+				http_append_headers(r, 200);
+			}
 			
 			curtime = time(NULL);
 			gmtime_r(&curtime, &c_time);
@@ -388,7 +451,16 @@ static bool http_response (request_t * r)
 			http_append_to_output_buf(r, r->temp.dates, 29);
 			http_append_to_output_buf(r, CLRF CLRF, 4);
 			
-			http_append_to_output_buf(r, buf->data, buf->cur_len);
+			if (accept_gzip)
+			{
+				http_append_to_output_buf(r, (void *) gzip_header, 10);
+				http_append_to_output_buf(r, r->temp.gzip_buf->data, i);
+				r->temp.gzip_ending[0] = crc32(0, buf->data, buf->cur_len);
+				r->temp.gzip_ending[1] = buf->cur_len;
+				http_append_to_output_buf(r, (void *) r->temp.gzip_ending, 8);
+			}
+			else
+				http_append_to_output_buf(r, buf->data, r->out.content_length);
 			
 			return http_send(r);
 		}
@@ -680,6 +752,9 @@ void http_cleanup (request_t * r)
 	r->temp.writev_total = 0;
 	r->temp.sendfile_fd = -1;
 	
+	if (config.gzip)
+		buf_free(r->temp.gzip_buf);
+	
 	buf_free(r->temp.filepath);
 	
 	buf_free(r->out_vec);
@@ -698,6 +773,8 @@ static void http_init_constants (void);
 
 void http_prepare (request_t * r)
 {
+	int res;
+	
 	http_init_constants();
 	
 	header_server_string.str = "Server: " SERVER_STRING;
@@ -726,6 +803,16 @@ void http_prepare (request_t * r)
 	r->out.content_range.len = 0;
 	r->out.expires.str = (char *) malloc(29);
 	r->out.expires.len = 29;
+	
+	if (config.gzip)
+	{
+		r->temp.gzip_buf = buf_create(1, HTTP_GZIP_BUFFER_RESERVED_SIZE);
+		r->temp.gzip_stream = (z_stream *) malloc(sizeof(z_stream));
+		memset(r->temp.gzip_stream, 0, sizeof(z_stream));
+		res = deflateInit2(r->temp.gzip_stream, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+		if (res != Z_OK)
+			peerr(1, "deflateInit2(): %d", res);
+	}
 	
 	r->temp.filepath = buf_create(1, config.document_root.len + 128);
 	memcpy(r->temp.filepath->data, config.document_root.str, config.document_root.len);
