@@ -145,7 +145,8 @@ static bool http_divide_uri (request_t * r)
 	uchar * c, * d;
 	uint i;
 	
-	r->in.path.str = (uchar *) realloc(r->in.path.str, r->in.uri.len);
+	if (r->in.uri.len > HTTP_PATH_PREALLOC)
+		r->in.path.str = (uchar *) realloc(r->in.path.str, r->in.uri.len);
 	c = r->in.path.str;
 	d = r->in.uri.str;
 	
@@ -473,7 +474,7 @@ static bool http_response (request_t * r)
 
 static ushort http_parse_headers (request_t * r)
 {
-	uchar * p = r->in.buf;
+	uchar * p = (uchar *) r->b->data;
 	
 	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	
@@ -563,27 +564,29 @@ bool http_serve_client (request_t * request)
 {
 	ushort code;
 	int r, _r;
-	uint i, n;
+	uint i;
 	header_t * hdr;
-	uchar * buf, * last;
+	uchar * buf;
 	
-	buf = pool_alloc(request->p);
+	buf_expand(request->b, HTTP_RECV_BUFFER);
+	buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	
-	while ((r = recv(request->sock, buf, HTTP_POOL_FRAGMENT_SIZE, MSG_DONTWAIT)) > 0)
+	while ((r = recv(request->sock, buf, HTTP_RECV_BUFFER, MSG_DONTWAIT)) > 0)
 	{
 		_r = r;
 		
+		request->b->cur_len -= HTTP_RECV_BUFFER - r;
+		
 		if (request->in.uri.len == 0)
 		{
-			if (request->in.buf_pos + r > HTTP_MAX_HEADERS_SIZE)
+			if (request->b->cur_len > HTTP_MAX_HEADERS_SIZE)
 				return http_error(request, 414);
-			memcpy(request->in.buf + request->in.buf_pos, buf, r);
 			
 			for (i = 4; i < r; i++)
 			{
 				if (buf[i] == '\n' && buf[i - 1] == '\r' && buf[i - 2] == '\n' && buf[i - 3] == '\r')
 				{
-					request->in.buf[request->in.buf_pos + i - 1] = 1;
+					buf[i - 1] = 1;
 					code = http_parse_headers(request);
 					
 					if (code)
@@ -593,9 +596,11 @@ bool http_serve_client (request_t * request)
 						return http_response(request);
 					else
 					{
-						last = buf + r;
 						buf += i + 1;
-						r = last - buf;
+						r -= i + 1;
+						request->in.body.data = buf;
+						request->in.body.data_len = 0;
+						
 						for (i = 0; i < request->in.p->cur_len; i++)
 						{
 							hdr = (header_t *) request->in.p->data[i];
@@ -627,24 +632,18 @@ bool http_serve_client (request_t * request)
 					}
 				}
 			}
-			request->in.buf_pos += r;
+			
 			goto _loop_end;
 		}
-		
-		last = buf + r;
 		
 		_post_parse:;
 		
 		if (request->in.content_length_val < HTTP_BODY_SIZE_WRITE_TO_FILE)
 		{
-			if (request->in.body.b->cur_len < request->in.content_length_val)
-			{
-				n = request->in.body.b->cur_len;
-				buf_expand(request->in.body.b, r);
-				memcpy((uchar *) request->in.body.b->data + n, buf, r);
-				if (request->in.body.b->cur_len < request->in.content_length_val)
-					goto _loop_end;
-			}
+			request->in.body.data_len += r;
+			
+			if (request->in.body.data_len < request->in.content_length_val)
+				goto _loop_end;
 		}
 		else if (request->temp.tempfd == -1)
 		{
@@ -678,10 +677,11 @@ bool http_serve_client (request_t * request)
 		
 		_loop_end:;
 		
-		if (_r < HTTP_POOL_FRAGMENT_SIZE)
+		if (_r < HTTP_RECV_BUFFER)
 			return false;
 		
-		buf = pool_alloc(request->p);
+		buf_expand(request->b, HTTP_RECV_BUFFER);
+		buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	}
 	
 	if (r < 0 && errno == EAGAIN)
@@ -744,8 +744,6 @@ void http_cleanup (request_t * r)
 	r->sock = -1;
 	
 	r->in.uri.len = 0;
-	r->in.path.str = NULL;
-	r->in.buf_pos = 0;
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
 	
@@ -756,16 +754,14 @@ void http_cleanup (request_t * r)
 		buf_free(r->temp.gzip_buf);
 	
 	buf_free(r->temp.filepath);
-	
 	buf_free(r->out_vec);
+	buf_free(r->b);
 	
-	pool_free(r->p, HTTP_POOL_RESERVED_FRAGMENTS);
 	pool_free(r->in.p, HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
 	
 	if (r->in.method_post)
 	{
 		r->temp.tempfd = -1;
-		buf_free(r->in.body.b);
 	}
 }
 
@@ -790,8 +786,8 @@ void http_prepare (request_t * r)
 	r->sock = -1;
 	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	r->in.uri.len = 0;
-	r->in.path.str = NULL;
-	r->in.buf_pos = 0;
+	r->in.path.str = (uchar *) malloc(HTTP_PATH_PREALLOC);
+	r->in.path.len = 0;
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
 	r->temp.tempfd = -1;
@@ -814,14 +810,13 @@ void http_prepare (request_t * r)
 			peerr(1, "deflateInit2(): %d", res);
 	}
 	
-	r->temp.filepath = buf_create(1, config.document_root.len + 128);
+	r->temp.filepath = buf_create(1, config.document_root.len + HTTP_PATH_PREALLOC);
 	memcpy(r->temp.filepath->data, config.document_root.str, config.document_root.len);
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);
 	
-	r->p = pool_create(HTTP_POOL_FRAGMENT_SIZE, HTTP_POOL_RESERVED_FRAGMENTS);
+	r->b = buf_create(1, HTTP_BUFFER_RESERVED_SIZE);
 	r->in.p = pool_create(sizeof(header_t), HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
-	r->in.body.b = buf_create(1, HTTP_POST_BUFFER_RESERVED_SIZE);
 }
 
 static void http_init_constants (void)

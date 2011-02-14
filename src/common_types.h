@@ -80,13 +80,12 @@ typedef struct
 typedef struct
 {
 	post_arg_t * args;
-	buf_t * b;
+	uchar * data;
+	uint data_len;
 } content_body_t;
 
 typedef struct
 {
-	uchar buf[HTTP_MAX_HEADERS_SIZE];
-	uint buf_pos;
 	bool method_get;
 	bool method_post;
 	bool method_head;
@@ -114,7 +113,7 @@ typedef struct
 
 typedef struct
 {
-	pool_t * p;
+	buf_t * b;
 	headers_in_t in;
 	headers_out_t out;
 	buf_t * out_vec;
