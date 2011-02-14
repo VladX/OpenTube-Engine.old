@@ -382,7 +382,7 @@ static bool http_response (request_t * r)
 			
 			buf = m[i].func(r);
 			
-			if (config.gzip && buf->cur_len > 64)
+			if (config.gzip && buf->cur_len > config.gzip_min_page_size)
 			{
 				header_t * hdr;
 				

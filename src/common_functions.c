@@ -73,6 +73,91 @@ void pool_free_last (pool_t * p, uint len)
 	}
 }
 
+frag_pool_t * frag_pool_create (uint size, uint res_len)
+{
+	frag_pool_t * p;
+	uint i;
+	
+	p = (frag_pool_t *) malloc(sizeof(frag_pool_t));
+	p->cur_len = 0;
+	p->reserved_len = res_len;
+	p->real_len = res_len;
+	p->node_size = size;
+	p->e = (frag_pool_elem_t *) malloc(sizeof(frag_pool_elem_t) * res_len);
+	
+	for (i = 0; i < res_len; i++)
+	{
+		p->e[i].data = malloc(size);
+		p->e[i].free = true;
+	}
+	
+	return p;
+}
+
+void * frag_pool_alloc (frag_pool_t * p)
+{
+	uint i;
+	
+	for (i = 0; i < p->real_len; i++)
+		if (p->e[i].free)
+		{
+			p->cur_len++;
+			p->e[i].free = false;
+			return p->e[i].data;
+		}
+	
+	p->cur_len++;
+	p->real_len++;
+	p->e = (frag_pool_elem_t *) realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
+	p->e[p->real_len - 1].data = malloc(p->node_size);
+	p->e[p->real_len - 1].free = false;
+	
+	return p->e[p->real_len - 1].data;
+}
+
+static inline void _frag_try_internal_pool_free (frag_pool_t * p, uint i)
+{
+	if (i >= p->reserved_len)
+	{
+		if (i == p->real_len - 1)
+		{
+			p->real_len--;
+			free(p->e[i].data);
+			p->e = (frag_pool_elem_t *) realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
+			
+			if (i > 0 && p->e[i - 1].free)
+				_frag_try_internal_pool_free(p, i - 1);
+			
+			return;
+		}
+	}
+}
+
+void frag_pool_free_alt (frag_pool_t * p, uint i)
+{
+	if (!(p->e[i].free))
+	{
+		p->cur_len--;
+		p->e[i].free = true;
+		_frag_try_internal_pool_free(p, i);
+	}
+}
+
+void frag_pool_free (frag_pool_t * p, void * ptr)
+{
+	uint i;
+	
+	for (i = 0; i < p->real_len; i++)
+		if (!(p->e[i].free) && p->e[i].data == ptr)
+		{
+			p->cur_len--;
+			p->e[i].free = true;
+			_frag_try_internal_pool_free(p, i);
+			
+			return;
+		}
+}
+
 buf_t * buf_create (ulong size, ulong res_len)
 {
 	buf_t * b;

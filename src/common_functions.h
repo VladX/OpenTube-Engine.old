@@ -62,6 +62,14 @@ void pool_free (pool_t * p, uint len);
 
 void pool_free_last (pool_t * p, uint len);
 
+frag_pool_t * frag_pool_create (uint size, uint res_len);
+
+void * frag_pool_alloc (frag_pool_t * p);
+
+void frag_pool_free (frag_pool_t * p, void * ptr);
+
+void frag_pool_free_alt (frag_pool_t * p, uint i);
+
 buf_t * buf_create (ulong size, ulong res_len);
 
 void buf_destroy (buf_t * b);

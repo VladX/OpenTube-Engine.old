@@ -36,11 +36,34 @@ typedef struct
 
 typedef struct
 {
+	void * data;
+	bool free;
+} frag_pool_elem_t;
+
+typedef struct
+{
+	uint cur_len;
+	uint reserved_len;
+	uint real_len;
+	uint node_size;
+	frag_pool_elem_t * e;
+} frag_pool_t;
+
+typedef struct
+{
 	uint cur_len;
 	uint reserved_len;
 	uint node_size;
 	void * data;
 } buf_t;
+
+typedef struct
+{
+	uchar addr[16];
+	time_t time;
+	time_t dtime;
+	uint req;
+} limit_req_t;
 
 typedef struct
 {
@@ -133,4 +156,8 @@ typedef struct
 	u_str_t document_root;
 	bool gzip;
 	uchar gzip_level;
+	uint gzip_min_page_size;
+	bool limit_req;
+	uint limit_rate;
+	uint limit_delay;
 } config_t;

@@ -13,6 +13,7 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <time.h>
 #include "common_functions.h"
 #include "core_process.h"
 #include "core_http.h"
@@ -24,6 +25,68 @@ pid_t worker_pid = 0;
 buf_t * uri_map;
 static int sockfd;
 static int epfd;
+static frag_pool_t * limit_req_clients;
+
+static inline bool limit_requests (struct sockaddr * addr, uchar len)
+{
+	uchar * bin;
+	uint i;
+	limit_req_t * cli;
+	time_t curtime = time(NULL);
+	
+	#if IPV6_SUPPORT
+	if (ipv6_addr)
+		bin = (uchar *) ((struct sockaddr_in6 *) addr)->sin6_addr.s6_addr;
+	else
+	#endif
+		bin = (uchar *) &(((struct sockaddr_in *) addr)->sin_addr.s_addr);
+	
+	for (i = 0; i < limit_req_clients->real_len; i++)
+	{
+		if (limit_req_clients->e[i].free)
+			continue;
+		
+		cli = (limit_req_t *) limit_req_clients->e[i].data;
+		if (memcmp(cli->addr, bin, len) == 0)
+		{
+			if (cli->dtime != 0 && curtime > cli->dtime)
+			{
+				frag_pool_free_alt(limit_req_clients, i);
+				
+				return false;
+			}
+			
+			if (cli->req > config.limit_rate)
+				return true;
+			
+			if (curtime - cli->time <= 1)
+			{
+				cli->req++;
+				
+				if (cli->req > config.limit_rate)
+				{
+					cli->dtime = curtime + config.limit_delay;
+					
+					return true;
+				}
+				
+				return false;
+			}
+			
+			frag_pool_free_alt(limit_req_clients, i);
+			
+			return false;
+		}
+	}
+	
+	cli = (limit_req_t *) frag_pool_alloc(limit_req_clients);
+	memcpy(cli->addr, bin, len);
+	cli->time = curtime;
+	cli->req = 1;
+	cli->dtime = 0;
+	
+	return false;
+}
 
 void set_epollout_event_mask (int sock)
 {
@@ -47,6 +110,12 @@ static void event_routine (void)
 	request_t * request[maxevents];
 	struct epoll_event e[maxevents], ev;
 	struct sockaddr * addr;
+	struct linger linger_opt;
+	
+	linger_opt.l_onoff = 1;
+	linger_opt.l_linger = 0;
+	
+	const uchar ip_addr_len = (ipv6_addr) ? 16 : 4;
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -60,6 +129,8 @@ static void event_routine (void)
 	uri_map = buf_create(sizeof(uri_map_t), 10);
 	
 	web_init();
+	
+	limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_CLIENTS_POOL_RESERVED_SIZE);
 	
 	for (i = 0; i < maxevents; i++)
 	{
@@ -95,7 +166,14 @@ static void event_routine (void)
 				{
 					fcntl(ev.data.fd, F_SETFL, O_NONBLOCK);
 				#endif
-					debug_print_3("accept(): %d", ev.data.fd);
+					debug_print_2("accept(): %d", ev.data.fd);
+					if (config.limit_req && limit_requests(addr, ip_addr_len))
+					{
+						debug_print_2("client has exceeded the allowable requests per second (rps) limit, request %d discarded", ev.data.fd);
+						setsockopt(ev.data.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						close(ev.data.fd);
+						break;
+					}
 					ev.events = EPOLLIN;
 					epoll_ctl(epfd, EPOLL_CTL_ADD, ev.data.fd, &ev);
 					

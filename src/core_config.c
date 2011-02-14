@@ -42,6 +42,10 @@ static void default_config (void)
 {
 	config.gzip = false;
 	config.gzip_level = 6;
+	config.gzip_min_page_size = 64;
+	config.limit_req = false;
+	config.limit_rate = 64;
+	config.limit_delay = 30;
 }
 
 static void process_directive (conf_elem * el)
@@ -110,6 +114,40 @@ static void process_directive (conf_elem * el)
 		if (gzip_compress_level < 1 || gzip_compress_level > 9)
 			eerr(1, "%s", "The gzip compression level must be between 1 and 9.");
 		config.gzip_level = gzip_compress_level;
+	}
+	else if (strcmp(el->key, "gzip-min-page-size") == 0)
+	{
+		int gzip_page_size;
+		
+		gzip_page_size = atoi(el->value);
+		if (gzip_page_size < 1)
+			eerr(1, "Invalid value for \"%s\".", el->key);
+		config.gzip_min_page_size = gzip_page_size;
+	}
+	else if (strcmp(el->key, "limit-requests") == 0)
+	{
+		if (CONFIG_IS_FLAG_ENABLED(el->value))
+			config.limit_req = true;
+		else
+			config.limit_req = false;
+	}
+	else if (strcmp(el->key, "limit-requests-rate") == 0)
+	{
+		int rate;
+		
+		rate = atoi(el->value);
+		if (rate <= 0)
+			eerr(1, "Invalid value for \"%s\".", el->key);
+		config.limit_rate = rate;
+	}
+	else if (strcmp(el->key, "limit-requests-delay") == 0)
+	{
+		int delay;
+		
+		delay = atoi(el->value);
+		if (delay <= 0)
+			eerr(1, "Invalid value for \"%s\".", el->key);
+		config.limit_delay = delay;
 	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
