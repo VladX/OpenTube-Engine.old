@@ -563,9 +563,9 @@ static ushort http_parse_headers (request_t * r)
 		header->value.str[header->value.len] = '\0';
 		
 		if (
-		header->key.len == 10 && strcmp((const char *) header->key.str, "connection") == 0 &&
+		header->key.len == 10 && strcmp((const char *) header->key.str, "connection") == 0 && header->value.len > 9 &&
 		/* For performance reasons we compare only first and last letter of connection header value (looking for "[k]eep-aliv[e]"), not full string */
-		header->value.len > 9 && TO_LOWER(header->value.str[0]) == 'k' && TO_LOWER(header->value.str[9]) == 'e'
+		(header->value.str[0] == 'k' || header->value.str[0] == 'K') && (header->value.str[9] == 'e' || header->value.str[9] == 'E')
 		)
 			r->keepalive = true;
 		
