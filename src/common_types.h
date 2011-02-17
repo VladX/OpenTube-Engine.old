@@ -118,6 +118,8 @@ typedef struct
 	headers_out_t out;
 	buf_t * out_vec;
 	int sock;
+	bool keepalive;
+	time_t keepalive_time;
 	struct
 	{
 		char * temppath;
@@ -153,6 +155,8 @@ typedef struct
 	const char * group;
 	const char * temp_dir;
 	u_str_t document_root;
+	u_str_t keepalive_timeout;
+	uint keepalive_timeout_val;
 	bool gzip;
 	uchar gzip_level;
 	uint gzip_min_page_size;

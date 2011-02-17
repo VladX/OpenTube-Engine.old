@@ -1,6 +1,6 @@
 all: build
 rebuild: clean build
 build:
-	$(MAKE) -f ./objs/Makefile
+	$(MAKE) --directory=./objs --makefile=./Makefile
 clean:
 	rm -f ./objs/*.o ./opentube-server

@@ -22,6 +22,7 @@
 #include "common_functions.h"
 
 #define CONFIG_IS_FLAG_ENABLED(F) (strcmp(F, "on") == 0 || strcmp(F, "enable") == 0 || strcmp(F, "1") == 0)
+#define EINVALIDVAL eerr(1, "Invalid value for \"%s\".", el->key)
 
 
 config_t config;
@@ -46,6 +47,8 @@ static void default_config (void)
 	config.limit_req = false;
 	config.limit_rate = 64;
 	config.limit_delay = 30;
+	config.keepalive_timeout.str = (uchar *) "25";
+	config.keepalive_timeout.len = 2;
 }
 
 static void process_directive (conf_elem * el)
@@ -99,6 +102,17 @@ static void process_directive (conf_elem * el)
 			config.document_root.str[config.document_root.len] = '\0';
 		}
 	}
+	else if (strcmp(el->key, "http-keepalive-timeout") == 0)
+	{
+		uint timeout;
+		
+		timeout = (uint) atoi(el->value);
+		if (timeout <= 0)
+			EINVALIDVAL;
+		config.keepalive_timeout.str = (uchar *) el->value;
+		config.keepalive_timeout.len = strlen(el->value);
+		config.keepalive_timeout_val = timeout;
+	}
 	else if (strcmp(el->key, "gzip") == 0)
 	{
 		if (CONFIG_IS_FLAG_ENABLED(el->value))
@@ -121,7 +135,7 @@ static void process_directive (conf_elem * el)
 		
 		gzip_page_size = atoi(el->value);
 		if (gzip_page_size < 1)
-			eerr(1, "Invalid value for \"%s\".", el->key);
+			EINVALIDVAL;
 		config.gzip_min_page_size = gzip_page_size;
 	}
 	else if (strcmp(el->key, "limit-requests") == 0)
@@ -137,7 +151,7 @@ static void process_directive (conf_elem * el)
 		
 		rate = atoi(el->value);
 		if (rate <= 0)
-			eerr(1, "Invalid value for \"%s\".", el->key);
+			EINVALIDVAL;
 		config.limit_rate = rate;
 	}
 	else if (strcmp(el->key, "limit-requests-delay") == 0)
@@ -146,7 +160,7 @@ static void process_directive (conf_elem * el)
 		
 		delay = atoi(el->value);
 		if (delay <= 0)
-			eerr(1, "Invalid value for \"%s\".", el->key);
+			EINVALIDVAL;
 		config.limit_delay = delay;
 	}
 	else

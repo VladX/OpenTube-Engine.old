@@ -23,7 +23,7 @@ static const char * http_status_code[506];
 static ushort http_error_message_len[506];
 static uchar http_status_code_len[506];
 static str_t header_server_string;
-static const char gzip_header[] = {0x1F, 0x8B, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3};
+static const char gzip_header[10] = {0x1F, 0x8B, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3};
 
 
 inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
@@ -63,6 +63,16 @@ static inline void http_append_headers (request_t * r, ushort code)
 	http_append_to_output_buf(r, "Content-Length: ", 16);
 	int_to_str(r->out.content_length, temp, 10);
 	http_append_str(r, temp);
+	http_append_to_output_buf(r, CLRF, 2);
+	if (r->keepalive)
+	{
+		http_append_to_output_buf(r, "Connection: keep-alive", 22);
+		http_append_to_output_buf(r, CLRF, 2);
+		http_append_to_output_buf(r, "Keep-Alive: timeout=", 20);
+		http_append_to_output_buf(r, config.keepalive_timeout.str, config.keepalive_timeout.len);
+	}
+	else
+		http_append_to_output_buf(r, "Connection: close", 17);
 	http_append_to_output_buf(r, CLRF, 2);
 }
 
@@ -552,6 +562,13 @@ static ushort http_parse_headers (request_t * r)
 		header->value.len = p - val;
 		header->value.str[header->value.len] = '\0';
 		
+		if (
+		header->key.len == 10 && strcmp((const char *) header->key.str, "connection") == 0 &&
+		/* For performance reasons we compare only first and last letter of connection header value (looking for "[k]eep-aliv[e]"), not full string */
+		header->value.len > 9 && TO_LOWER(header->value.str[0]) == 'k' && TO_LOWER(header->value.str[9]) == 'e'
+		)
+			r->keepalive = true;
+		
 		debug_print_3("header \"%s: %s\"", header->key.str, header->value.str);
 		
 		p += 2;
@@ -684,12 +701,15 @@ bool http_serve_client (request_t * request)
 		buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	}
 	
-	if (r < 0 && errno == EAGAIN)
+	if (r == -1 && errno == EAGAIN)
 		return false;
+	
 	#if DEBUG_LEVEL
-	else if (r < 0)
+	if (r == -1)
 		perr("recv(): %d", r);
 	#endif
+	
+	request->keepalive = false;
 	
 	return true;
 }
@@ -741,7 +761,18 @@ bool http_temp_file (request_t * r)
 
 void http_cleanup (request_t * r)
 {
-	r->sock = -1;
+	if (r->keepalive)
+	{
+		set_epollin_event_mask(r->sock);
+		r->keepalive_time = time(NULL);
+	}
+	else
+	{
+		r->keepalive = false;
+		close(r->sock);
+		debug_print_3("close(): %d", r->sock);
+		r->sock = -1;
+	}
 	
 	r->in.uri.len = 0;
 	r->in.content_type = NULL;
@@ -784,6 +815,8 @@ void http_prepare (request_t * r)
 	r->temp.temppath[r->temp.temppath_len] = '\0';
 	
 	r->sock = -1;
+	r->keepalive = false;
+	r->keepalive_time = 1;
 	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	r->in.uri.len = 0;
 	r->in.path.str = (uchar *) malloc(HTTP_PATH_PREALLOC);

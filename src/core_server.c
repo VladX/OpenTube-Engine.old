@@ -97,15 +97,25 @@ void set_epollout_event_mask (int sock)
 	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
 }
 
+void set_epollin_event_mask (int sock)
+{
+	struct epoll_event ev;
+	
+	ev.events = EPOLLIN;
+	ev.data.fd = sock;
+	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
+}
+
 static void event_routine (void)
 {
 	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
 	const int enable = 1;
 	const int disable = 0;
-	int n, i, it;
+	int n, i, it, dlt;
 	uint t, d, size;
 	ssize_t res;
+	time_t curtime;
 	socklen_t client_name_len;
 	request_t * request[maxevents];
 	struct epoll_event e[maxevents], ev;
@@ -152,7 +162,22 @@ static void event_routine (void)
 	
 	for (;;)
 	{
-		n = epoll_wait(epfd, e, maxevents, -1);
+		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
+		
+		curtime = time(NULL);
+		
+		for (i = 0; i < maxevents; i++)
+			if (request[i]->keepalive)
+			{
+				dlt = curtime - request[i]->keepalive_time;
+				if (dlt > config.keepalive_timeout_val || dlt < 0)
+				{
+					close(request[i]->sock);
+					debug_print_3("keepalive-timeout expired, close(): %d", request[i]->sock);
+					request[i]->sock = -1;
+					request[i]->keepalive = false;
+				}
+			}
 		
 		for (i = 0; i < n; i++)
 		{
@@ -201,7 +226,6 @@ static void event_routine (void)
 					{
 						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
 							perr("setsockopt(): %d", -1);
-						close(request[it]->sock);
 						http_cleanup(request[it]);
 					}
 					continue;
@@ -211,7 +235,6 @@ static void event_routine (void)
 				{
 					if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
 						perr("setsockopt(): %d", -1);
-					close(request[it]->sock);
 					http_cleanup(request[it]);
 				}
 			}
@@ -226,7 +249,6 @@ static void event_routine (void)
 							if (res == -1)
 							{
 								perr("writev(): %d", -1);
-								close(request[it]->sock);
 								http_cleanup(request[it]);
 								break;
 							}
@@ -258,7 +280,6 @@ static void event_routine (void)
 							if (res == -1)
 							{
 								perr("sendfile(): %d", (int) res);
-								close(request[it]->sock);
 								http_cleanup(request[it]);
 								break;
 							}
@@ -269,7 +290,6 @@ static void event_routine (void)
 						
 						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
 							perr("setsockopt(): %d", -1);
-						close(request[it]->sock);
 						http_cleanup(request[it]);
 						
 						break;
