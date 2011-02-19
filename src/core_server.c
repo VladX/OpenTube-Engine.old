@@ -43,7 +43,6 @@
 
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
-buf_t * uri_map;
 static int sockfd;
 static int epfd;
 static frag_pool_t * limit_req_clients;
@@ -157,8 +156,6 @@ static void event_routine (void)
 	
 	addr = (struct sockaddr *) malloc(client_name_len);
 	
-	uri_map = buf_create(sizeof(uri_map_t), 10);
-	
 	web_init();
 	
 	limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_CLIENTS_POOL_RESERVED_SIZE);
@@ -183,8 +180,6 @@ static void event_routine (void)
 	
 	for (;;)
 	{
-		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
-		
 		curtime = time(NULL);
 		
 		for (i = 0; i < maxevents; i++)
@@ -199,6 +194,8 @@ static void event_routine (void)
 					request[i]->keepalive = false;
 				}
 			}
+		
+		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
 		
 		for (i = 0; i < n; i++)
 		{

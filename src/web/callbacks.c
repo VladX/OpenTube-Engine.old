@@ -19,28 +19,12 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "common_functions.h"
-#include "web/callbacks.h"
+#include <web_handler.h>
+#include <web.h>
 
-buf_t * uri_map;
-buf_t * web_global_buffer;
+extern WEB_FUNCTION(hello);
 
-void web_set_callback (const char * uri, web_func_t func)
+void set_callbacks (void)
 {
-	buf_expand(uri_map, 1);
-	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].uri = uri;
-	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].func = func;
-}
-
-void web_init (void)
-{
-	uri_map = buf_create(sizeof(uri_map_t), 10);
-	web_global_buffer = buf_create(1, WEB_GLOBAL_BUFFER_RESERVED_SIZE);
-	
-	set_callbacks();
-}
-
-void web_cleanup (void)
-{
-	buf_free(web_global_buffer);
+	web_set_callback("/hello", hello);
 }

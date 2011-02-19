@@ -19,4 +19,8 @@
  * Boston, MA  02110-1301  USA
  */
 
+void web_set_callback (const char * uri, web_func_t func);
+
+void web_cleanup (void);
+
 void web_init (void);

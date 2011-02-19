@@ -32,6 +32,7 @@
 #include "libs/zlib.h"
 #include "common_functions.h"
 #include "core_server.h"
+#include "web.h"
 #include "error_page.h"
 #include "mime.h"
 
@@ -411,6 +412,8 @@ static bool http_response (request_t * r)
 		{
 			r->out.content_type.str = (uchar *) "text/html";
 			r->out.content_type.len = 9;
+			
+			web_cleanup();
 			
 			buf = m[i].func(r);
 			
