@@ -19,12 +19,18 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <web_handler.h>
-#include "util.h"
+#define APPEND(PTR, LEN) append_to_global_buffer((void *) PTR, LEN)
+#define PRINT(PTR) print_to_global_buffer((void *) PTR)
 
-WEB_FUNCTION(hello)
+inline void append_to_global_buffer (void * ptr, uint len)
 {
-	PRINT("Hello World!");
+	void * dst = (uchar *) web_global_buffer->data + web_global_buffer->cur_len;
 	
-	return web_global_buffer;
+	buf_expand(web_global_buffer, len);
+	memcpy(dst, ptr, len);
+}
+
+inline void print_to_global_buffer (void * ptr)
+{
+	append_to_global_buffer(ptr, strlen((char *) ptr));
 }
