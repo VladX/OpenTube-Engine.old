@@ -1,3 +1,24 @@
+/*
+ * This file is part of Opentube - Open video hosting engine
+ *
+ * Copyright (C) 2011 - VladX; http://vladx.net/
+ *
+ * Opentube is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * Opentube is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Opentube; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Boston, MA  02110-1301  USA
+ */
+
 #define _GNU_SOURCE
 #define __USE_GNU
 #include <sys/types.h>
@@ -645,7 +666,7 @@ bool http_serve_client (request_t * request)
 						if (request->in.content_length_val > HTTP_MAX_REQUEST_BODY_SIZE)
 							return http_error(request, 413);
 						
-						goto _post_parse;
+						goto _post_;
 					}
 				}
 			}
@@ -653,7 +674,7 @@ bool http_serve_client (request_t * request)
 			goto _loop_end;
 		}
 		
-		_post_parse:;
+		_post_:;
 		
 		if (request->in.content_length_val < HTTP_BODY_SIZE_WRITE_TO_FILE)
 		{
