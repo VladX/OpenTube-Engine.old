@@ -430,12 +430,12 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
 		hdr = (header_t *) r->in.p->data[i];
-		if (hdr->key.len == 17 && hdr->value.len == 29 && smemcmp(hdr->key.str, (uchar *) "if-modified-since", 17) && smemcmp(hdr->value.str, (uchar *) rfc822_date_str, 29))
+		if (hdr->key.len == 17 && hdr->value.len == 29 && memcmp(hdr->key.str, "if-modified-since", 17) == 0 && memcmp(hdr->value.str, rfc822_date_str, 29) == 0)
 		{
 			code = 304;
 			break;
 		}
-		else if (hdr->key.len == 5 && smemcmp(hdr->key.str, (uchar *) "range", 5) && hdr->value.len > 6 && smemcmp(hdr->value.str, (uchar *) "bytes=", 6))
+		else if (hdr->key.len == 5 && memcmp(hdr->key.str, "range", 5) == 0 && hdr->value.len > 6 && memcmp(hdr->value.str, "bytes=", 6) == 0)
 		{
 			for (it = 6; it < hdr->value.len; it++)
 				if (hdr->value.str[it] == '-')
@@ -569,7 +569,7 @@ static bool http_response (request_t * r)
 			for (i = 0; i < r->in.p->cur_len; i++)
 			{
 				hdr = (header_t *) r->in.p->data[i];
-				if (hdr->key.len == 15 && smemcmp(hdr->key.str, (uchar *) "accept-encoding", 15))
+				if (hdr->key.len == 15 && memcmp(hdr->key.str, "accept-encoding", 15) == 0)
 				{
 					if (strstr((const char *) hdr->value.str, "gzip") != NULL)
 						accept_gzip = true;
@@ -791,9 +791,9 @@ bool http_serve_client (request_t * request)
 						for (i = 0; i < request->in.p->cur_len; i++)
 						{
 							hdr = (header_t *) request->in.p->data[i];
-							if (hdr->key.len == 12 && request->in.content_type == NULL && smemcmp(hdr->key.str, (uchar *) "content-type", 12))
+							if (hdr->key.len == 12 && request->in.content_type == NULL && memcmp(hdr->key.str, "content-type", 12) == 0)
 								request->in.content_type = hdr;
-							else if (hdr->key.len == 14 && request->in.content_length == NULL && smemcmp(hdr->key.str, (uchar *) "content-length", 14))
+							else if (hdr->key.len == 14 && request->in.content_length == NULL && memcmp(hdr->key.str, "content-length", 14) == 0)
 								request->in.content_length = hdr;
 						}
 						
@@ -804,9 +804,9 @@ bool http_serve_client (request_t * request)
 							return http_error(request, 411);
 						
 						request->in.multipart = (request->in.urlenc = false);
-						if (request->in.content_type->value.len == 33 && smemcmp(request->in.content_type->value.str, (uchar *) "application/x-www-form-urlencoded", 33))
+						if (request->in.content_type->value.len == 33 && memcmp(request->in.content_type->value.str, "application/x-www-form-urlencoded", 33) == 0)
 							request->in.urlenc = true;
-						else if (request->in.content_type->value.len > 19 && smemcmp(request->in.content_type->value.str, (uchar *) "multipart/form-data", 19))
+						else if (request->in.content_type->value.len > 19 && memcmp(request->in.content_type->value.str, "multipart/form-data", 19) == 0)
 							request->in.multipart = true;
 						else
 							return http_error(request, 415);
