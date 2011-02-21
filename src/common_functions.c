@@ -258,14 +258,3 @@ bool is_num (char * str)
 	
 	return true;
 }
-
-bool smemcmp (uchar * p1, uchar * p2, uint len)
-{
-	uint i;
-	
-	for (i = 0; i < len; i++)
-		if (p1[i] != p2[i])
-			return false;
-	
-	return true;
-}

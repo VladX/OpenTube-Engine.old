@@ -106,5 +106,3 @@ void buf_free (buf_t * b);
 void int_to_str (int value, char * result, int base);
 
 bool is_num (char * str);
-
-bool smemcmp (uchar * p1, uchar * p2, uint len);
