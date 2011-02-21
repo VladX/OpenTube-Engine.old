@@ -21,10 +21,12 @@
 
 #include "common_functions.h"
 
-#define WEB_FUNCTION(X) buf_t * X (request_t * r)
+#define WEB_FUNCTION(NAME) buf_t * NAME (request_t * r)
 
 extern buf_t * web_global_buffer;
 
 void http_parse_query_string (request_t * r);
 
 void http_parse_cookies (request_t * r);
+
+void http_parse_post (request_t * r);

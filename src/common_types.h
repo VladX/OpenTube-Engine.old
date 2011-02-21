@@ -102,13 +102,6 @@ typedef assoc_t post_arg_t;
 
 typedef struct
 {
-	post_arg_t * args;
-	buf_t * b;
-	u_str_t data;
-} content_body_t;
-
-typedef struct
-{
 	bool method_get;
 	bool method_post;
 	bool method_head;
@@ -135,7 +128,17 @@ typedef struct
 		buf_t * b;
 		buf_t * v;
 	} cookies;
-	content_body_t body;
+	struct
+	{
+		struct
+		{
+			post_arg_t * args;
+			uint num;
+			buf_t * b;
+			buf_t * v;
+		} post;
+		u_str_t data;
+	} body;
 	pool_t * p;
 } headers_in_t;
 

@@ -28,6 +28,7 @@ WEB_FUNCTION(hello)
 	
 	//http_parse_query_string(r);
 	//http_parse_cookies(r);
+	//http_parse_post(r);
 	
 	return web_global_buffer;
 }

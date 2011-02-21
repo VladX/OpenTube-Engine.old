@@ -202,19 +202,19 @@ static inline void http_parse__ (uint * args_num, uchar * raw_str, buf_t * args_
 			continue;
 		for (; * c != '='; c++)
 			if (* c == '\0')
-				goto _create_buffers_;
+				goto _leave_;
 			else if (!IS_VALID_URL_KEY_CHARACTER(* c))
 				return;
 		c++;
 		estimated_args_buffer_size++;
 		for (; * c != separator; c++, estimated_values_buffer_size++)
 			if (* c == '\0')
-				goto _create_buffers_;
+				goto _leave_;
 			else if (!IS_VALID_URL_VALUE_CHARACTER(* c))
 				return;
 	}
 	
-	_create_buffers_:;
+	_leave_:
 	
 	buf_resize(args_buf, estimated_args_buffer_size);
 	
@@ -290,7 +290,22 @@ void http_parse_cookies (request_t * r)
 
 void http_parse_post (request_t * r)
 {
-	// TODO
+	if (r->temp.tempfd == -1)
+	{
+		if (r->in.urlenc)
+		{
+			http_parse__(&(r->in.body.post.num), r->in.body.data.str, r->in.body.post.b, r->in.body.post.v, '&');
+			r->in.body.post.args = (post_arg_t *) r->in.body.post.b->data;
+		}
+		else
+		{
+			// TODO
+		}
+	}
+	else
+	{
+		// TODO
+	}
 }
 
 static bool http_divide_uri (request_t * r)
@@ -805,17 +820,22 @@ bool http_serve_client (request_t * request)
 				}
 			}
 			
-			goto _loop_end;
+			goto _loop_end_;
 		}
 		
-		_post_:;
+		_post_:
 		
 		if (request->in.content_length_val < HTTP_BODY_SIZE_WRITE_TO_FILE)
 		{
 			request->in.body.data.len += r;
 			
 			if (request->in.body.data.len < request->in.content_length_val)
-				goto _loop_end;
+				goto _loop_end_;
+			else
+			{
+				buf_expand(request->b, 1);
+				request->in.body.data.str[request->in.body.data.len] = '\0';
+			}
 		}
 		else if (request->temp.tempfd == -1)
 		{
@@ -847,7 +867,7 @@ bool http_serve_client (request_t * request)
 		
 		return http_response(request);
 		
-		_loop_end:;
+		_loop_end_:
 		
 		if (_r < HTTP_RECV_BUFFER)
 			return false;
@@ -1013,6 +1033,9 @@ void http_prepare (request_t * r)
 	
 	r->in.cookies.b = buf_create(sizeof(cookie_t), HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
 	r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
+	
+	r->in.body.post.b = buf_create(sizeof(post_arg_t), HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
+	r->in.body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
 }
 
 static void http_init_constants (void)
