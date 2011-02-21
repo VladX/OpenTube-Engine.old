@@ -72,8 +72,6 @@ inline void http_append_str (request_t * r, char * str)
 
 static inline void http_append_headers (request_t * r, ushort code)
 {
-	char temp[16];
-	
 	http_append_to_output_buf(r, "HTTP/1.1 ", 9);
 	http_append_to_output_buf(r, (void *) http_status_code[code], http_status_code_len[code]);
 	http_append_to_output_buf(r, CLRF, 2);
@@ -83,14 +81,12 @@ static inline void http_append_headers (request_t * r, ushort code)
 	http_append_to_output_buf(r, r->out.content_type.str, r->out.content_type.len);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, "Content-Length: ", 16);
-	int_to_str(r->out.content_length, temp, 10);
-	http_append_str(r, temp);
+	int_to_str(r->out.content_length, r->temp.content_length, 10);
+	http_append_str(r, r->temp.content_length);
 	http_append_to_output_buf(r, CLRF, 2);
 	if (r->keepalive)
 	{
-		http_append_to_output_buf(r, "Connection: keep-alive", 22);
-		http_append_to_output_buf(r, CLRF, 2);
-		http_append_to_output_buf(r, "Keep-Alive: timeout=", 20);
+		http_append_to_output_buf(r, "Connection: keep-alive" CLRF "Keep-Alive: timeout=", 44);
 		http_append_to_output_buf(r, config.keepalive_timeout.str, config.keepalive_timeout.len);
 	}
 	else
@@ -148,6 +144,24 @@ static inline bool http_send (request_t * r)
 	return true;
 }
 
+static bool http_redirect (request_t * r, u_str_t * location, bool append_query_string_to_location)
+{
+	r->out.content_length = 0;
+	r->out.content_type.str = (uchar *) HTTP_ERROR_CONTENT_TYPE;
+	r->out.content_type.len = HTTP_ERROR_CONTENT_TYPE_LEN;
+	http_append_headers(r, 301);
+	http_append_to_output_buf(r, "Location: ", 10);
+	http_append_to_output_buf(r, location->str, location->len);
+	if (append_query_string_to_location)
+	{
+		http_append_to_output_buf(r, "?", 1);
+		http_append_to_output_buf(r, r->in.query_string.str, r->in.query_string.len);
+	}
+	http_append_to_output_buf(r, CLRF CLRF, 4);
+	
+	return http_send(r);
+}
+
 static bool http_error (request_t * r, ushort code)
 {
 	r->out.content_length = http_error_message_len[code];
@@ -170,6 +184,113 @@ static inline uchar http_hex_to_ascii (uchar * c)
 	r += (l >= '0' && l <= '9') ? l - '0' : l - 'a' + 10;
 	
 	return r;
+}
+
+static inline void http_parse__ (uint * args_num, uchar * raw_str, buf_t * args_buf, buf_t * vals_buf, uchar separator)
+{
+	uint estimated_args_buffer_size = 0;
+	uint estimated_values_buffer_size = 0;
+	uint i;
+	
+	uchar * c = raw_str;
+	
+	* args_num = 0;
+	
+	for (;; c++)
+	{
+		if (* c == separator || * c == '=' || * c == ' ')
+			continue;
+		for (; * c != '='; c++)
+			if (* c == '\0')
+				goto _create_buffers_;
+			else if (!IS_VALID_URL_KEY_CHARACTER(* c))
+				return;
+		c++;
+		estimated_args_buffer_size++;
+		for (; * c != separator; c++, estimated_values_buffer_size++)
+			if (* c == '\0')
+				goto _create_buffers_;
+			else if (!IS_VALID_URL_VALUE_CHARACTER(* c))
+				return;
+	}
+	
+	_create_buffers_:;
+	
+	buf_resize(args_buf, estimated_args_buffer_size);
+	
+	if (estimated_args_buffer_size == 0)
+		return;
+	
+	buf_resize(vals_buf, estimated_values_buffer_size + estimated_args_buffer_size);
+	
+	url_arg_t * arg;
+	
+	c = raw_str;
+	
+	uchar * p = vals_buf->data;
+	
+	for (i = 0; i < estimated_args_buffer_size; c++)
+	{
+		if (* c == separator || * c == '=' || * c == ' ')
+			continue;
+		arg = &(((assoc_t *) args_buf->data)[i]);
+		arg->key.str = c;
+		for (; * c != '='; c++) {}
+		* c = '\0';
+		arg->key.len = c - arg->key.str;
+		c++;
+		arg->value.str = p;
+		for (; * c != separator; c++, p++)
+		{
+			if (* c == '+')
+				* p = ' ';
+			else if (* c == '%' && * (c + 1) != '\0' && * (c + 2) != '\0')
+			{
+				* p = http_hex_to_ascii(c);
+				c += 2;
+			}
+			else if (* c == '\0')
+				break;
+			else
+				* p = * c;
+		}
+		* p = '\0';
+		arg->value.len = p - arg->value.str;
+		p++;
+		i++;
+		
+		debug_print_3("key: \"%s\", value: \"%s\"", arg->key.str, arg->value.str);
+	}
+	
+	* args_num = estimated_args_buffer_size;
+}
+
+void http_parse_query_string (request_t * r)
+{
+	http_parse__(&(r->in.args.num), r->in.query_string.str, r->in.args.b, r->in.args.v, '&');
+	r->in.args.args = (url_arg_t *) r->in.args.b->data;
+}
+
+void http_parse_cookies (request_t * r)
+{
+	header_t * hdr;
+	uint i;
+	
+	for (i = 0; i < r->in.p->cur_len; i++)
+	{
+		hdr = (header_t *) r->in.p->data[i];
+		if (hdr->key.len == 6 && memcmp(hdr->key.str, "cookie", 6) == 0)
+		{
+			http_parse__(&(r->in.cookies.num), hdr->value.str, r->in.cookies.b, r->in.cookies.v, ';');
+			r->in.cookies.cookies = (cookie_t *) r->in.cookies.b->data;
+			break;
+		}
+	}
+}
+
+void http_parse_post (request_t * r)
+{
+	// TODO
 }
 
 static bool http_divide_uri (request_t * r)
@@ -408,97 +529,107 @@ static bool http_response (request_t * r)
 		return http_error(r, 400);
 	
 	for (i = 0; i < uri_map->cur_len; i++)
-		if (strcmp((char *) r->in.uri.str, m[i].uri) == 0)
+	{
+		if (m[i].strict_comparison || r->in.path.str[r->in.path.len - 1] == '/')
 		{
-			r->out.content_type.str = (uchar *) "text/html";
-			r->out.content_type.len = 9;
-			
-			web_cleanup();
-			
-			buf = m[i].func(r);
-			
-			if (config.gzip && buf->cur_len > config.gzip_min_page_size)
-			{
-				header_t * hdr;
-				
-				for (i = 0; i < r->in.p->cur_len; i++)
-				{
-					hdr = (header_t *) r->in.p->data[i];
-					if (hdr->key.len == 15 && smemcmp(hdr->key.str, (uchar *) "accept-encoding", 15))
-					{
-						if (strstr((const char *) hdr->value.str, "gzip") != NULL)
-							accept_gzip = true;
-					}
-				}
-			}
-			
-			if (accept_gzip)
-			{
-				z_stream * z = r->temp.gzip_stream;
-				buf_expand(r->temp.gzip_buf, buf->cur_len);
-				z->avail_in = buf->cur_len;
-				z->next_in  = buf->data;
-				z->avail_out = r->temp.gzip_buf->cur_len;
-				z->next_out = r->temp.gzip_buf->data;
-				
-				do
-				{
-					res = deflate(z, Z_FINISH);
-					
-					if (res == Z_STREAM_END)
-						break;
-					
-					if (res == Z_OK)
-					{
-						buf_expand(r->temp.gzip_buf, 256);
-						z->avail_out = 256;
-						z->next_out = (uchar *) r->temp.gzip_buf->data + r->temp.gzip_buf->cur_len - 256;
-						
-						continue;
-					}
-					else
-					{
-						err("deflate(): %d", res);
-						
-						return http_error(r, 500);
-					}
-				}
-				while (z->avail_out == 0);
-				
-				i = r->temp.gzip_buf->cur_len - z->avail_out;
-				r->out.content_length = i + 18;
-				
-				(void) deflateReset(z);
-				
-				http_append_headers(r, 200);
-				http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
-			}
-			else
-			{
-				r->out.content_length = buf->cur_len;
-				http_append_headers(r, 200);
-			}
-			
-			curtime = time(NULL);
-			gmtime_r(&curtime, &c_time);
-			http_rfc822_date(r->temp.dates, &c_time);
-			http_append_to_output_buf(r, "Date: ", 6);
-			http_append_to_output_buf(r, r->temp.dates, 29);
-			http_append_to_output_buf(r, CLRF CLRF, 4);
-			
-			if (accept_gzip)
-			{
-				http_append_to_output_buf(r, (void *) gzip_header, 10);
-				http_append_to_output_buf(r, r->temp.gzip_buf->data, i);
-				r->temp.gzip_ending[0] = crc32(0, buf->data, buf->cur_len);
-				r->temp.gzip_ending[1] = buf->cur_len;
-				http_append_to_output_buf(r, (void *) r->temp.gzip_ending, 8);
-			}
-			else
-				http_append_to_output_buf(r, buf->data, r->out.content_length);
-			
-			return http_send(r);
+			if (strcmp((char *) r->in.path.str, (char *) m[i].uri.str) != 0)
+				continue;
 		}
+		else if (r->in.path.len == m[i].uri.len - 1 && strncmp((char *) r->in.path.str, (char *) m[i].uri.str, m[i].uri.len - 1) == 0)
+			return http_redirect(r, &(m[i].uri), true);
+		else
+			continue;
+		
+		r->out.content_type.str = (uchar *) "text/html";
+		r->out.content_type.len = 9;
+		
+		web_setup_global_buffer(r->out_data);
+		
+		buf = m[i].func(r);
+		
+		if (config.gzip && buf->cur_len > config.gzip_min_page_size)
+		{
+			header_t * hdr;
+			
+			for (i = 0; i < r->in.p->cur_len; i++)
+			{
+				hdr = (header_t *) r->in.p->data[i];
+				if (hdr->key.len == 15 && smemcmp(hdr->key.str, (uchar *) "accept-encoding", 15))
+				{
+					if (strstr((const char *) hdr->value.str, "gzip") != NULL)
+						accept_gzip = true;
+				}
+			}
+		}
+		
+		if (accept_gzip)
+		{
+			z_stream * z = r->temp.gzip_stream;
+			buf_expand(r->temp.gzip_buf, buf->cur_len);
+			z->avail_in = buf->cur_len;
+			z->next_in  = buf->data;
+			z->avail_out = r->temp.gzip_buf->cur_len;
+			z->next_out = r->temp.gzip_buf->data;
+			
+			do
+			{
+				res = deflate(z, Z_FINISH);
+				
+				if (res == Z_STREAM_END)
+					break;
+				
+				if (res == Z_OK)
+				{
+					buf_expand(r->temp.gzip_buf, 256);
+					z->avail_out = 256;
+					z->next_out = (uchar *) r->temp.gzip_buf->data + r->temp.gzip_buf->cur_len - 256;
+					
+					continue;
+				}
+				else
+				{
+					err("deflate(): %d", res);
+					
+					return http_error(r, 500);
+				}
+			}
+			while (z->avail_out == 0);
+			
+			i = r->temp.gzip_buf->cur_len - z->avail_out;
+			r->out.content_length = i + 18;
+			
+			(void) deflateReset(z);
+			
+			http_append_headers(r, 200);
+			http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
+		}
+		else
+		{
+			r->out.content_length = buf->cur_len;
+			http_append_headers(r, 200);
+		}
+		
+		http_append_to_output_buf(r, "Cache-Control: no-cache, must-revalidate" CLRF "Pragma: no-cache" CLRF, 60);
+		curtime = time(NULL);
+		gmtime_r(&curtime, &c_time);
+		http_rfc822_date(r->temp.dates, &c_time);
+		http_append_to_output_buf(r, "Date: ", 6);
+		http_append_to_output_buf(r, r->temp.dates, 29);
+		http_append_to_output_buf(r, CLRF CLRF, 4);
+		
+		if (accept_gzip)
+		{
+			http_append_to_output_buf(r, (void *) gzip_header, 10);
+			http_append_to_output_buf(r, r->temp.gzip_buf->data, i);
+			r->temp.gzip_ending[0] = crc32(0, buf->data, buf->cur_len);
+			r->temp.gzip_ending[1] = buf->cur_len;
+			http_append_to_output_buf(r, (void *) r->temp.gzip_ending, 8);
+		}
+		else
+			http_append_to_output_buf(r, buf->data, r->out.content_length);
+		
+		return http_send(r);
+	}
 	
 	buf_expand(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
 	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
@@ -639,8 +770,8 @@ bool http_serve_client (request_t * request)
 					{
 						buf += i + 1;
 						r -= i + 1;
-						request->in.body.data = buf;
-						request->in.body.data_len = 0;
+						request->in.body.data.str = buf;
+						request->in.body.data.len = 0;
 						
 						for (i = 0; i < request->in.p->cur_len; i++)
 						{
@@ -681,9 +812,9 @@ bool http_serve_client (request_t * request)
 		
 		if (request->in.content_length_val < HTTP_BODY_SIZE_WRITE_TO_FILE)
 		{
-			request->in.body.data_len += r;
+			request->in.body.data.len += r;
 			
-			if (request->in.body.data_len < request->in.content_length_val)
+			if (request->in.body.data.len < request->in.content_length_val)
 				goto _loop_end;
 		}
 		else if (request->temp.tempfd == -1)
@@ -857,6 +988,8 @@ void http_prepare (request_t * r)
 	r->out.expires.str = (char *) malloc(29);
 	r->out.expires.len = 29;
 	
+	r->out_data = buf_create(1, WEB_DATA_BUFFER_RESERVED_SIZE);
+	
 	if (config.gzip)
 	{
 		r->temp.gzip_buf = buf_create(1, HTTP_GZIP_BUFFER_RESERVED_SIZE);
@@ -874,6 +1007,12 @@ void http_prepare (request_t * r)
 	
 	r->b = buf_create(1, HTTP_BUFFER_RESERVED_SIZE);
 	r->in.p = pool_create(sizeof(header_t), HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
+	
+	r->in.args.b = buf_create(sizeof(url_arg_t), HTTP_URL_ARGS_BUFFER_RESERVED_SIZE);
+	r->in.args.v = buf_create(1, HTTP_URL_VALS_BUFFER_RESERVED_SIZE);
+	
+	r->in.cookies.b = buf_create(sizeof(cookie_t), HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
+	r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
 }
 
 static void http_init_constants (void)
@@ -884,6 +1023,8 @@ static void http_init_constants (void)
 	http_status_code[206] = "206 Partial Content";
 	http_status_code_len[206] = strlen(http_status_code[206]);
 	/* 3xx */
+	http_status_code[301] = "301 Moved Permanently";
+	http_status_code_len[301] = strlen(http_status_code[301]);
 	http_status_code[304] = "304 Not Modified";
 	http_status_code_len[304] = strlen(http_status_code[304]);
 	/* 4xx */

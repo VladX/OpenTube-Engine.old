@@ -26,5 +26,5 @@ extern WEB_FUNCTION(hello);
 
 void set_callbacks (void)
 {
-	web_set_callback("/hello", hello);
+	web_set_callback("/hello", hello, true);
 }

@@ -90,19 +90,21 @@ typedef struct
 {
 	u_str_t key;
 	u_str_t value;
-} header_t;
+} assoc_t;
 
-typedef struct
-{
-	u_str_t key;
-	u_str_t value;
-} post_arg_t;
+typedef assoc_t header_t;
+
+typedef assoc_t url_arg_t;
+
+typedef assoc_t cookie_t;
+
+typedef assoc_t post_arg_t;
 
 typedef struct
 {
 	post_arg_t * args;
-	uchar * data;
-	uint data_len;
+	buf_t * b;
+	u_str_t data;
 } content_body_t;
 
 typedef struct
@@ -119,6 +121,20 @@ typedef struct
 	header_t * content_type;
 	header_t * content_length;
 	uint content_length_val;
+	struct
+	{
+		url_arg_t * args;
+		uint num;
+		buf_t * b;
+		buf_t * v;
+	} args;
+	struct
+	{
+		cookie_t * cookies;
+		uint num;
+		buf_t * b;
+		buf_t * v;
+	} cookies;
 	content_body_t body;
 	pool_t * p;
 } headers_in_t;
@@ -138,11 +154,13 @@ typedef struct
 	headers_in_t in;
 	headers_out_t out;
 	buf_t * out_vec;
+	buf_t * out_data;
 	int sock;
 	bool keepalive;
 	time_t keepalive_time;
 	struct
 	{
+		char content_length[16];
 		char * temppath;
 		int temppath_len;
 		int tempfd;
@@ -166,8 +184,9 @@ typedef buf_t * (* web_func_t) (request_t *);
 
 typedef struct
 {
-	const char * uri;
+	u_str_t uri;
 	web_func_t func;
+	bool strict_comparison;
 } uri_map_t;
 
 typedef struct

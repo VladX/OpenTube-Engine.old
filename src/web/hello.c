@@ -26,5 +26,8 @@ WEB_FUNCTION(hello)
 {
 	PRINT("Hello World!");
 	
+	//http_parse_query_string(r);
+	//http_parse_cookies(r);
+	
 	return web_global_buffer;
 }

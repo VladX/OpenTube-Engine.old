@@ -206,6 +206,14 @@ void buf_expand (buf_t * b, uint add)
 		b->data = realloc(b->data, b->node_size * b->cur_len);
 }
 
+void buf_resize (buf_t * b, uint new_size)
+{
+	b->cur_len = new_size;
+	
+	if (b->cur_len > b->reserved_len)
+		b->data = realloc(b->data, b->node_size * b->cur_len);
+}
+
 void buf_free (buf_t * b)
 {
 	if (b->cur_len > b->reserved_len)

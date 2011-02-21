@@ -25,22 +25,25 @@
 buf_t * uri_map;
 buf_t * web_global_buffer;
 
-void web_set_callback (const char * uri, web_func_t func)
+void web_set_callback (const char * uri, web_func_t func, bool strict_comparison)
 {
 	buf_expand(uri_map, 1);
-	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].uri = uri;
+	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].uri.str = (uchar *) uri;
+	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].uri.len = strlen(uri);
 	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].func = func;
+	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].strict_comparison = strict_comparison;
+}
+
+void web_setup_global_buffer (buf_t * buffer)
+{
+	web_global_buffer = buffer;
+	buf_free(buffer);
 }
 
 void web_init (void)
 {
 	uri_map = buf_create(sizeof(uri_map_t), 10);
-	web_global_buffer = buf_create(1, WEB_GLOBAL_BUFFER_RESERVED_SIZE);
+	web_global_buffer = NULL;
 	
 	set_callbacks();
-}
-
-void web_cleanup (void)
-{
-	buf_free(web_global_buffer);
 }

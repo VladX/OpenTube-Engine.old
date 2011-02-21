@@ -24,10 +24,8 @@
 
 inline void append_to_global_buffer (void * ptr, uint len)
 {
-	void * dst = (uchar *) web_global_buffer->data + web_global_buffer->cur_len;
-	
 	buf_expand(web_global_buffer, len);
-	memcpy(dst, ptr, len);
+	memcpy((uchar *) web_global_buffer->data + web_global_buffer->cur_len - len, ptr, len);
 }
 
 inline void print_to_global_buffer (void * ptr)
