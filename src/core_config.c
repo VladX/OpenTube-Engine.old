@@ -47,8 +47,11 @@ static void default_config (void)
 	config.limit_req = false;
 	config.limit_rate = 64;
 	config.limit_delay = 30;
+	config.limit_sim_req = false;
+	config.limit_sim_threshold = 8;
 	config.keepalive_timeout.str = (uchar *) "25";
 	config.keepalive_timeout.len = 2;
+	config.keepalive_max_conn_per_client = 4;
 }
 
 static void process_directive (conf_elem * el)
@@ -104,14 +107,23 @@ static void process_directive (conf_elem * el)
 	}
 	else if (strcmp(el->key, "http-keepalive-timeout") == 0)
 	{
-		uint timeout;
+		int timeout;
 		
-		timeout = (uint) atoi(el->value);
+		timeout = atoi(el->value);
 		if (timeout <= 0)
 			EINVALIDVAL;
 		config.keepalive_timeout.str = (uchar *) el->value;
 		config.keepalive_timeout.len = strlen(el->value);
-		config.keepalive_timeout_val = timeout;
+		config.keepalive_timeout_val = (uint) timeout;
+	}
+	else if (strcmp(el->key, "http-keepalive-max-conn-per-client") == 0)
+	{
+		int maxconn;
+		
+		maxconn = atoi(el->value);
+		if (maxconn <= 0)
+			EINVALIDVAL;
+		config.keepalive_max_conn_per_client = (uint) maxconn;
 	}
 	else if (strcmp(el->key, "gzip") == 0)
 	{
@@ -162,6 +174,22 @@ static void process_directive (conf_elem * el)
 		if (delay <= 0)
 			EINVALIDVAL;
 		config.limit_delay = delay;
+	}
+	else if (strcmp(el->key, "limit-simultaneous-requests") == 0)
+	{
+		if (CONFIG_IS_FLAG_ENABLED(el->value))
+			config.limit_sim_req = true;
+		else
+			config.limit_sim_req = false;
+	}
+	else if (strcmp(el->key, "limit-simultaneous-requests-threshold") == 0)
+	{
+		int threshold;
+		
+		threshold = atoi(el->value);
+		if (threshold <= 0)
+			EINVALIDVAL;
+		config.limit_sim_threshold = threshold;
 	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);

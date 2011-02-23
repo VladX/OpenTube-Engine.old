@@ -88,6 +88,12 @@ typedef struct
 
 typedef struct
 {
+	int sock;
+	time_t time;
+} keepalive_sock_t;
+
+typedef struct
+{
 	u_str_t key;
 	u_str_t value;
 } assoc_t;
@@ -214,10 +220,13 @@ typedef struct
 	u_str_t document_root;
 	u_str_t keepalive_timeout;
 	uint keepalive_timeout_val;
+	uint keepalive_max_conn_per_client;
 	bool gzip;
 	uchar gzip_level;
 	uint gzip_min_page_size;
 	bool limit_req;
 	uint limit_rate;
 	uint limit_delay;
+	bool limit_sim_req;
+	uint limit_sim_threshold;
 } config_t;

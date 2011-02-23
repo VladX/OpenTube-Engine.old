@@ -43,12 +43,6 @@
 #include "web.h"
 
 
-typedef struct
-{
-	int sock;
-	time_t time;
-} keepalive_sock_t;
-
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
 static int sockfd;
@@ -56,16 +50,41 @@ static int epfd;
 static uint maxfds;
 static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients;
+static frag_pool_t * limit_sim_req_clients;
 static frag_pool_t * keepalive_sockets;
 
 
 bool new_keepalive_socket (int sock)
 {
-	uint i, total;
+	uchar * bin1, * bin2;
+	uchar len;
+	uint i, total, percli;
+	socklen_t client_name_len;
 	keepalive_sock_t * k;
 	time_t curtime = time(NULL);
+	struct sockaddr addr, saddr;
 	
-	for (i = 0, total = 0; i < keepalive_sockets->real_len; i++)
+	#if IPV6_SUPPORT
+	if (ipv6_addr)
+	{
+		bin1 = (uchar *) ((struct sockaddr_in6 *) &addr)->sin6_addr.s6_addr;
+		bin2 = (uchar *) ((struct sockaddr_in6 *) &saddr)->sin6_addr.s6_addr;
+		client_name_len = sizeof(struct sockaddr_in6);
+		len = 16;
+	}
+	else
+	#endif
+	{
+		bin1 = (uchar *) &(((struct sockaddr_in *) &addr)->sin_addr.s_addr);
+		bin2 = (uchar *) &(((struct sockaddr_in *) &saddr)->sin_addr.s_addr);
+		client_name_len = sizeof(struct sockaddr_in);
+		len = 4;
+	}
+	
+	if (getpeername(sock, &addr, &client_name_len) == -1)
+		return false;
+	
+	for (i = 0, total = 0, percli = 0; i < keepalive_sockets->real_len; i++)
 	{
 		if (keepalive_sockets->e[i].free)
 			continue;
@@ -79,8 +98,17 @@ bool new_keepalive_socket (int sock)
 			return true;
 		}
 		
+		if (getpeername(k->sock, &saddr, &client_name_len) == -1)
+			continue;
+		
+		if (memcmp(bin1, bin2, len) == 0)
+			percli++;
+		
 		total++;
 	}
+	
+	if (percli >= config.keepalive_max_conn_per_client)
+		return false;
 	
 	if (total >= keepalive_max_conn)
 		return false;
@@ -113,19 +141,26 @@ void remove_keepalive_socket(int sock)
 	}
 }
 
-static inline bool limit_requests (struct sockaddr * addr, uchar len)
+static inline bool limit_requests (struct sockaddr * addr)
 {
 	uchar * bin;
+	uchar len;
 	uint i;
 	limit_req_t * cli;
 	time_t curtime = time(NULL);
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
+	{
 		bin = (uchar *) ((struct sockaddr_in6 *) addr)->sin6_addr.s6_addr;
+		len = 16;
+	}
 	else
 	#endif
+	{
 		bin = (uchar *) &(((struct sockaddr_in *) addr)->sin_addr.s_addr);
+		len = 4;
+	}
 	
 	for (i = 0; i < limit_req_clients->real_len; i++)
 	{
@@ -133,15 +168,9 @@ static inline bool limit_requests (struct sockaddr * addr, uchar len)
 			continue;
 		
 		cli = (limit_req_t *) limit_req_clients->e[i].data;
+		
 		if (memcmp(cli->addr, bin, len) == 0)
 		{
-			if (cli->dtime != 0 && curtime > cli->dtime)
-			{
-				frag_pool_free_alt(limit_req_clients, i);
-				
-				return false;
-			}
-			
 			if (cli->req > config.limit_rate)
 				return true;
 			
@@ -170,6 +199,57 @@ static inline bool limit_requests (struct sockaddr * addr, uchar len)
 	cli->time = curtime;
 	cli->req = 1;
 	cli->dtime = 0;
+	
+	return false;
+}
+
+static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
+{
+	uchar * bin1, * bin2;
+	uchar len;
+	uint i, total;
+	int * cli;
+	struct sockaddr saddr;
+	
+	#if IPV6_SUPPORT
+	if (ipv6_addr)
+	{
+		bin1 = (uchar *) ((struct sockaddr_in6 *) addr)->sin6_addr.s6_addr;
+		bin2 = (uchar *) ((struct sockaddr_in6 *) &saddr)->sin6_addr.s6_addr;
+		len = 16;
+	}
+	else
+	#endif
+	{
+		bin1 = (uchar *) &(((struct sockaddr_in *) addr)->sin_addr.s_addr);
+		bin2 = (uchar *) &(((struct sockaddr_in *) &saddr)->sin_addr.s_addr);
+		len = 4;
+	}
+	
+	for (i = 0, total = 0; i < limit_sim_req_clients->real_len; i++)
+	{
+		if (limit_sim_req_clients->e[i].free)
+			continue;
+		
+		cli = (int *) limit_sim_req_clients->e[i].data;
+		
+		if (* cli == sock || getpeername(* cli, &saddr, &client_name_len) == -1)
+		{
+			frag_pool_free_alt(limit_sim_req_clients, i);
+			
+			continue;
+		}
+		
+		if (memcmp(bin1, bin2, len) == 0)
+		{
+			total++;
+			if (total >= config.limit_sim_threshold)
+				return true;
+		}
+	}
+	
+	cli = (int *) frag_pool_alloc(limit_sim_req_clients);
+	* cli = sock;
 	
 	return false;
 }
@@ -212,8 +292,6 @@ static void event_routine (void)
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;
 	
-	const uchar ip_addr_len = (ipv6_addr) ? 16 : 4;
-	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
 		client_name_len = sizeof(struct sockaddr_in6);
@@ -225,7 +303,10 @@ static void event_routine (void)
 	
 	web_init();
 	
-	limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_CLIENTS_POOL_RESERVED_SIZE);
+	if (config.limit_req)
+		limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE);
+	if (config.limit_sim_req)
+		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
 	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
 	
 	for (i = 0; i < maxevents; i++)
@@ -267,6 +348,13 @@ static void event_routine (void)
 			}
 		}
 		
+		if (config.limit_req)
+		{
+			for (i = 0; i < limit_req_clients->real_len; i++)
+				if (!(limit_req_clients->e[i].free) && ((limit_req_t *) limit_req_clients->e[i].data)->dtime != 0 && curtime > ((limit_req_t *) limit_req_clients->e[i].data)->dtime)
+					frag_pool_free_alt(limit_req_clients, i);
+		}
+		
 		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
 		
 		for (i = 0; i < n; i++)
@@ -282,9 +370,16 @@ static void event_routine (void)
 					(void) fcntl(ev.data.fd, F_SETFL, O_NONBLOCK);
 				#endif
 					debug_print_2("accept(): %d", ev.data.fd);
-					if (config.limit_req && limit_requests(addr, ip_addr_len))
+					if (config.limit_req && limit_requests(addr))
 					{
 						debug_print_2("client has exceeded the allowable requests per second (rps) limit, request %d discarded", ev.data.fd);
+						setsockopt(ev.data.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						close(ev.data.fd);
+						break;
+					}
+					if (config.limit_sim_req && limit_sim_requests(addr, client_name_len, ev.data.fd))
+					{
+						debug_print_2("client has exceeded the allowable simultaneous requests limit, request %d discarded", ev.data.fd);
 						setsockopt(ev.data.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
 						close(ev.data.fd);
 						break;
