@@ -45,8 +45,25 @@ static const char * http_status_code[506];
 static ushort http_error_message_len[506];
 static uchar http_status_code_len[506];
 static str_t header_server_string;
-static const char gzip_header[10] = {0x1F, 0x8B, Z_DEFLATED, 0, 0, 0, 0, 0, 0, 3};
+static const char gzip_header[10] = {0x1F, 0x8B, Z_DEFLATED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03};
 
+
+static inline void http_buffer_moved (request_t * r, long offset)
+{
+	r->in.uri.str += offset;
+	r->in.http_version.str += offset;
+	r->body.data.str += offset;
+	
+	header_t * hdr;
+	uint i;
+	
+	for (i = 0; i < r->in.p->cur_len; i++)
+	{
+		hdr = (header_t *) r->in.p->data[i];
+		hdr->key.str += offset;
+		hdr->value.str += offset;
+	}
+}
 
 inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
 {
@@ -294,12 +311,166 @@ void http_parse_post (request_t * r)
 	{
 		if (r->in.urlenc)
 		{
-			http_parse__(&(r->in.body.post.num), r->in.body.data.str, r->in.body.post.b, r->in.body.post.v, '&');
-			r->in.body.post.args = (post_arg_t *) r->in.body.post.b->data;
+			http_parse__(&(r->body.post.num), r->body.data.str, r->body.post.b, r->body.post.v, '&');
+			r->body.post.args = (post_arg_t *) r->body.post.b->data;
 		}
 		else
 		{
-			// TODO
+			uchar * c = r->body.data.str;
+			uchar * hdr;
+			uint i;
+			u_str_t content_type, name, filename;
+			post_arg_t * arg;
+			post_file_t * file;
+			
+			name.len = 0;
+			filename.len = 0;
+			content_type.len = 0;
+			r->body.post.num = 0;
+			r->body.files.num = 0;
+			
+			if (r->body.data.len < 12)
+				return;
+			
+			for (;;)
+			{
+				/* --BOUNDARY\r\n */
+				for (; !(c[0] == '\r' && c[1] == '\n'); c++)
+					if (* c == '\0')
+						return;
+				c += 2;
+				if (* c == '\0')
+					return;
+				
+				/* Headers */
+				
+				name.str = NULL;
+				filename.str = NULL;
+				content_type.str = NULL;
+				
+				for (; !(c[0] == '\r' && c[1] == '\n'); c += 2)
+				{
+					hdr = c;
+					for (; * c != ':'; c++)
+					{
+						if (* c == '\0')
+							return;
+						* c = TO_LOWER(* c);
+					}
+					* c = '\0';
+					c++;
+					for (; * c == ' '; c++) {}
+					if (strcmp((char *) hdr, "content-disposition") == 0)
+					{
+						for (; !(c[0] == '\r' && c[1] == '\n'); c++)
+						{
+							if (* c == '\0')
+								return;
+							
+							if (c[0] == ' ' && c[1] == 'n' && c[2] == 'a' && c[3] == 'm' && c[4] == 'e' && c[5] == '=')
+							{
+								c += 6;
+								if (* c == '"')
+									c++;
+								name.str = c;
+								for (; * c != '"' && * c != '&'; c++)
+									if (* c == '\0')
+										return;
+								* c = '\0';
+								name.len = c - name.str;
+							}
+							else if (c[0] == ' ' && c[1] == 'f' && c[2] == 'i' && c[3] == 'l' && c[4] == 'e' &&
+							         c[5] == 'n' && c[6] == 'a' && c[7] == 'm' && c[8] == 'e' && c[9] == '=')
+							{
+								c += 10;
+								if (* c == '"')
+									c++;
+								filename.str = c;
+								for (; * c != '"' && * c != '&'; c++)
+									if (* c == '\0')
+										return;
+								* c = '\0';
+								filename.len = c - filename.str;
+							}
+						}
+						continue;
+					}
+					else if (strcmp((char *) hdr, "content-type") == 0)
+					{
+						content_type.str = c;
+						for (; !(c[0] == '\r' && c[1] == '\n'); c++)
+							if (* c == '\0')
+								return;
+						* c = '\0';
+						content_type.len = c - content_type.str;
+						continue;
+					}
+					for (; !(c[0] == '\r' && c[1] == '\n'); c++)
+						if (* c == '\0')
+							return;
+				}
+				c += 2;
+				
+				if (name.str)
+				{
+					if (filename.str)
+					{
+						buf_resize(r->body.files.b, r->body.files.num + 1);
+						r->body.files.files = (post_file_t *) r->body.files.b->data;
+						file = &(r->body.files.files[r->body.files.num]);
+						file->key.str = name.str;
+						file->key.len = name.len;
+						file->name.str = filename.str;
+						file->name.len = filename.len;
+						if (content_type.str)
+						{
+							file->type.str = content_type.str;
+							file->type.len = content_type.len;
+						}
+						else
+						{
+							file->type.str = (uchar *) "application/octet-stream";
+							file->type.len = 24;
+						}
+						file->data.str = c;
+						for (i = c - r->body.data.str + 4;; c++, i++)
+						{
+							if (i > r->body.data.len)
+								return;
+							if (c[0] == '\r' && c[1] == '\n' && c[2] == '-' && c[3] == '-')
+								break;
+						}
+						* c = '\0';
+						file->data.len = c - file->data.str;
+						r->body.files.num++;
+						c += 2;
+						
+						debug_print_3("file \"%s, %s, %s, %d\"", file->key.str, file->name.str, file->type.str, file->data.len);
+					}
+					else
+					{
+						buf_resize(r->body.post.b, r->body.post.num + 1);
+						r->body.post.args = (post_arg_t *) r->body.post.b->data;
+						arg = &(r->body.post.args[r->body.post.num]);
+						arg->key.str = name.str;
+						arg->key.len = name.len;
+						arg->value.str = c;
+						for (i = c - r->body.data.str + 4;; c++, i++)
+						{
+							if (i > r->body.data.len)
+								return;
+							if (c[0] == '\r' && c[1] == '\n' && c[2] == '-' && c[3] == '-')
+								break;
+						}
+						* c = '\0';
+						arg->value.len = c - arg->value.str;
+						r->body.post.num++;
+						c += 2;
+						
+						debug_print_3("form \"%s: %s\"", arg->key.str, arg->value.str);
+					}
+				}
+			}
 		}
 	}
 	else
@@ -582,7 +753,7 @@ static bool http_response (request_t * r)
 			z_stream * z = r->temp.gzip_stream;
 			buf_expand(r->temp.gzip_buf, buf->cur_len);
 			z->avail_in = buf->cur_len;
-			z->next_in  = buf->data;
+			z->next_in = buf->data;
 			z->avail_out = r->temp.gzip_buf->cur_len;
 			z->next_out = r->temp.gzip_buf->data;
 			
@@ -737,7 +908,7 @@ static ushort http_parse_headers (request_t * r)
 		/* For performance reasons we compare only first and last letter of connection header value (looking for "[k]eep-aliv[e]"), not full string */
 		(header->value.str[0] == 'k' || header->value.str[0] == 'K') && (header->value.str[9] == 'e' || header->value.str[9] == 'E')
 		)
-			r->keepalive = true;
+			r->keepalive = new_keepalive_socket(r->sock);
 		
 		debug_print_3("header \"%s: %s\"", header->key.str, header->value.str);
 		
@@ -754,8 +925,11 @@ bool http_serve_client (request_t * request)
 	uint i;
 	header_t * hdr;
 	uchar * buf;
+	long offset;
 	
-	buf_expand(request->b, HTTP_RECV_BUFFER);
+	offset = buf_expand(request->b, HTTP_RECV_BUFFER);
+	if (offset)
+		http_buffer_moved(request, offset);
 	buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	
 	while ((r = recv(request->sock, buf, HTTP_RECV_BUFFER, MSG_DONTWAIT)) > 0)
@@ -785,8 +959,8 @@ bool http_serve_client (request_t * request)
 					{
 						buf += i + 1;
 						r -= i + 1;
-						request->in.body.data.str = buf;
-						request->in.body.data.len = 0;
+						request->body.data.str = buf;
+						request->body.data.len = 0;
 						
 						for (i = 0; i < request->in.p->cur_len; i++)
 						{
@@ -806,7 +980,7 @@ bool http_serve_client (request_t * request)
 						request->in.multipart = (request->in.urlenc = false);
 						if (request->in.content_type->value.len == 33 && memcmp(request->in.content_type->value.str, "application/x-www-form-urlencoded", 33) == 0)
 							request->in.urlenc = true;
-						else if (request->in.content_type->value.len > 19 && memcmp(request->in.content_type->value.str, "multipart/form-data", 19) == 0)
+						else if (request->in.content_type->value.len > 18 && memcmp(request->in.content_type->value.str, "multipart/form-data", 19) == 0)
 							request->in.multipart = true;
 						else
 							return http_error(request, 415);
@@ -827,14 +1001,16 @@ bool http_serve_client (request_t * request)
 		
 		if (request->in.content_length_val < HTTP_BODY_SIZE_WRITE_TO_FILE)
 		{
-			request->in.body.data.len += r;
+			request->body.data.len += r;
 			
-			if (request->in.body.data.len < request->in.content_length_val)
+			if (request->body.data.len < request->in.content_length_val)
 				goto _loop_end_;
 			else
 			{
-				buf_expand(request->b, 1);
-				request->in.body.data.str[request->in.body.data.len] = '\0';
+				offset = buf_expand(request->b, 1);
+				if (offset)
+					http_buffer_moved(request, offset);
+				request->body.data.str[request->body.data.len] = '\0';
 			}
 		}
 		else if (request->temp.tempfd == -1)
@@ -872,12 +1048,18 @@ bool http_serve_client (request_t * request)
 		if (_r < HTTP_RECV_BUFFER)
 			return false;
 		
-		buf_expand(request->b, HTTP_RECV_BUFFER);
+		offset = buf_expand(request->b, HTTP_RECV_BUFFER);
+		if (offset)
+			http_buffer_moved(request, offset);
 		buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	}
 	
 	if (r == -1 && errno == EAGAIN)
+	{
+		request->b->cur_len -= HTTP_RECV_BUFFER;
+		
 		return false;
+	}
 	
 	#if DEBUG_LEVEL
 	if (r == -1)
@@ -885,6 +1067,7 @@ bool http_serve_client (request_t * request)
 	#endif
 	
 	request->keepalive = false;
+	remove_keepalive_socket(request->sock);
 	
 	return true;
 }
@@ -937,17 +1120,15 @@ bool http_temp_file (request_t * r)
 void http_cleanup (request_t * r)
 {
 	if (r->keepalive)
-	{
 		set_epollin_event_mask(r->sock);
-		r->keepalive_time = time(NULL);
-	}
 	else
 	{
-		r->keepalive = false;
 		close(r->sock);
 		debug_print_3("close(): %d", r->sock);
-		r->sock = -1;
 	}
+	
+	r->sock = -1;
+	r->keepalive = false;
 	
 	r->in.uri.len = 0;
 	r->in.content_type = NULL;
@@ -1034,8 +1215,10 @@ void http_prepare (request_t * r)
 	r->in.cookies.b = buf_create(sizeof(cookie_t), HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
 	r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
 	
-	r->in.body.post.b = buf_create(sizeof(post_arg_t), HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
-	r->in.body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
+	r->body.post.b = buf_create(sizeof(post_arg_t), HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
+	r->body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
+	
+	r->body.files.b = buf_create(sizeof(post_file_t), HTTP_POST_FILES_BUFFER_RESERVED_SIZE);
 }
 
 static void http_init_constants (void)

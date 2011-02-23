@@ -67,7 +67,7 @@
 #define TO_LOWER(X) (((X) >= 'A' && (X) <= 'Z') ? (X) + 32 : (X))
 #define IS_SPACE(X) ((X) == ' ' || (X) == '\t' || (X) == '\n')
 #define IS_DIGIT(X) ((X) >= '0' && (X) <= '9')
-#define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':')
+#define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':' || (X) == '~')
 #define IS_VALID_URL_KEY_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '-' || (X) == '_')
 #define IS_VALID_URL_VALUE_CHARACTER(X) (IS_VALID_URL_KEY_CHARACTER(X) || (X) == '+' || (X) == '%')
 
@@ -97,9 +97,9 @@ buf_t * buf_create (ulong size, ulong res_len);
 
 void buf_destroy (buf_t * b);
 
-void buf_expand (buf_t * b, uint add);
+long buf_expand (buf_t * b, uint add);
 
-void buf_resize (buf_t * b, uint new_size);
+long buf_resize (buf_t * b, uint new_size);
 
 void buf_free (buf_t * b);
 

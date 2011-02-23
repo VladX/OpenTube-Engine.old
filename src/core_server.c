@@ -27,6 +27,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/resource.h> 
 #include <unistd.h>
 #include <signal.h>
 #include <netdb.h>
@@ -41,11 +43,75 @@
 #include "web.h"
 
 
+typedef struct
+{
+	int sock;
+	time_t time;
+} keepalive_sock_t;
+
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
 static int sockfd;
 static int epfd;
+static uint maxfds;
+static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients;
+static frag_pool_t * keepalive_sockets;
+
+
+bool new_keepalive_socket (int sock)
+{
+	uint i, total;
+	keepalive_sock_t * k;
+	time_t curtime = time(NULL);
+	
+	for (i = 0, total = 0; i < keepalive_sockets->real_len; i++)
+	{
+		if (keepalive_sockets->e[i].free)
+			continue;
+		
+		k = (keepalive_sock_t *) keepalive_sockets->e[i].data;
+		
+		if (k->sock == sock)
+		{
+			k->time = curtime;
+			
+			return true;
+		}
+		
+		total++;
+	}
+	
+	if (total >= keepalive_max_conn)
+		return false;
+	
+	k = (keepalive_sock_t *) frag_pool_alloc(keepalive_sockets);
+	k->sock = sock;
+	k->time = curtime;
+	
+	return true;
+}
+
+void remove_keepalive_socket(int sock)
+{
+	uint i;
+	keepalive_sock_t * k;
+	
+	for (i = 0; i < keepalive_sockets->real_len; i++)
+	{
+		if (keepalive_sockets->e[i].free)
+			continue;
+		
+		k = (keepalive_sock_t *) keepalive_sockets->e[i].data;
+		
+		if (k->sock == sock)
+		{
+			frag_pool_free_alt(keepalive_sockets, i);
+			
+			return;
+		}
+	}
+}
 
 static inline bool limit_requests (struct sockaddr * addr, uchar len)
 {
@@ -137,6 +203,7 @@ static void event_routine (void)
 	ssize_t res;
 	time_t curtime;
 	socklen_t client_name_len;
+	keepalive_sock_t * k;
 	request_t * request[maxevents];
 	struct epoll_event e[maxevents], ev;
 	struct sockaddr * addr;
@@ -159,6 +226,7 @@ static void event_routine (void)
 	web_init();
 	
 	limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_CLIENTS_POOL_RESERVED_SIZE);
+	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
 	
 	for (i = 0; i < maxevents; i++)
 	{
@@ -182,18 +250,22 @@ static void event_routine (void)
 	{
 		curtime = time(NULL);
 		
-		for (i = 0; i < maxevents; i++)
-			if (request[i]->keepalive)
+		for (i = 0; i < keepalive_sockets->real_len; i++)
+		{
+			if (keepalive_sockets->e[i].free)
+				continue;
+			
+			k = (keepalive_sock_t *) keepalive_sockets->e[i].data;
+			
+			dlt = curtime - k->time;
+			
+			if (dlt > config.keepalive_timeout_val || dlt < 0)
 			{
-				dlt = curtime - request[i]->keepalive_time;
-				if (dlt > config.keepalive_timeout_val || dlt < 0)
-				{
-					close(request[i]->sock);
-					debug_print_3("keepalive-timeout expired, close(): %d", request[i]->sock);
-					request[i]->sock = -1;
-					request[i]->keepalive = false;
-				}
+				close(k->sock);
+				debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
+				frag_pool_free_alt(keepalive_sockets, i);
 			}
+		}
 		
 		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
 		
@@ -207,7 +279,7 @@ static void event_routine (void)
 				#else
 				while ((ev.data.fd = accept(srvfd, addr, &client_name_len)) != -1)
 				{
-					fcntl(ev.data.fd, F_SETFL, O_NONBLOCK);
+					(void) fcntl(ev.data.fd, F_SETFL, O_NONBLOCK);
 				#endif
 					debug_print_2("accept(): %d", ev.data.fd);
 					if (config.limit_req && limit_requests(addr, ip_addr_len))
@@ -495,6 +567,17 @@ void init (char * procname)
 	worker_pid = spawn_worker(procname);
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
+	
+	struct rlimit lim;
+	
+	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
+		peerr(1, "getrlimit(): %d", -1);
+	
+	maxfds = (uint) lim.rlim_cur;
+	
+	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);
+	
+	keepalive_max_conn = max((maxfds - MAX_EVENTS) - 2, 2);
 	
 	event_routine();
 }

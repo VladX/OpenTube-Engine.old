@@ -19,6 +19,10 @@
  * Boston, MA  02110-1301  USA
  */
 
+bool new_keepalive_socket (int sock);
+
+void remove_keepalive_socket(int sock);
+
 void set_epollout_event_mask (int sock);
 
 void set_epollin_event_mask (int sock);

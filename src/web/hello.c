@@ -24,11 +24,16 @@
 
 WEB_FUNCTION(hello)
 {
-	PRINT("Hello World!");
+	PRINT("<form enctype=\"multipart/form-data\" method=\"post\" action=\"\">\
+		<input type=\"file\" name=\"code_img\">\
+		<input type=\"text\" name=\"captcha\">\
+	</form>");
+	
+	//PRINT("Hello World!");
 	
 	//http_parse_query_string(r);
 	//http_parse_cookies(r);
-	//http_parse_post(r);
+	http_parse_post(r);
 	
 	return web_global_buffer;
 }

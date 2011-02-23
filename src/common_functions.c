@@ -198,20 +198,38 @@ void buf_destroy (buf_t * b)
 	free(b);
 }
 
-void buf_expand (buf_t * b, uint add)
+long buf_expand (buf_t * b, uint add)
 {
+	void * old_ptr;
+	
 	b->cur_len += add;
 	
 	if (b->cur_len > b->reserved_len)
+	{
+		old_ptr = b->data;
 		b->data = realloc(b->data, b->node_size * b->cur_len);
+		
+		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+	}
+	
+	return 0;
 }
 
-void buf_resize (buf_t * b, uint new_size)
+long buf_resize (buf_t * b, uint new_size)
 {
+	void * old_ptr;
+	
 	b->cur_len = new_size;
 	
 	if (b->cur_len > b->reserved_len)
+	{
+		old_ptr = b->data;
 		b->data = realloc(b->data, b->node_size * b->cur_len);
+		
+		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+	}
+	
+	return 0;
 }
 
 void buf_free (buf_t * b)
