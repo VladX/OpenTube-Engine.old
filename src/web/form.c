@@ -19,7 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-WEB_FUNCTION(form, "/form", true)
+WEB_CALLBACK(form, "/form", true)
 {
 	PRINT("<form enctype=\"multipart/form-data\" method=\"post\" action=\"\">\
 		<input type=\"file\" name=\"code_img\">\

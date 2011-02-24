@@ -19,7 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-WEB_FUNCTION(hello, "/hello", true)
+WEB_CALLBACK(hello, "/hello", true)
 {
 	PRINT("Hello World!");
 	

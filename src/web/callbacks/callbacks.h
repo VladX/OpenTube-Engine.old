@@ -20,3 +20,5 @@
  */
 
 void set_callbacks (void);
+
+void run_init_callbacks (void);

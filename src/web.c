@@ -46,4 +46,5 @@ void web_init (void)
 	web_global_buffer = NULL;
 	
 	set_callbacks();
+	run_init_callbacks();
 }

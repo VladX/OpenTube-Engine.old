@@ -25,7 +25,11 @@
 
 #define E_WEB_HANDLER_H
 
-#define WEB_FUNCTION(NAME, URI, STRICT_COMPARSION) buf_t * NAME (request_t * r)
+#define WEB_CALLBACK_TO_C_FUNC(NAME) web_cb__##NAME
+#define WEB_INIT_CALLBACK_TO_C_FUNC(NAME) web_init_cb__##NAME
+
+#define WEB_CALLBACK(NAME, URI, STRICT_COMPARSION) buf_t * WEB_CALLBACK_TO_C_FUNC(NAME) (request_t * r)
+#define WEB_INIT(NAME) void WEB_INIT_CALLBACK_TO_C_FUNC(NAME) (void)
 
 extern buf_t * web_global_buffer;
 

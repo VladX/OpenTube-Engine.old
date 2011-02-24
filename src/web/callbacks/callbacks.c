@@ -33,6 +33,11 @@
 void set_callbacks (void)
 {
 	/* Automatically inserted by script generate-callbacks.c.py */
-	web_set_callback(form, "/form", true);
-	web_set_callback(hello, "/hello", true);
+	web_set_callback(WEB_CALLBACK_TO_C_FUNC(form), "/form", true);
+	web_set_callback(WEB_CALLBACK_TO_C_FUNC(hello), "/hello", true);
+}
+
+void run_init_callbacks (void)
+{
+	/* Automatically inserted by script generate-callbacks.c.py */
 }

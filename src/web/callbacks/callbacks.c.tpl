@@ -32,3 +32,8 @@ void set_callbacks (void)
 {
 	/*--CALLBACKS-SETUP--*/
 }
+
+void run_init_callbacks (void)
+{
+	/*--INITIALIZATION--*/
+}
