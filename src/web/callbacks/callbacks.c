@@ -19,8 +19,20 @@
  * Boston, MA  02110-1301  USA
  */
 
-void web_set_callback (web_func_t func, const char * uri, bool strict_comparison);
+#include <web_handler.h>
+#include "../util.c"
 
-void web_setup_global_buffer (buf_t * buffer);
 
-void web_init (void);
+/* Automatically inserted by script generate-callbacks.c.py */
+#include "../form.c"
+#include "../hello.c"
+
+
+#include <web.h>
+
+void set_callbacks (void)
+{
+	/* Automatically inserted by script generate-callbacks.c.py */
+	web_set_callback(form, "/form", true);
+	web_set_callback(hello, "/hello", true);
+}

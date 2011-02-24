@@ -19,8 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-void web_set_callback (web_func_t func, const char * uri, bool strict_comparison);
-
-void web_setup_global_buffer (buf_t * buffer);
-
-void web_init (void);
+WEB_FUNCTION(form, "/form", true)
+{
+	PRINT("<form enctype=\"multipart/form-data\" method=\"post\" action=\"\">\
+		<input type=\"file\" name=\"code_img\">\
+		<input type=\"text\" name=\"captcha\">\
+	</form>");
+	
+	//http_parse_query_string(r);
+	//http_parse_cookies(r);
+	http_parse_post(r);
+	
+	return web_global_buffer;
+}

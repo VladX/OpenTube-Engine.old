@@ -19,9 +19,13 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef E_WEB_HANDLER_H
+
 #include "common_functions.h"
 
-#define WEB_FUNCTION(NAME) buf_t * NAME (request_t * r)
+#define E_WEB_HANDLER_H
+
+#define WEB_FUNCTION(NAME, URI, STRICT_COMPARSION) buf_t * NAME (request_t * r)
 
 extern buf_t * web_global_buffer;
 
@@ -30,3 +34,5 @@ void http_parse_query_string (request_t * r);
 void http_parse_cookies (request_t * r);
 
 void http_parse_post (request_t * r);
+
+#endif

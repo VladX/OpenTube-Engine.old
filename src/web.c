@@ -20,12 +20,12 @@
  */
 
 #include "common_functions.h"
-#include "web/callbacks.h"
+#include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
 buf_t * web_global_buffer;
 
-void web_set_callback (const char * uri, web_func_t func, bool strict_comparison)
+void web_set_callback (web_func_t func, const char * uri, bool strict_comparison)
 {
 	buf_expand(uri_map, 1);
 	((uri_map_t *) uri_map->data)[uri_map->cur_len - 1].uri.str = (uchar *) uri;

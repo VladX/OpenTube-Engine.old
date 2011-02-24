@@ -19,6 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef E_COMMON_FUNCTIONS_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,3 +107,5 @@ void buf_free (buf_t * b);
 void int_to_str (int value, char * result, int base);
 
 bool is_num (char * str);
+
+#endif

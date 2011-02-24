@@ -445,7 +445,7 @@ void http_parse_post (request_t * r)
 						r->body.files.num++;
 						c += 2;
 						
-						debug_print_3("file \"%s, %s, %s, %d\"", file->key.str, file->name.str, file->type.str, file->data.len);
+						debug_print_3("file \"%s: %s, %s, %d\"", file->key.str, file->name.str, file->type.str, file->data.len);
 					}
 					else
 					{
@@ -491,21 +491,30 @@ static bool http_divide_uri (request_t * r)
 	
 	* (c++) = '/';
 	
-	for (i = 1; i < r->in.uri.len && d[i] != '?'; i++, c++)
+	for (i = 1; i < r->in.uri.len && d[i] != '?'; i++)
 	{
 		if (d[i] == '%' && i < r->in.uri.len - 2)
 		{
 			* c = http_hex_to_ascii(d + i);
 			i += 2;
+			if (* c != '/' && * c != '.')
+				c++;
 		}
+		else if (d[i] == '.' && d[i + 1] == '.' && d[i + 2] == '/')
+			i += 2;
 		else if (IS_VALID_PATH_CHARACTER(d[i]))
+		{
 			* c = d[i];
+			c++;
+		}
 		else
 			return false;
 	}
 	
 	* c = '\0';
 	r->in.path.len = c - r->in.path.str;
+	
+	debug_print_3("r->in.path.str: \"%s\"", r->in.path.str);
 	
 	r->in.query_string.str = d + i;
 	

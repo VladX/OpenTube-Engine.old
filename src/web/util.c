@@ -19,8 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-void web_set_callback (web_func_t func, const char * uri, bool strict_comparison);
+#define APPEND(PTR, LEN) append_to_global_buffer((void *) PTR, LEN)
+#define PRINT(PTR) print_to_global_buffer((void *) PTR)
 
-void web_setup_global_buffer (buf_t * buffer);
+inline void append_to_global_buffer (void * ptr, uint len)
+{
+	buf_expand(web_global_buffer, len);
+	memcpy((uchar *) web_global_buffer->data + web_global_buffer->cur_len - len, ptr, len);
+}
 
-void web_init (void);
+inline void print_to_global_buffer (void * ptr)
+{
+	append_to_global_buffer(ptr, strlen((char *) ptr));
+}

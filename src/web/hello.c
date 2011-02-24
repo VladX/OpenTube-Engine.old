@@ -19,21 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <web_handler.h>
-#include "util.h"
-
-WEB_FUNCTION(hello)
+WEB_FUNCTION(hello, "/hello", true)
 {
-	PRINT("<form enctype=\"multipart/form-data\" method=\"post\" action=\"\">\
-		<input type=\"file\" name=\"code_img\">\
-		<input type=\"text\" name=\"captcha\">\
-	</form>");
-	
-	//PRINT("Hello World!");
-	
-	//http_parse_query_string(r);
-	//http_parse_cookies(r);
-	http_parse_post(r);
+	PRINT("Hello World!");
 	
 	return web_global_buffer;
 }

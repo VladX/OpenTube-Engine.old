@@ -19,8 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-void web_set_callback (web_func_t func, const char * uri, bool strict_comparison);
+#include <web_handler.h>
+#include "../util.c"
 
-void web_setup_global_buffer (buf_t * buffer);
 
-void web_init (void);
+/*--INCLUSION--*/
+
+
+#include <web.h>
+
+void set_callbacks (void)
+{
+	/*--CALLBACKS-SETUP--*/
+}
