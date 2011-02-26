@@ -35,14 +35,11 @@ regex_clb = re.compile('WEB_CALLBACK *\(\s*(\w+)\s*,\s*([^\)]+)\)\s*{')
 regex_init_clb = re.compile('WEB_INIT *\(\s*(\w+)\s*\)\s*{')
 
 def remove_duplicates(l):
-	seen = {}
-	result = []
-	for item in l:
-		if item in seen:
-			continue
-		seen[item] = 1
-		result.append(item)
-	return result
+	res = []
+	for i in l:
+		if i not in res:
+			res.append(i)
+	return res
 
 try:
 	DIR = os.sys.argv[1]
