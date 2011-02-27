@@ -26,6 +26,7 @@
 /* Automatically inserted by script generate-callbacks.c.py */
 #include "../form.c"
 #include "../hello.c"
+#include "../video.c"
 
 
 #include <web.h>
@@ -35,6 +36,7 @@ void set_callbacks (void)
 	/* Automatically inserted by script generate-callbacks.c.py */
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(form), "/form", true);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(hello), "/hello", true);
+	web_set_callback(WEB_CALLBACK_TO_C_FUNC(video), "/video/", false);
 }
 
 void run_init_callbacks (void)

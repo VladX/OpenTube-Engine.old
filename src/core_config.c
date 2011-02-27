@@ -36,7 +36,9 @@ typedef struct
 	int line;
 } conf_elem;
 
-static const char * required_directives[] = {"listen", "user", "group", "http-temp-dir", "http-document-root"};
+static const char * required_directives[] = {
+"listen", "user", "group", "http-temp-dir", "http-document-root", "cache-prefix", "cache-update"
+};
 
 
 static void default_config (void)
@@ -52,6 +54,9 @@ static void default_config (void)
 	config.keepalive_timeout.str = (uchar *) "25";
 	config.keepalive_timeout.len = 2;
 	config.keepalive_max_conn_per_client = 4;
+	config.cache_prefix.str = (uchar *) "/cache/";
+	config.cache_prefix.len = strlen((char *) config.cache_prefix.str);
+	config.cache_update = 0;
 }
 
 static void process_directive (conf_elem * el)
@@ -190,6 +195,33 @@ static void process_directive (conf_elem * el)
 		if (threshold <= 0)
 			EINVALIDVAL;
 		config.limit_sim_threshold = threshold;
+	}
+	else if (strcmp(el->key, "cache-prefix") == 0)
+	{
+		int len = strlen(el->value);
+		
+		if (len < 2 || el->value[0] != '/')
+			EINVALIDVAL;
+		if (el->value[len - 1] == '/' && len < 3)
+			EINVALIDVAL;
+		if (el->value[len - 1] != '/')
+		{
+			len++;
+			el->value = realloc(el->value, len + 1);
+			el->value[len - 1] = '/';
+			el->value[len] = '\0';
+		}
+		config.cache_prefix.str = (uchar *) el->value;
+		config.cache_prefix.len = len;
+	}
+	else if (strcmp(el->key, "cache-update") == 0)
+	{
+		if (strcmp(el->value, "never") == 0)
+			config.cache_update = 0;
+		else if (strcmp(el->value, "source-modified") == 0)
+			config.cache_update = 1;
+		else
+			EINVALIDVAL;
 	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);

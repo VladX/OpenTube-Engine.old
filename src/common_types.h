@@ -184,14 +184,11 @@ typedef struct
 	struct
 	{
 		char content_length[16];
-		char * temppath;
-		int temppath_len;
-		int tempfd;
-		int pipefd[2];
+		//char * temppath;
+		//int temppath_len;
 		long writev_total;
 		struct iovec * out_vec;
 		uint out_vec_len;
-		uint pos;
 		buf_t * filepath;
 		int sendfile_fd;
 		uint sendfile_last;
@@ -200,16 +197,18 @@ typedef struct
 		buf_t * gzip_buf;
 		z_stream * gzip_stream;
 		__uint32_t gzip_ending[2];
+		void * func;
 	} temp;
 } request_t;
 
-typedef buf_t * (* web_func_t) (request_t *);
+typedef buf_t * (* web_func_t) (request_t *, buf_t *);
 
 typedef struct
 {
 	u_str_t uri;
 	web_func_t func;
 	bool strict_comparison;
+	bool full_match;
 } uri_map_t;
 
 typedef struct
@@ -229,4 +228,6 @@ typedef struct
 	uint limit_delay;
 	bool limit_sim_req;
 	uint limit_sim_threshold;
+	uchar cache_update;
+	u_str_t cache_prefix;
 } config_t;

@@ -19,8 +19,13 @@
  * Boston, MA  02110-1301  USA
  */
 
-#ifndef ZLIB_H
- #include <zlib.h>
- #define ZLIB_H
- #define GZIP_HEADER {0x1F, 0x8B, Z_DEFLATED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03}
-#endif
+#include "opentube/tpl.h"
+
+WEB_CALLBACK(video, "/video/", false)
+{
+	PRINT(HEADER("Test", ""));
+	PRINT("Test");
+	PRINT(FOOTER);
+	
+	return input_buffer;
+}

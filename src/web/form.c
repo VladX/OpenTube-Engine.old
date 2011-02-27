@@ -30,5 +30,5 @@ WEB_CALLBACK(form, "/form", true)
 	//http_parse_cookies(r);
 	http_parse_post(r);
 	
-	return web_global_buffer;
+	return input_buffer;
 }

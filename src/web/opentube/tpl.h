@@ -19,8 +19,21 @@
  * Boston, MA  02110-1301  USA
  */
 
-#ifndef ZLIB_H
- #include <zlib.h>
- #define ZLIB_H
- #define GZIP_HEADER {0x1F, 0x8B, Z_DEFLATED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03}
-#endif
+#define HEADER(TITLE, ADD) "\
+<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n\
+\n\
+<html xmlns=\"http://www.w3.org/1999/xhtml\">\n\
+<head>\n\
+	<title>" TITLE "</title>\n\
+	<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
+"ADD"\
+</head>\n\
+\n\
+<body>\n\
+	\
+"
+
+#define FOOTER "\n\
+</body>\n\
+</html>\
+"

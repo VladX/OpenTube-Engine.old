@@ -19,8 +19,12 @@
  * Boston, MA  02110-1301  USA
  */
 
-#ifndef ZLIB_H
- #include <zlib.h>
- #define ZLIB_H
- #define GZIP_HEADER {0x1F, 0x8B, Z_DEFLATED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03}
-#endif
+u_str_t * cache_find (u_str_t * name, bool accept_gzip);
+
+void cache_store (u_str_t * name, u_str_t * data, void * update_callback);
+
+void cache_update (u_str_t * name);
+
+void cache_free (void);
+
+void cache_create (void);

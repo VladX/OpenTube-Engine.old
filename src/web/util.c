@@ -19,16 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-#define APPEND(PTR, LEN) append_to_global_buffer((void *) PTR, LEN)
-#define PRINT(PTR) print_to_global_buffer((void *) PTR)
+#define APPEND(PTR, LEN) append_to_buffer(input_buffer, (void *) PTR, LEN)
+#define PRINT(PTR) print_to_buffer(input_buffer, (void *) PTR)
 
-inline void append_to_global_buffer (void * ptr, uint len)
+inline void append_to_buffer (buf_t * buf, void * ptr, uint len)
 {
-	buf_expand(web_global_buffer, len);
-	memcpy((uchar *) web_global_buffer->data + web_global_buffer->cur_len - len, ptr, len);
+	buf_expand(buf, len);
+	memcpy((uchar *) buf->data + buf->cur_len - len, ptr, len);
 }
 
-inline void print_to_global_buffer (void * ptr)
+inline void print_to_buffer (buf_t * buf, void * ptr)
 {
-	append_to_global_buffer(ptr, strlen((char *) ptr));
+	append_to_buffer(buf, ptr, strlen((char *) ptr));
 }

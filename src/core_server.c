@@ -37,6 +37,7 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <time.h>
+#include <pthread.h>
 #include "common_functions.h"
 #include "core_process.h"
 #include "core_http.h"
@@ -52,6 +53,7 @@ static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients;
 static frag_pool_t * limit_sim_req_clients;
 static frag_pool_t * keepalive_sockets;
+extern pthread_mutex_t wmutex[1];
 
 
 bool new_keepalive_socket (int sock)
@@ -272,12 +274,20 @@ void set_epollin_event_mask (int sock)
 	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
 }
 
+inline void end_request(request_t * r)
+{
+	static const int disable = 0;
+	
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+		perr("setsockopt(%d)", r->sock);
+	http_cleanup(r);
+}
+
 static void event_routine (void)
 {
 	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
 	const int enable = 1;
-	const int disable = 0;
 	int n, i, it, dlt;
 	uint t, d, size;
 	ssize_t res;
@@ -342,9 +352,15 @@ static void event_routine (void)
 			
 			if (dlt > config.keepalive_timeout_val || dlt < 0)
 			{
-				close(k->sock);
-				debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
-				frag_pool_free_alt(keepalive_sockets, i);
+				for (it = 0; it < maxevents; it++)
+					if (request[it]->sock == k->sock)
+						break;
+				if (it == maxevents)
+				{
+					close(k->sock);
+					debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
+					frag_pool_free_alt(keepalive_sockets, i);
+				}
 			}
 		}
 		
@@ -394,37 +410,29 @@ static void event_routine (void)
 			}
 			else if (e[i].events == EPOLLIN)
 			{
+				pthread_mutex_lock(wmutex);
+				
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == e[i].data.fd)
 						goto _h_req;
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == -1)
 						goto _h_req;
+				pthread_mutex_unlock(wmutex);
 				continue;
-				_h_req:;
+				_h_req:
+				
+				pthread_mutex_unlock(wmutex);
 				
 				request[it]->sock = e[i].data.fd;
 				
-				if (request[it]->temp.tempfd != -1)
-				{
-					if (http_temp_file(request[it]))
-					{
-						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
-							perr("setsockopt(): %d", -1);
-						http_cleanup(request[it]);
-					}
-					continue;
-				}
-				
 				if (http_serve_client(request[it]))
-				{
-					if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
-						perr("setsockopt(): %d", -1);
-					http_cleanup(request[it]);
-				}
+					end_request(request[it]);
 			}
 			else
 			{
+				pthread_mutex_lock(wmutex);
+				
 				for (it = 0; it < maxevents; it++)
 					if (request[it]->sock == e[i].data.fd)
 					{
@@ -465,20 +473,23 @@ static void event_routine (void)
 							if (res == -1)
 							{
 								perr("sendfile(): %d", (int) res);
+								close(request[it]->temp.sendfile_fd);
 								http_cleanup(request[it]);
 								break;
 							}
 							
 							if (request[it]->temp.sendfile_offset < request[it]->temp.sendfile_last)
 								break;
+							else
+								close(request[it]->temp.sendfile_fd);
 						}
 						
-						if (* http_server_tcp_addr.str && setsockopt(request[it]->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
-							perr("setsockopt(): %d", -1);
-						http_cleanup(request[it]);
+						end_request(request[it]);
 						
 						break;
 					}
+				
+				pthread_mutex_unlock(wmutex);
 			}
 		}
 	}
@@ -659,7 +670,11 @@ void init (char * procname)
 	if (signal(SIGQUIT, quit) == SIG_ERR)
 		err("can't handle signal %d", SIGQUIT);
 	
+	#if DEBUG_LEVEL
+	worker_pid = getpid();
+	#else
 	worker_pid = spawn_worker(procname);
+	#endif
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
 	
