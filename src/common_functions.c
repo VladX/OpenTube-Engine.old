@@ -117,7 +117,7 @@ frag_pool_t * frag_pool_create (uint size, uint res_len)
 
 void * frag_pool_alloc (frag_pool_t * p)
 {
-	uint i;
+	static uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (p->e[i].free)
@@ -166,7 +166,7 @@ void frag_pool_free_alt (frag_pool_t * p, uint i)
 
 void frag_pool_free (frag_pool_t * p, void * ptr)
 {
-	uint i;
+	static uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (!(p->e[i].free) && p->e[i].data == ptr)
@@ -200,7 +200,7 @@ void buf_destroy (buf_t * b)
 
 long buf_expand (buf_t * b, uint add)
 {
-	void * old_ptr;
+	static void * old_ptr;
 	
 	b->cur_len += add;
 	
@@ -217,7 +217,7 @@ long buf_expand (buf_t * b, uint add)
 
 long buf_resize (buf_t * b, uint new_size)
 {
-	void * old_ptr;
+	static void * old_ptr;
 	
 	b->cur_len = new_size;
 	

@@ -64,8 +64,8 @@ static inline void http_buffer_moved (request_t * r, long offset)
 	r->in.http_version.str += offset;
 	r->body.data.str += offset;
 	
-	header_t * hdr;
-	uint i;
+	static header_t * hdr;
+	static uint i;
 	
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
@@ -77,8 +77,8 @@ static inline void http_buffer_moved (request_t * r, long offset)
 
 inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
 {
-	struct iovec * iov;
-	uint offset;
+	static struct iovec * iov;
+	static uint offset;
 	
 	offset = r->out_vec->cur_len;
 	
@@ -123,9 +123,9 @@ static inline void http_append_headers (request_t * r, ushort code)
 
 static inline bool http_send (request_t * r)
 {
-	ssize_t res;
-	uint size, i, d;
-	struct iovec * data;
+	static ssize_t res;
+	static uint size, i, d;
+	static struct iovec * data;
 	
 	data = (struct iovec *) r->out_vec->data;
 	
@@ -219,7 +219,7 @@ static inline uchar http_hex_to_ascii (uchar * c)
 /* New version, faster */
 static inline uchar http_hex_to_ascii (uchar * c)
 {
-	static uchar h2a_table_1[128] = {
+	static const uchar h2a_table_1[128] = {
 	0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
 	0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
 	0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
@@ -230,7 +230,7 @@ static inline uchar http_hex_to_ascii (uchar * c)
 	0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20
 	};
 	
-	static uchar h2a_table_2[128] = {
+	static const uchar h2a_table_2[128] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -331,8 +331,8 @@ void http_parse_query_string (request_t * r)
 
 void http_parse_cookies (request_t * r)
 {
-	header_t * hdr;
-	uint i;
+	static header_t * hdr;
+	static uint i;
 	
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
@@ -515,8 +515,8 @@ void http_parse_post (request_t * r)
 
 static bool http_divide_uri (request_t * r)
 {
-	uchar * c, * d;
-	uint i;
+	static uchar * c, * d;
+	static uint i;
 	
 	if (r->in.uri.len > HTTP_PATH_PREALLOC)
 		r->in.path.str = (uchar *) realloc(r->in.path.str, r->in.uri.len);
@@ -573,8 +573,8 @@ static inline void http_rfc822_date (char * str, struct tm * ctime)
 
 static inline void http_set_mime_type (request_t * r)
 {
-	uchar * fileext;
-	uint i;
+	static uchar * fileext;
+	static uint i;
 	
 	fileext = r->in.path.str + r->in.path.len;
 	
@@ -597,10 +597,10 @@ static inline void http_set_mime_type (request_t * r)
 
 static inline bool http_send_file (request_t * r, const char * filepath)
 {
-	uint i, it;
-	bool ret;
-	struct stat st;
-	int fd, t;
+	static uint i, it;
+	static bool ret;
+	static struct stat st;
+	static int fd, t;
 	
 	fd = open(filepath, O_RDONLY);
 	
@@ -634,11 +634,11 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	http_set_mime_type(r);
 	
-	ushort code = 200;
-	ssize_t res;
-	header_t * hdr;
-	struct tm c_time, m_time;
-	time_t curtime;
+	static ushort code = 200;
+	static ssize_t res;
+	static header_t * hdr;
+	static struct tm c_time, m_time;
+	static time_t curtime;
 	
 	char * rfc822_date_str = r->temp.dates;
 	
@@ -886,8 +886,10 @@ static void * http_pass_to_handlers_routine (void * ptr)
 
 static bool http_response (request_t * r)
 {
-	uint i;
-	uri_map_t * m = (uri_map_t *) uri_map->data;
+	static uint i;
+	static uri_map_t * m;
+	
+	m = (uri_map_t *) uri_map->data;
 	
 	if (!http_divide_uri(r))
 		return http_error(r, 400);
@@ -923,9 +925,12 @@ static bool http_response (request_t * r)
 		return false;
 	}
 	
-	u_str_t * cached_content = NULL;
-	header_t * hdr;
-	bool accept_gzip = false;
+	static u_str_t * cached_content;
+	static header_t * hdr;
+	static bool accept_gzip;
+	
+	cached_content = NULL;
+	accept_gzip = false;
 	
 	if (r->in.path.len > config.cache_prefix.len && memcmp(r->in.path.str, config.cache_prefix.str, config.cache_prefix.len) == 0)
 	{
@@ -950,7 +955,9 @@ static bool http_response (request_t * r)
 	{
 		http_set_mime_type(r);
 		
-		ushort code = 200;
+		static ushort code;
+		
+		code = 200;
 		
 		if (config.cache_update == 0)
 			for (i = 0; i < r->in.p->cur_len; i++)
@@ -1005,7 +1012,9 @@ static bool http_response (request_t * r)
 
 static ushort http_parse_headers (request_t * r)
 {
-	uchar * p = (uchar *) r->b->data;
+	static uchar * p;
+	
+	p = (uchar *) r->b->data;
 	
 	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	
@@ -1100,12 +1109,12 @@ static ushort http_parse_headers (request_t * r)
 
 bool http_serve_client (request_t * request)
 {
-	ushort code;
-	int r;
-	uint i;
-	header_t * hdr;
-	uchar * buf;
-	long offset;
+	static ushort code;
+	static int r;
+	static uint i;
+	static header_t * hdr;
+	static uchar * buf;
+	static long offset;
 	
 	offset = buf_expand(request->b, HTTP_RECV_BUFFER);
 	if (offset)

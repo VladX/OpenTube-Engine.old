@@ -58,13 +58,15 @@ extern pthread_mutex_t wmutex[1];
 
 bool new_keepalive_socket (int sock)
 {
-	uchar * bin1, * bin2;
-	uchar len;
-	uint i, total, percli;
-	socklen_t client_name_len;
-	keepalive_sock_t * k;
-	time_t curtime = time(NULL);
-	struct sockaddr addr, saddr;
+	static uchar * bin1, * bin2;
+	static uchar len;
+	static uint i, total, percli;
+	static socklen_t client_name_len;
+	static keepalive_sock_t * k;
+	static time_t curtime;
+	static struct sockaddr addr, saddr;
+	
+	curtime = time(NULL);
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -124,8 +126,8 @@ bool new_keepalive_socket (int sock)
 
 void remove_keepalive_socket(int sock)
 {
-	uint i;
-	keepalive_sock_t * k;
+	static uint i;
+	static keepalive_sock_t * k;
 	
 	for (i = 0; i < keepalive_sockets->real_len; i++)
 	{
@@ -145,11 +147,13 @@ void remove_keepalive_socket(int sock)
 
 static inline bool limit_requests (struct sockaddr * addr)
 {
-	uchar * bin;
-	uchar len;
-	uint i;
-	limit_req_t * cli;
-	time_t curtime = time(NULL);
+	static uchar * bin;
+	static uchar len;
+	static uint i;
+	static limit_req_t * cli;
+	static time_t curtime;
+	
+	curtime = time(NULL);
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -207,11 +211,11 @@ static inline bool limit_requests (struct sockaddr * addr)
 
 static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
 {
-	uchar * bin1, * bin2;
-	uchar len;
-	uint i, total;
-	int * cli;
-	struct sockaddr saddr;
+	static uchar * bin1, * bin2;
+	static uchar len;
+	static uint i, total;
+	static int * cli;
+	static struct sockaddr saddr;
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -258,7 +262,7 @@ static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_
 
 void set_epollout_event_mask (int sock)
 {
-	struct epoll_event ev;
+	static struct epoll_event ev;
 	
 	ev.events = EPOLLOUT;
 	ev.data.fd = sock;
@@ -267,7 +271,7 @@ void set_epollout_event_mask (int sock)
 
 void set_epollin_event_mask (int sock)
 {
-	struct epoll_event ev;
+	static struct epoll_event ev;
 	
 	ev.events = EPOLLIN;
 	ev.data.fd = sock;

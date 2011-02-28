@@ -47,9 +47,12 @@ static const char gzip_header[10] = GZIP_HEADER;
 
 static void gen_gzipped_value (cache_t * c)
 {
-	int r;
-	uchar * ptr = NULL;
-	uint len = 0;
+	static int r;
+	static uchar * ptr;
+	static uint len;
+	
+	ptr = NULL;
+	len = 0;
 	
 	gz_strm->avail_in = c->value.len;
 	gz_strm->next_in = c->value.str;
@@ -88,7 +91,7 @@ static void gen_gzipped_value (cache_t * c)
 	p += len;
 	free(ptr);
 	
-	__uint32_t gzip_ending[2];
+	static __uint32_t gzip_ending[2];
 	gzip_ending[0] = crc32(0, c->value.str, c->value.len);
 	gzip_ending[1] = c->value.len;
 	#if __BYTE_ORDER == __BIG_ENDIAN
@@ -104,8 +107,8 @@ static void gen_gzipped_value (cache_t * c)
 
 u_str_t * cache_find (u_str_t * name, bool accept_gzip)
 {
-	uint i;
-	cache_t * c;
+	static uint i;
+	static cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
@@ -125,15 +128,15 @@ u_str_t * cache_find (u_str_t * name, bool accept_gzip)
 
 void cache_update (u_str_t * name)
 {
-	uint i;
-	cache_t * c;
+	static uint i;
+	static cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
 		c = &(((cache_t *) cache->data)[i]);
 		if (name->len == c->key.len && memcmp(name->str, c->key.str, name->len) == 0)
 		{
-			u_str_t * res;
+			static u_str_t * res;
 			
 			res = c->update_callback(c->time, name);
 			
@@ -169,8 +172,8 @@ void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
 
 void cache_free (void)
 {
-	uint i;
-	cache_t * c;
+	static uint i;
+	static cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
