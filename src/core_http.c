@@ -1004,10 +1004,7 @@ static bool http_response (request_t * r)
 		return http_send(r);
 	}
 	
-	buf_resize(r->temp.filepath, config.document_root.len + r->in.path.len + 1);
-	memcpy((char *) r->temp.filepath->data + config.document_root.len, r->in.path.str, r->in.path.len + 1);
-	
-	return http_send_file(r, (const char *) r->temp.filepath->data);
+	return http_send_file(r, (const char *) r->in.path.str + 1);
 }
 
 static ushort http_parse_headers (request_t * r)
@@ -1252,7 +1249,6 @@ void http_cleanup (request_t * r)
 	if (config.gzip)
 		buf_free(r->temp.gzip_buf);
 	
-	buf_free(r->temp.filepath);
 	buf_free(r->out_vec);
 	buf_free(r->b);
 	
@@ -1281,6 +1277,9 @@ static void http_prepare_once (void)
 		pthread_create(&(wthreads[i]), NULL, http_pass_to_handlers_routine, NULL);
 	
 	http_prepare_once_flag = true;
+	
+	if (chdir((char *) config.document_root.str) == -1)
+		peerr(0, "chdir(%s): ", config.document_root.str);
 }
 
 void http_prepare (request_t * r)
@@ -1327,9 +1326,6 @@ void http_prepare (request_t * r)
 		if (res != Z_OK)
 			peerr(1, "deflateInit2(): %d", res);
 	}
-	
-	r->temp.filepath = buf_create(1, config.document_root.len + HTTP_PATH_PREALLOC);
-	memcpy(r->temp.filepath->data, config.document_root.str, config.document_root.len);
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);
 	

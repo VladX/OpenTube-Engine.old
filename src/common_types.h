@@ -189,7 +189,6 @@ typedef struct
 		long writev_total;
 		struct iovec * out_vec;
 		uint out_vec_len;
-		buf_t * filepath;
 		int sendfile_fd;
 		uint sendfile_last;
 		off_t sendfile_offset;
