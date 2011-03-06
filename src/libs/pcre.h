@@ -19,21 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <web_handler.h>
-#include "util.c"
-
-
-/*--INCLUSION--*/
-
-
-#include <web.h>
-
-void set_callbacks (void)
-{
-	/*--CALLBACKS-SETUP--*/
-}
-
-void run_init_callbacks (void)
-{
-	/*--INITIALIZATION--*/
-}
+#ifndef PCRE_H
+ #include <pcre.h>
+ #define PCRE_H
+#endif

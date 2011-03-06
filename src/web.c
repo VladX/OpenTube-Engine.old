@@ -20,6 +20,7 @@
  */
 
 #include "common_functions.h"
+#include "templates.h"
 #include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
@@ -39,6 +40,7 @@ void web_init (void)
 {
 	uri_map = buf_create(sizeof(uri_map_t), 10);
 	
+	tpl_init();
 	set_callbacks();
 	run_init_callbacks();
 }

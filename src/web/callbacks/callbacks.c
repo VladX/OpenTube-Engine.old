@@ -20,7 +20,7 @@
  */
 
 #include <web_handler.h>
-#include "../util.c"
+#include "util.c"
 
 
 /* Automatically inserted by script generate-callbacks.c.py */

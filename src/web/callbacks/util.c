@@ -19,21 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <web_handler.h>
-#include "util.c"
+#define APPEND(PTR, LEN) append_to_buffer(input_buffer, (void *) PTR, LEN)
+#define PRINT(PTR) print_to_buffer(input_buffer, (void *) PTR)
 
-
-/*--INCLUSION--*/
-
-
-#include <web.h>
-
-void set_callbacks (void)
+inline void append_to_buffer (buf_t * buf, void * ptr, uint len)
 {
-	/*--CALLBACKS-SETUP--*/
+	buf_expand(buf, len);
+	memcpy((uchar *) buf->data + buf->cur_len - len, ptr, len);
 }
 
-void run_init_callbacks (void)
+inline void print_to_buffer (buf_t * buf, void * ptr)
 {
-	/*--INITIALIZATION--*/
+	append_to_buffer(buf, ptr, strlen((char *) ptr));
 }

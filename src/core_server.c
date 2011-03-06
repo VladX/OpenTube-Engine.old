@@ -381,7 +381,7 @@ static void event_routine (void)
 		{
 			if (e[i].data.fd == srvfd)
 			{
-				#if HAVE_ACCEPT4
+				#ifdef HAVE_ACCEPT4
 				while ((ev.data.fd = accept4(srvfd, addr, &client_name_len, SOCK_NONBLOCK)) != -1)
 				{
 				#else

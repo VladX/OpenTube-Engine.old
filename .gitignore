@@ -2,4 +2,8 @@
 a.out
 *.[oa]
 *.pyc
-/opentube-server
+opentube-server
+src/config.h
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles

@@ -21,7 +21,7 @@
 
 #define PROG_NAME "Opentube"
 #define PROG_VERSION "0.1alpha"
-#define DEBUG_LEVEL 3 // 0 - disabled
+#define DEBUG_LEVEL @DEBUG_LEVEL@ // 0 - disabled
 #define SERVER_STRING PROG_NAME "/" PROG_VERSION
 #define IPV6_SUPPORT 1
 #define WORKER_THREADS 5
@@ -51,4 +51,4 @@
 #define WEB_DATA_BUFFER_RESERVED_SIZE 65536
 #define READ_SIZE 8192
 
-#define HAVE_ACCEPT4 1
+#cmakedefine HAVE_ACCEPT4
