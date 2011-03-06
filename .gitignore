@@ -2,6 +2,7 @@
 a.out
 *.[oa]
 *.pyc
+/objs/*
 opentube-server
 src/config.h
 CMakeCache.txt
