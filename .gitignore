@@ -1,6 +1,6 @@
 /*.c
 a.out
-*.[oa]
+*.o
 *.pyc
 /objs/*
 opentube-server
