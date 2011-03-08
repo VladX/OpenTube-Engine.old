@@ -4,6 +4,7 @@ a.out
 *.pyc
 /objs/*
 opentube-server
+/Makefile
 src/config.h
 CMakeCache.txt
 cmake_install.cmake

@@ -40,6 +40,7 @@
 #include "error_page.h"
 #include "mime.h"
 #include "memcache.h"
+#include "win32_utils.h"
 
 #define HTTP_OUTPUT_VECTOR_START_SIZE 128
 
@@ -77,8 +78,8 @@ static inline void http_buffer_moved (request_t * r, long offset)
 
 inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
 {
-	static struct iovec * iov;
-	static uint offset;
+	struct iovec * iov;
+	uint offset;
 	
 	offset = r->out_vec->cur_len;
 	

@@ -52,3 +52,9 @@
 #define READ_SIZE 8192
 
 #cmakedefine HAVE_ACCEPT4
+
+#cmakedefine WIN32
+#cmakedefine MINGW
+#if defined(WIN32) || defined(MINGW)
+ #define _WIN
+#endif

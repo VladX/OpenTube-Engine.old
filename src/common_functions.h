@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef _WIN
+ #include <windows.h>
+#endif
 #include "config.h"
 #include "common_types.h"
 #include "global.h"
@@ -61,6 +64,8 @@
 
 #define ARRAY_LENGTH(X) (sizeof(X) / sizeof(X[0]))
 
+#undef min
+#undef max
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 #define max(X, Y) ((X) > (Y) ? (X) : (Y))
 

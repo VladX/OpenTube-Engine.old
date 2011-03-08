@@ -42,6 +42,7 @@
 #include "core_process.h"
 #include "core_http.h"
 #include "web.h"
+#include "win32_utils.h"
 
 
 bool ipv6_addr = false;
@@ -260,6 +261,7 @@ static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_
 	return false;
 }
 
+#ifndef _WIN
 void set_epollout_event_mask (int sock)
 {
 	static struct epoll_event ev;
@@ -280,10 +282,12 @@ void set_epollin_event_mask (int sock)
 
 inline void end_request(request_t * r)
 {
+	#ifndef _WIN
 	static const int disable = 0;
 	
 	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
 		perr("setsockopt(%d)", r->sock);
+	#endif
 	http_cleanup(r);
 }
 
@@ -498,6 +502,7 @@ static void event_routine (void)
 		}
 	}
 }
+#endif
 
 static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 {
@@ -559,6 +564,9 @@ static int connect_to_socket (void)
 	
 	if (* http_server_unix_addr.str)
 	{
+		#ifdef _WIN
+		eerr(1, "%s", "Unix domains are not supported on Windows.");
+		#else
 		struct sockaddr_un * uname;
 		
 		sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -569,6 +577,7 @@ static int connect_to_socket (void)
 		uname->sun_family = AF_UNIX;
 		memcpy(uname->sun_path, http_server_unix_addr.str, http_server_unix_addr.len + 1);
 		name = (struct sockaddr *) uname;
+		#endif
 	}
 	#if IPV6_SUPPORT
 	else if (* http_server_tcp_addr.str && ipv6_addr)
@@ -617,14 +626,21 @@ static int connect_to_socket (void)
 		name = (struct sockaddr *) iname;
 	}
 	
+	#ifdef _WIN
+	if (ioctlsocket(sockfd, FIONBIO, &enable) == -1)
+		peerr(7, "ioctlsocket(): %d", -1);
+	#else
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1)
 		peerr(7, "fcntl(): %d", -1);
+	#endif
 	
 	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable))) < 0)
 		peerr(7, "setsockopt(): %d", res);
 	
+	#ifndef _WIN
 	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_RCVLOWAT, &enable, sizeof(enable))) < 0)
 		peerr(7, "setsockopt(): %d", res);
+	#endif
 	
 	if ((res = bind(sockfd, name, name_len)) < 0)
 		peerr(7, "bind(): %d", res);
@@ -671,8 +687,10 @@ void init (char * procname)
 		err("can't handle signal %d", SIGINT);
 	if (signal(SIGTERM, quit) == SIG_ERR)
 		err("can't handle signal %d", SIGTERM);
+	#ifndef _WIN
 	if (signal(SIGQUIT, quit) == SIG_ERR)
 		err("can't handle signal %d", SIGQUIT);
+	#endif
 	
 	#if DEBUG_LEVEL
 	worker_pid = getpid();
@@ -682,12 +700,22 @@ void init (char * procname)
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
 	
+	#ifdef _WIN
+	maxfds = 1024;
+	#else
+	
 	struct rlimit lim;
 	
 	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
-		peerr(1, "getrlimit(): %d", -1);
+		peerr(0, "getrlimit(): %d", -1);
+	
+	lim.rlim_cur = lim.rlim_max;
+	
+	if (setrlimit(RLIMIT_NOFILE, &lim) == -1)
+		peerr(0, "setrlimit(): %d", -1);
 	
 	maxfds = (uint) lim.rlim_cur;
+	#endif
 	
 	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);
 	

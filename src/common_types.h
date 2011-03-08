@@ -19,6 +19,11 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef _SYS_TYPES_H
+ #include <sys/types.h>
+ #define _SYS_TYPES_H 1
+#endif
+
 #include "libs/zlib.h"
 
 #ifndef  __cplusplus
@@ -33,6 +38,10 @@
 #define ushort unsigned short
 #define uint unsigned int
 #define ulong unsigned long
+
+#ifdef _WIN
+typedef unsigned int __uint32_t;
+#endif
 
 
 typedef struct

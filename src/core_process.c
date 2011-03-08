@@ -30,6 +30,7 @@
 #include "common_functions.h"
 #include "core_server.h"
 #include "core_process.h"
+#include "win32_utils.h"
 
 
 static const char * statustomsg (int status)
@@ -67,6 +68,9 @@ static void quit_worker (int prm)
 
 pid_t spawn_worker (char * procname)
 {
+	#ifdef _WIN
+	pid_t pid = getpid();
+	#else
 	unsigned char respawn_fails = 0;
 	int status;
 	time_t start_time;
@@ -136,6 +140,7 @@ pid_t spawn_worker (char * procname)
 		
 		debug_print_1("worker process terminated with status %d (%s), respawning...", status, statustomsg(status));
 	}
+	#endif
 	
 	return pid;
 }
