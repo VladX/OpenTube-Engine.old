@@ -21,7 +21,7 @@ endif (MINGW)
 
 if (CMAKE_SYSTEM_NAME MATCHES ".*BSD$")
  set (_BSD)
-if (CMAKE_SYSTEM_NAME MATCHES ".*BSD$")
+endif (CMAKE_SYSTEM_NAME MATCHES ".*BSD$")
 
 add_subdirectory (test_features test_features)
 
