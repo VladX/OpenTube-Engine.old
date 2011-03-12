@@ -19,9 +19,13 @@ if (MINGW)
  set (CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-static")
 endif (MINGW)
 
-if (CMAKE_SYSTEM_NAME MATCHES ".*BSD$")
- set (_BSD)
-endif (CMAKE_SYSTEM_NAME MATCHES ".*BSD$")
+if (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
+ set (_BSD 1)
+endif (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+ set (_LINUX 1)
+endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 add_subdirectory (test_features test_features)
 
