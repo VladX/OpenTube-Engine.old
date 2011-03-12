@@ -25,12 +25,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/stat.h>
-#include <sys/sendfile.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include "sendfile.h"
 #include "endianness.h"
 #include "libs/zlib.h"
 #include "common_functions.h"
@@ -730,7 +730,13 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 		return false;
 	}
 	
+	#ifdef _BSD
+	static off_t sbytes = 0;
+	res = sendfile(fd, r->sock, r->temp.sendfile_offset, (size_t) r->out.content_length, NULL, &sbytes, 0);
+	r->temp.sendfile_offset += sbytes;
+	#else
 	res = sendfile(r->sock, fd, &(r->temp.sendfile_offset), (size_t) r->out.content_length);
+	#endif
 	
 	if (res == -1 && errno != EAGAIN)
 	{
@@ -738,7 +744,11 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 		
 		return true;
 	}
+	#ifdef _BSD
+	if (sbytes < r->out.content_length)
+	#else
 	if (res < r->out.content_length)
+	#endif
 	{
 		r->temp.sendfile_fd = fd;
 		set_epollout_event_mask(r->sock);
