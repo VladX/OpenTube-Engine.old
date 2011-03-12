@@ -19,11 +19,17 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <byteswap.h>
-#include <endian.h>
+#ifdef _BSD
+ #include <sys/endian.h>
+#else
+ #include <byteswap.h>
+ #include <endian.h>
+#endif
 
 #ifndef bswap_32
- #define bswap_32(X) bswap32(X)
+ #ifdef bswap32
+  #define bswap_32(X) bswap32(X)
+ #endif
 #endif
 
 #ifndef __BYTE_ORDER
