@@ -19,6 +19,10 @@ if (MINGW)
  set (CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-static")
 endif (MINGW)
 
+if (CMAKE_SYSTEM_NAME MATCHES BSD)
+ set (_BSD)
+endif (CMAKE_SYSTEM_NAME MATCHES BSD)
+
 add_subdirectory (test_features test_features)
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)

@@ -55,6 +55,7 @@
 #cmakedefine HAVE_EPOLL
 #cmakedefine HAVE_SELECT
 
+#cmakedefine _BSD
 #cmakedefine WIN32
 #cmakedefine MINGW
 #if defined(WIN32) || defined(MINGW)
