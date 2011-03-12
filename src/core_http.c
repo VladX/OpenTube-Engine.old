@@ -28,11 +28,10 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <byteswap.h>
-#include <endian.h>
 #include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include "endianness.h"
 #include "libs/zlib.h"
 #include "common_functions.h"
 #include "core_server.h"
