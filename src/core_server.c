@@ -47,8 +47,7 @@
 
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
-static int sockfd;
-static int epfd;
+int sockfd;
 static uint maxfds;
 static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients;
@@ -146,7 +145,7 @@ void remove_keepalive_socket(int sock)
 	}
 }
 
-static inline bool limit_requests (struct sockaddr * addr)
+inline bool limit_requests (struct sockaddr * addr)
 {
 	static uchar * bin;
 	static uchar len;
@@ -210,7 +209,7 @@ static inline bool limit_requests (struct sockaddr * addr)
 	return false;
 }
 
-static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
+inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
 {
 	static uchar * bin1, * bin2;
 	static uchar len;
@@ -261,7 +260,144 @@ static inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_
 	return false;
 }
 
-#ifndef _WIN
+void event_startup (const int maxevents, request_t ** request, struct sockaddr ** addr, socklen_t * client_name_len)
+{
+	uint i;
+	
+	#if IPV6_SUPPORT
+	if (ipv6_addr)
+		* client_name_len = sizeof(struct sockaddr_in6);
+	else
+	#endif
+		* client_name_len = sizeof(struct sockaddr_in);
+	
+	* addr = (struct sockaddr *) malloc(* client_name_len);
+	
+	web_init();
+	
+	if (config.limit_req)
+		limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE);
+	if (config.limit_sim_req)
+		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
+	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
+	
+	for (i = 0; i < maxevents; i++)
+	{
+		request[i] = (request_t *) malloc(sizeof(request_t));
+		
+		http_prepare(request[i]);
+	}
+}
+
+inline void event_iter (request_t ** request)
+{
+	static time_t curtime;
+	static uint i, it;
+	static int dlt;
+	static keepalive_sock_t * k;
+	
+	curtime = time(NULL);
+	
+	for (i = 0; i < keepalive_sockets->real_len; i++)
+	{
+		if (keepalive_sockets->e[i].free)
+			continue;
+		
+		k = (keepalive_sock_t *) keepalive_sockets->e[i].data;
+		
+		dlt = curtime - k->time;
+		
+		if (dlt > config.keepalive_timeout_val || dlt < 0)
+		{
+			for (it = 0; it < MAX_EVENTS; it++)
+				if (request[it]->sock == k->sock)
+					break;
+			if (it == MAX_EVENTS)
+			{
+				socket_close(k->sock);
+				debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
+				frag_pool_free_alt(keepalive_sockets, i);
+			}
+		}
+	}
+	
+	if (config.limit_req)
+	{
+		for (i = 0; i < limit_req_clients->real_len; i++)
+			if (!(limit_req_clients->e[i].free) && ((limit_req_t *) limit_req_clients->e[i].data)->dtime != 0 && curtime > ((limit_req_t *) limit_req_clients->e[i].data)->dtime)
+				frag_pool_free_alt(limit_req_clients, i);
+	}
+}
+
+inline void end_request(request_t * r);
+
+inline void events_out_data (const int maxevents, int fd, request_t ** request)
+{
+	static uint it;
+	static uint t, d, size;
+	static ssize_t res;
+	
+	for (it = 0; it < maxevents; it++)
+		if (request[it]->sock == fd)
+		{
+			if (request[it]->temp.writev_total > 0)
+			{
+				res = writev(request[it]->sock, request[it]->temp.out_vec, request[it]->temp.out_vec_len);
+				if (res == -1)
+				{
+					perr("writev(): %d", -1);
+					http_cleanup(request[it]);
+					break;
+				}
+				
+				request[it]->temp.writev_total -= res;
+				
+				for (t = 0, size = 0; t < request[it]->temp.out_vec_len; t++)
+				{
+					size += request[it]->temp.out_vec[t].iov_len;
+					
+					if (size >= res)
+					{
+						request[it]->temp.out_vec += t;
+						d = request[it]->temp.out_vec[0].iov_len - (size - res);
+						request[it]->temp.out_vec[0].iov_base = ((uchar *) request[it]->temp.out_vec[0].iov_base) + d;
+						request[it]->temp.out_vec[0].iov_len -= d;
+						request[it]->temp.out_vec_len = request[it]->temp.out_vec_len - t;
+						break;
+					}
+				}
+				
+				break;
+			}
+			
+			if (request[it]->temp.sendfile_fd != -1)
+			{
+				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
+				
+				if (res == -1)
+				{
+					perr("sendfile(): %d", (int) res);
+					close(request[it]->temp.sendfile_fd);
+					http_cleanup(request[it]);
+					break;
+				}
+				
+				if (request[it]->temp.sendfile_offset < request[it]->temp.sendfile_last)
+					break;
+				else
+					close(request[it]->temp.sendfile_fd);
+			}
+			
+			end_request(request[it]);
+			
+			break;
+		}
+}
+
+#ifdef HAVE_EPOLL
+
+static int epfd;
+
 void set_epollout_event_mask (int sock)
 {
 	static struct epoll_event ev;
@@ -282,12 +418,11 @@ void set_epollin_event_mask (int sock)
 
 inline void end_request(request_t * r)
 {
-	#ifndef _WIN
 	static const int disable = 0;
 	
 	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
 		perr("setsockopt(%d)", r->sock);
-	#endif
+	
 	http_cleanup(r);
 }
 
@@ -296,12 +431,8 @@ static void event_routine (void)
 	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
 	const int enable = 1;
-	int n, i, it, dlt;
-	uint t, d, size;
-	ssize_t res;
-	time_t curtime;
+	int n, i, it;
 	socklen_t client_name_len;
-	keepalive_sock_t * k;
 	request_t * request[maxevents];
 	struct epoll_event e[maxevents], ev;
 	struct sockaddr * addr;
@@ -310,29 +441,7 @@ static void event_routine (void)
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;
 	
-	#if IPV6_SUPPORT
-	if (ipv6_addr)
-		client_name_len = sizeof(struct sockaddr_in6);
-	else
-	#endif
-		client_name_len = sizeof(struct sockaddr_in);
-	
-	addr = (struct sockaddr *) malloc(client_name_len);
-	
-	web_init();
-	
-	if (config.limit_req)
-		limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE);
-	if (config.limit_sim_req)
-		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
-	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
-	
-	for (i = 0; i < maxevents; i++)
-	{
-		request[i] = (request_t *) malloc(sizeof(request_t));
-		
-		http_prepare(request[i]);
-	}
+	event_startup(maxevents, request, &addr, &client_name_len);
 	
 	epfd = epoll_create(maxevents);
 	
@@ -347,37 +456,7 @@ static void event_routine (void)
 	
 	for (;;)
 	{
-		curtime = time(NULL);
-		
-		for (i = 0; i < keepalive_sockets->real_len; i++)
-		{
-			if (keepalive_sockets->e[i].free)
-				continue;
-			
-			k = (keepalive_sock_t *) keepalive_sockets->e[i].data;
-			
-			dlt = curtime - k->time;
-			
-			if (dlt > config.keepalive_timeout_val || dlt < 0)
-			{
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == k->sock)
-						break;
-				if (it == maxevents)
-				{
-					close(k->sock);
-					debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
-					frag_pool_free_alt(keepalive_sockets, i);
-				}
-			}
-		}
-		
-		if (config.limit_req)
-		{
-			for (i = 0; i < limit_req_clients->real_len; i++)
-				if (!(limit_req_clients->e[i].free) && ((limit_req_t *) limit_req_clients->e[i].data)->dtime != 0 && curtime > ((limit_req_t *) limit_req_clients->e[i].data)->dtime)
-					frag_pool_free_alt(limit_req_clients, i);
-		}
+		event_iter(request);
 		
 		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
 		
@@ -398,14 +477,14 @@ static void event_routine (void)
 					{
 						debug_print_2("client has exceeded the allowable requests per second (rps) limit, request %d discarded", ev.data.fd);
 						setsockopt(ev.data.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
-						close(ev.data.fd);
+						socket_close(ev.data.fd);
 						break;
 					}
 					if (config.limit_sim_req && limit_sim_requests(addr, client_name_len, ev.data.fd))
 					{
 						debug_print_2("client has exceeded the allowable simultaneous requests limit, request %d discarded", ev.data.fd);
 						setsockopt(ev.data.fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
-						close(ev.data.fd);
+						socket_close(ev.data.fd);
 						break;
 					}
 					ev.events = EPOLLIN;
@@ -440,68 +519,17 @@ static void event_routine (void)
 			else
 			{
 				pthread_mutex_lock(wmutex);
-				
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == e[i].data.fd)
-					{
-						if (request[it]->temp.writev_total > 0)
-						{
-							res = writev(request[it]->sock, request[it]->temp.out_vec, request[it]->temp.out_vec_len);
-							if (res == -1)
-							{
-								perr("writev(): %d", -1);
-								http_cleanup(request[it]);
-								break;
-							}
-							
-							request[it]->temp.writev_total -= res;
-							
-							for (t = 0, size = 0; t < request[it]->temp.out_vec_len; t++)
-							{
-								size += request[it]->temp.out_vec[t].iov_len;
-								
-								if (size >= res)
-								{
-									request[it]->temp.out_vec += t;
-									d = request[it]->temp.out_vec[0].iov_len - (size - res);
-									request[it]->temp.out_vec[0].iov_base = ((uchar *) request[it]->temp.out_vec[0].iov_base) + d;
-									request[it]->temp.out_vec[0].iov_len -= d;
-									request[it]->temp.out_vec_len = request[it]->temp.out_vec_len - t;
-									break;
-								}
-							}
-							
-							break;
-						}
-						
-						if (request[it]->temp.sendfile_fd != -1)
-						{
-							res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
-						
-							if (res == -1)
-							{
-								perr("sendfile(): %d", (int) res);
-								close(request[it]->temp.sendfile_fd);
-								http_cleanup(request[it]);
-								break;
-							}
-							
-							if (request[it]->temp.sendfile_offset < request[it]->temp.sendfile_last)
-								break;
-							else
-								close(request[it]->temp.sendfile_fd);
-						}
-						
-						end_request(request[it]);
-						
-						break;
-					}
-				
+				events_out_data(maxevents, e[i].data.fd, request);
 				pthread_mutex_unlock(wmutex);
 			}
 		}
 	}
 }
+
+#else
+ #ifdef HAVE_SELECT
+  #include "event_wrapper_select.h"
+ #endif
 #endif
 
 static bool gethostaddr (char * name, const int type, in_addr_t * dst)
@@ -651,11 +679,21 @@ static int connect_to_socket (void)
 	return sockfd;
 }
 
+#ifdef _WIN
+static void win32_exit_function (void)
+{
+	WSACleanup();
+}
+#endif
+
 void quit (int prm)
 {
-	close(sockfd);
+	socket_close(sockfd);
 	fputc('\n', stdout);
 	debug_print_1("terminate process: %d", prm);
+	#ifdef _WIN
+	win32_exit_function();
+	#endif
 	exit(prm);
 }
 
@@ -679,6 +717,13 @@ void init (char * procname)
 	}
 	#endif
 	
+	#ifdef _WIN
+	WSADATA wsaData;
+	
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+		peerr(1, "%s", "WSAStartup() failed");
+	#endif
+	
 	sockfd = connect_to_socket();
 	
 	debug_print_2("connection established: %d", sockfd);
@@ -690,6 +735,8 @@ void init (char * procname)
 	#ifndef _WIN
 	if (signal(SIGQUIT, quit) == SIG_ERR)
 		err("can't handle signal %d", SIGQUIT);
+	#else
+	atexit(win32_exit_function);
 	#endif
 	
 	#if DEBUG_LEVEL

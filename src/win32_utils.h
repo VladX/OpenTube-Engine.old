@@ -26,8 +26,6 @@
 #include <ws2tcpip.h>
 #undef WINVER
 
-#define getpid (int) GetCurrentProcessId
-
 struct iovec {
 	void * iov_base;
 	size_t iov_len;

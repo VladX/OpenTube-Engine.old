@@ -52,6 +52,8 @@
 #define READ_SIZE 8192
 
 #cmakedefine HAVE_ACCEPT4
+#cmakedefine HAVE_EPOLL
+#cmakedefine HAVE_SELECT
 
 #cmakedefine WIN32
 #cmakedefine MINGW

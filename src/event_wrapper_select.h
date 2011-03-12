@@ -19,25 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-#ifdef HAVE_EPOLL
+#define set_epollout_event_mask set_write_mask
+#define set_epollin_event_mask set_read_mask
+#define socket_del_from_event_list(SOCKET) _select_socket_del_from_event_list(SOCKET)
 
-#define socket_del_from_event_list(SOCKET)
+void _select_socket_del_from_event_list (int fd);
 
-void set_epollout_event_mask (int sock);
+void set_read_mask (int fd);
 
-void set_epollin_event_mask (int sock);
+void set_write_mask (int fd);
 
 void end_request(request_t * r);
-#else
-#ifdef HAVE_SELECT
-#include "event_wrapper_select.h"
-#endif
-#endif
 
-bool new_keepalive_socket (int sock);
-
-void remove_keepalive_socket(int sock);
-
-void init (char * procname);
-
-void quit (int prm);
+void event_routine (void);

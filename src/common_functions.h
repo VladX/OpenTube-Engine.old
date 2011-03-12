@@ -77,6 +77,16 @@
 #define IS_VALID_URL_KEY_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '-' || (X) == '_')
 #define IS_VALID_URL_VALUE_CHARACTER(X) (IS_VALID_URL_KEY_CHARACTER(X) || (X) == '+' || (X) == '%')
 
+/* Platform-specific */
+#ifdef _WIN
+ #define socket_close(SOCKET) closesocket(SOCKET)
+ #define getpid (int) GetCurrentProcessId
+ #undef errno
+ #define errno WSAGetLastError()
+#else
+ #define socket_close(SOCKET) close(SOCKET)
+#endif
+
 void set_str (str_t * str, char * src);
 
 void set_cpy_str (str_t * str, char * src);

@@ -19,30 +19,12 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "common_functions.h"
+void event_startup (const int maxevents, request_t ** request, struct sockaddr ** addr, socklen_t * client_name_len);
 
-#ifdef _WIN
+inline void event_iter (request_t ** request);
 
-/* TODO */
+inline bool limit_requests (struct sockaddr * addr);
 
-void set_epollout_event_mask (int sock)
-{
-	
-}
+inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock);
 
-void set_epollin_event_mask (int sock)
-{
-	
-}
-
-void end_request(request_t * r)
-{
-	
-}
-
-void event_routine (void)
-{
-	
-}
-
-#endif
+inline void events_out_data (const int maxevents, int fd, request_t ** request);

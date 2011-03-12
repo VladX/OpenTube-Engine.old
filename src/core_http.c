@@ -49,7 +49,7 @@ static sem_t wsem[1];
 pthread_mutex_t wmutex[1];
 static pthread_mutex_t mutex_cbuf[1];
 static pthread_t wthreads[WORKER_THREADS];
-static request_t * wr_buf[WORKER_THREADS];
+static request_t * wr_buf[MAX_EVENTS];
 static uint wr_cur = 0;
 static const char * http_error_message[506];
 static const char * http_status_code[506];
@@ -825,12 +825,10 @@ static void * http_pass_to_handlers_routine (void * ptr)
 				{
 					err("deflate(): %d", res);
 					
+					pthread_mutex_lock(wmutex);
 					if (http_error(r, 500))
-					{
-						pthread_mutex_lock(wmutex);
 						end_request(r);
-						pthread_mutex_unlock(wmutex);
-					}
+					pthread_mutex_unlock(wmutex);
 					
 					goto _start_from_the_beginning_;
 				}
@@ -874,12 +872,10 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		else
 			http_append_to_output_buf(r, buf->data, r->out.content_length);
 		
+		pthread_mutex_lock(wmutex);
 		if (http_send(r))
-		{
-			pthread_mutex_lock(wmutex);
 			end_request(r);
-			pthread_mutex_unlock(wmutex);
-		}
+		pthread_mutex_unlock(wmutex);
 	}
 	
 	return NULL;
@@ -1233,7 +1229,8 @@ void http_cleanup (request_t * r)
 		set_epollin_event_mask(r->sock);
 	else
 	{
-		close(r->sock);
+		socket_close(r->sock);
+		socket_del_from_event_list(r->sock);
 		debug_print_2("close(): %d", r->sock);
 	}
 	

@@ -10,6 +10,7 @@ if (WIN32 OR MINGW)
  set (CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${CMAKE_CURRENT_SOURCE_DIR}/libs/win32/include)
  link_directories (${CMAKE_BINARY_DIR}/libs/win32)
  set (link_libraries_list ${link_libraries_list} ws2_32)
+ set (CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ws2_32)
  set (exec_filename opentube-server.exe)
 endif (WIN32 OR MINGW)
 
