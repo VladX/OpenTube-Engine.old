@@ -33,12 +33,14 @@
 #include <signal.h>
 #include <netdb.h>
 #include <resolv.h>
-#include <sys/sendfile.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 #include <time.h>
 #include <pthread.h>
 #include "common_functions.h"
+#ifdef HAVE_EPOLL
+ #include <sys/epoll.h>
+#endif
+#include "sendfile.h"
 #include "core_process.h"
 #include "core_http.h"
 #include "web.h"
@@ -372,7 +374,13 @@ inline void events_out_data (const int maxevents, int fd, request_t ** request)
 			
 			if (request[it]->temp.sendfile_fd != -1)
 			{
+				#ifdef _BSD
+				static off_t sbytes = 0;
+				res = sendfile(request[it]->temp.sendfile_fd, request[it]->sock, request[it]->temp.sendfile_offset, request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset, NULL, &sbytes, 0);
+				request[it]->temp.sendfile_offset += sbytes;
+				#else
 				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
+				#endif
 				
 				if (res == -1)
 				{
