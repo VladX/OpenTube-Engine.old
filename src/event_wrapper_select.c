@@ -63,6 +63,9 @@ static int maxfd_plus_one = 0;
 #define SELECT_WRITE 2
 
 
+#ifdef _WIN
+ #define recalc_maxfd_plus_one()
+#else
 static inline void recalc_maxfd_plus_one (void)
 {
 	static uint i;
@@ -73,6 +76,7 @@ static inline void recalc_maxfd_plus_one (void)
 		if (socklist[i] >= maxfd_plus_one)
 			maxfd_plus_one = socklist[i] + 1;
 }
+#endif
 
 static inline void _add (int fd)
 {
@@ -153,7 +157,7 @@ void event_routine (void)
 	const int enable = 1;
 	const long timeout_sec = EPOLL_TIMEOUT / 1000L;
 	const long timeout_usec = (EPOLL_TIMEOUT % 1000L) * 1000L;
-	int n, i, it, fd, tmp;
+	int n, i, it, fd;
 	socklen_t client_name_len;
 	request_t * request[maxevents];
 	struct sockaddr * addr;
@@ -182,12 +186,17 @@ void event_routine (void)
 		pthread_mutex_lock(mutex);
 		for (i = 0; i < socklist_len; i++)
 		{
-			if (getsockopt(socklist[i], SOL_SOCKET, SO_TYPE, (char *) &tmp, (socklen_t *) &it) == -1)
+			#ifdef _WIN
+			if (recv(socklist[i], NULL, 0, MSG_PEEK) == -1 && errno != EAGAIN)
+			#else
+			if (fcntl(socklist[i], F_GETFL) == -1)
+			#endif
 			{
 				socklist_len--;
 				socklist[i] = socklist[socklist_len];
 				sockmask[i] = sockmask[socklist_len];
 				recalc_maxfd_plus_one();
+				i--;
 				continue;
 			}
 			if (sockmask[i] == SELECT_READ)

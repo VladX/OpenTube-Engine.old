@@ -58,6 +58,7 @@
 
 #cmakedefine _LINUX
 #cmakedefine _BSD
+#undef WIN32
 #cmakedefine WIN32
 #cmakedefine MINGW
 #if defined(WIN32) || defined(MINGW)

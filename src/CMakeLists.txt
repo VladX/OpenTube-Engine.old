@@ -1,5 +1,6 @@
 set (DEBUG_LEVEL "0" CACHE STRING "Debug level")
 set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
+set (CCFLAGS "")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
 
 set (link_libraries_list pthread z pcre)
@@ -17,6 +18,7 @@ endif (WIN32 OR MINGW)
 if (MINGW)
  set (CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "-static")
  set (CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-static")
+ set (CCFLAGS "${CCFLAGS} -enable-stdcall-fixup")
 endif (MINGW)
 
 if (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
@@ -46,7 +48,7 @@ foreach (source_file ${source_files_web})
 endforeach (source_file)
 
 if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
- set (CCFLAGS "-Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")
+ set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")
  set (CMAKE_C_FLAGS "${CCFLAGS}")
  #set_property (SOURCE memcache.c PROPERTY COMPILE_FLAGS "${CCFLAGS}")
 endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)

@@ -3,5 +3,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #define MSG_DONTWAIT 0
+#undef EAGAIN
+#define EAGAIN WSAEWOULDBLOCK
 typedef unsigned int in_addr_t;
 #endif
