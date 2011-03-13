@@ -124,6 +124,7 @@ pid_t spawn_worker (char * procname)
 			break;
 		}
 		
+		worker_pid = pid;
 		waitpid(pid, &status, 0);
 		
 		if (status == 0)
