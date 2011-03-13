@@ -32,6 +32,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include "common_functions.h"
 #include "core_http.h"
