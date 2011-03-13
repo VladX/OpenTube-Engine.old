@@ -44,5 +44,5 @@ def run_test():
 		response_line, headers, body = test[i].do(request_headers)
 		for (k, v) in headers:
 			if k.lower() == 'connection' and v.lower().find('keep-alive') == -1:
-				print('Keep-Alive max connections: %d' % i)
+				print('Keep-Alive max connections per client: %d' % i)
 				return

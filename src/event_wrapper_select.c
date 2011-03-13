@@ -54,8 +54,8 @@ extern int sockfd;
 static pthread_mutex_t mutex[1];
 static fd_set rfds;
 static fd_set wfds;
-static int socklist[MAX_EVENTS];
-static uchar sockmask[MAX_EVENTS];
+static int socklist[SELECT_MAX_CONNECTIONS];
+static uchar sockmask[SELECT_MAX_CONNECTIONS];
 static uint socklist_len = 0;
 static int maxfd_plus_one = 0;
 
@@ -77,7 +77,7 @@ static inline void recalc_maxfd_plus_one (void)
 static inline void _add (int fd)
 {
 	pthread_mutex_lock(mutex);
-	if (socklist_len >= MAX_EVENTS)
+	if (socklist_len >= SELECT_MAX_CONNECTIONS)
 	{
 		pthread_mutex_unlock(mutex);
 		return;
