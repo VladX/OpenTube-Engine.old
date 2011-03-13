@@ -264,14 +264,14 @@ void event_routine (void)
 				continue;
 				_h_req:
 				
-				pthread_mutex_unlock(wmutex);
-				
 				request[it]->sock = fd;
+				
+				pthread_mutex_unlock(wmutex);
 				
 				if (http_serve_client(request[it]))
 					end_request(request[it]);
 			}
-			else /* (FD_ISSET(socklist[i], &wfds)) */
+			else if (FD_ISSET(socklist[i], &wfds))
 			{
 				pthread_mutex_lock(wmutex);
 				events_out_data(maxevents, fd, request);
