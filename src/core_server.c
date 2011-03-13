@@ -382,7 +382,7 @@ inline void events_out_data (const int maxevents, int fd, request_t ** request)
 				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
 				#endif
 				
-				if (res == -1)
+				if (res == -1 && errno != EAGAIN)
 				{
 					perr("sendfile(): %d", (int) res);
 					close(request[it]->temp.sendfile_fd);
