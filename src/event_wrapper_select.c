@@ -37,6 +37,12 @@
 #include "core_http.h"
 #include "event_wrapper.h"
 
+#ifndef TCP_CORK
+ #ifdef _BSD
+  #define TCP_CORK TCP_NOPUSH
+ #endif
+#endif
+
 #ifndef HAVE_EPOLL
 #ifdef HAVE_SELECT
 
