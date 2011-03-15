@@ -75,7 +75,7 @@ static inline void http_buffer_moved (request_t * r, long offset)
 	}
 }
 
-inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
+inline void http_append_to_output_buf (request_t * r, const void * pointer, uint len)
 {
 	struct iovec * iov;
 	uint offset;
@@ -86,7 +86,7 @@ inline void http_append_to_output_buf (request_t * r, void * pointer, uint len)
 	
 	iov = (struct iovec *) r->out_vec->data;
 	
-	iov[offset].iov_base = pointer;
+	iov[offset].iov_base = (void *) pointer;
 	iov[offset].iov_len = len;
 	
 	r->temp.writev_total += len;
@@ -100,7 +100,7 @@ inline void http_append_str (request_t * r, char * str)
 static inline void http_append_headers (request_t * r, ushort code)
 {
 	http_append_to_output_buf(r, "HTTP/1.1 ", 9);
-	http_append_to_output_buf(r, (void *) http_status_code[code], http_status_code_len[code]);
+	http_append_to_output_buf(r, http_status_code[code], http_status_code_len[code]);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, header_server_string.str, header_server_string.len);
 	http_append_to_output_buf(r, CLRF, 2);
@@ -196,7 +196,7 @@ static bool http_error (request_t * r, ushort code)
 	r->out.content_type.len = HTTP_ERROR_CONTENT_TYPE_LEN;
 	http_append_headers(r, code);
 	http_append_to_output_buf(r, CLRF, 2);
-	http_append_to_output_buf(r, (void *) http_error_message[code], r->out.content_length);
+	http_append_to_output_buf(r, http_error_message[code], r->out.content_length);
 	
 	return http_send(r);
 }
@@ -860,7 +860,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		http_append_to_output_buf(r, "Cache-Control: no-cache, must-revalidate" CLRF "Pragma: no-cache" CLRF, 60);
 		curtime = time(NULL);
-		gmtime_r(&curtime, &c_time);
+		(void) gmtime_r(&curtime, &c_time);
 		http_rfc822_date(r->temp.dates, &c_time);
 		http_append_to_output_buf(r, "Date: ", 6);
 		http_append_to_output_buf(r, r->temp.dates, 29);
@@ -868,7 +868,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		if (accept_gzip)
 		{
-			http_append_to_output_buf(r, (void *) gzip_header, 10);
+			http_append_to_output_buf(r, gzip_header, 10);
 			http_append_to_output_buf(r, r->temp.gzip_buf->data, i);
 			r->temp.gzip_ending[0] = crc32(0, buf->data, buf->cur_len);
 			r->temp.gzip_ending[1] = buf->cur_len;
@@ -876,7 +876,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 			r->temp.gzip_ending[0] = bswap_32(r->temp.gzip_ending[0]);
 			r->temp.gzip_ending[1] = bswap_32(r->temp.gzip_ending[1]);
 			#endif
-			http_append_to_output_buf(r, (void *) r->temp.gzip_ending, 8);
+			http_append_to_output_buf(r, r->temp.gzip_ending, 8);
 		}
 		else
 			http_append_to_output_buf(r, buf->data, r->out.content_length);
@@ -985,7 +985,7 @@ static bool http_response (request_t * r)
 		
 		time_t curtime = time(NULL);
 		struct tm c_time;
-		gmtime_r(&curtime, &c_time);
+		(void) gmtime_r(&curtime, &c_time);
 		http_rfc822_date(r->temp.dates, &c_time);
 		
 		http_append_to_output_buf(r, "Last-Modified: ", 15);
@@ -997,7 +997,7 @@ static bool http_response (request_t * r)
 		http_append_to_output_buf(r, CLRF, 2);
 		
 		curtime += HTTP_STATIC_EXPIRES;
-		gmtime_r(&curtime, &c_time);
+		(void) gmtime_r(&curtime, &c_time);
 		
 		http_rfc822_date(r->out.expires.str, &c_time);
 		http_append_to_output_buf(r, "Expires: ", 9);
@@ -1124,7 +1124,7 @@ bool http_serve_client (request_t * request)
 		http_buffer_moved(request, offset);
 	buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
 	
-	while ((r = recv(request->sock, buf, HTTP_RECV_BUFFER, MSG_DONTWAIT)) > 0)
+	while ((r = recv(request->sock, (void *) buf, HTTP_RECV_BUFFER, MSG_DONTWAIT)) > 0)
 	{
 		request->b->cur_len -= HTTP_RECV_BUFFER - r;
 		

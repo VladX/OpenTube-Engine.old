@@ -223,7 +223,7 @@ void event_routine (void)
 				while ((fd = accept(srvfd, addr, &client_name_len)) != -1)
 				{
 					#ifdef _WIN
-					ioctlsocket(fd, FIONBIO, &enable);
+					ioctlsocket(fd, FIONBIO, (void *) &enable);
 					#else
 					(void) fcntl(fd, F_SETFL, O_NONBLOCK);
 					#endif
@@ -232,14 +232,14 @@ void event_routine (void)
 					if (config.limit_req && limit_requests(addr))
 					{
 						debug_print_2("client has exceeded the allowable requests per second (rps) limit, request %d discarded", fd);
-						setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *) &linger_opt, sizeof(linger_opt));
 						socket_close(fd);
 						break;
 					}
 					if (config.limit_sim_req && limit_sim_requests(addr, client_name_len, fd))
 					{
 						debug_print_2("client has exceeded the allowable simultaneous requests limit, request %d discarded", fd);
-						setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *) &linger_opt, sizeof(linger_opt));
 						socket_close(fd);
 						break;
 					}

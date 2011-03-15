@@ -34,6 +34,7 @@
 #include "win32_utils.h"
 
 
+#ifndef _WIN
 static const char * statustomsg (int status)
 {
 	switch (status)
@@ -66,6 +67,7 @@ static void quit_worker (int prm)
 {
 	exit(0);
 }
+#endif
 
 pid_t spawn_worker (char * procname)
 {

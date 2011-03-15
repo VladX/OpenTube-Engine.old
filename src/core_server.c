@@ -663,14 +663,14 @@ static int connect_to_socket (void)
 	}
 	
 	#ifdef _WIN
-	if (ioctlsocket(sockfd, FIONBIO, &enable) == -1)
+	if (ioctlsocket(sockfd, FIONBIO, (void *) &enable) == -1)
 		peerr(7, "ioctlsocket(): %d", -1);
 	#else
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1)
 		peerr(7, "fcntl(): %d", -1);
 	#endif
 	
-	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable))) < 0)
+	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &enable, sizeof(enable))) < 0)
 		peerr(7, "setsockopt(): %d", res);
 	
 	#ifndef _WIN

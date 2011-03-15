@@ -126,7 +126,7 @@ static void tpl_process_file (tpl_cont_t ** tpl, const char * file)
 
 tpl_cont_t * tpl_load (const char * file)
 {
-	tpl_cont_t * tpl;
+	tpl_cont_t * tpl = NULL;
 	
 	tpl_process_file(&tpl, file);
 	
@@ -146,5 +146,5 @@ void tpl_init (void)
 	//////
 	// XXX
 	//////
-	tpl_load("/home/vlad/src/OpenTube-Engine/web/templates/default/main.tpl");
+	tpl_load("web/templates/default/main.tpl");
 }
