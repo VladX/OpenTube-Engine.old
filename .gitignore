@@ -1,11 +1,12 @@
-/*.c
 a.out
 *.o
 *.pyc
+*.ignore
 /objs/*
 opentube-server
-/Makefile
 src/config.h
+Makefile
 CMakeCache.txt
 cmake_install.cmake
+install_manifest.txt
 CMakeFiles
