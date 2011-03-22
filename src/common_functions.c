@@ -19,6 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifdef _WIN
+ #include <direct.h>
+#endif
 #include "common_functions.h"
 
 
@@ -117,7 +120,7 @@ frag_pool_t * frag_pool_create (uint size, uint res_len)
 
 void * frag_pool_alloc (frag_pool_t * p)
 {
-	static uint i;
+	uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (p->e[i].free)
@@ -166,7 +169,7 @@ void frag_pool_free_alt (frag_pool_t * p, uint i)
 
 void frag_pool_free (frag_pool_t * p, void * ptr)
 {
-	static uint i;
+	uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (!(p->e[i].free) && p->e[i].data == ptr)
@@ -200,7 +203,7 @@ void buf_destroy (buf_t * b)
 
 long buf_expand (buf_t * b, uint add)
 {
-	static void * old_ptr;
+	void * old_ptr;
 	
 	b->cur_len += add;
 	
@@ -217,7 +220,7 @@ long buf_expand (buf_t * b, uint add)
 
 long buf_resize (buf_t * b, uint new_size)
 {
-	static void * old_ptr;
+	void * old_ptr;
 	
 	b->cur_len = new_size;
 	
@@ -265,6 +268,12 @@ void int_to_str (int value, char * result, int base)
 	}
 }
 
+void str_to_lower (char * str)
+{
+	for (; * str != '\0'; str++)
+		* str = TO_LOWER(* str);
+}
+
 bool is_num (char * str)
 {
 	if (* str == '-')
@@ -275,6 +284,21 @@ bool is_num (char * str)
 			return false;
 	
 	return true;
+}
+
+char * gnu_getcwd (void)
+{
+	uint size = 64;
+	char * buffer = NULL;
+	
+	for (;; size += 64)
+	{
+		buffer = (char *) realloc(buffer, size);
+		if (getcwd(buffer, size) == buffer)
+			return buffer;
+		if (errno != ERANGE)
+			return NULL;
+	}
 }
 
 #ifdef _WIN

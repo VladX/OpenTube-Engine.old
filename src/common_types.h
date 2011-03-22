@@ -34,13 +34,13 @@
 
 #define CLRF "\r\n"
 
-#define uchar unsigned char
-#define ushort unsigned short
-#define uint unsigned int
-#define ulong unsigned long
+typedef unsigned char uchar;
+typedef unsigned short ushort;
+typedef unsigned int uint;
+typedef unsigned long ulong;
 
 #ifdef _WIN
-typedef unsigned int __uint32_t;
+typedef uint __uint32_t;
 #endif
 
 
@@ -238,4 +238,5 @@ typedef struct
 	uint limit_sim_threshold;
 	uchar cache_update;
 	u_str_t cache_prefix;
+	uchar tpl_cache_update;
 } config_t;

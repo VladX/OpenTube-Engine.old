@@ -22,6 +22,7 @@
 #ifndef E_WEB_HANDLER_H
 
 #include "common_functions.h"
+#include "templates.h"
 
 #define E_WEB_HANDLER_H
 

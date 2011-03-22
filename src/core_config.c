@@ -57,6 +57,7 @@ static void default_config (void)
 	config.cache_prefix.str = (uchar *) "/cache/";
 	config.cache_prefix.len = strlen((char *) config.cache_prefix.str);
 	config.cache_update = 0;
+	config.tpl_cache_update = 0;
 }
 
 static void process_directive (conf_elem * el)

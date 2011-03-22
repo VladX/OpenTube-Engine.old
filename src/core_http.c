@@ -331,8 +331,8 @@ void http_parse_query_string (request_t * r)
 
 void http_parse_cookies (request_t * r)
 {
-	static header_t * hdr;
-	static uint i;
+	header_t * hdr;
+	uint i;
 	
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{

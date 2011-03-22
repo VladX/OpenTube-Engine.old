@@ -121,6 +121,10 @@ void buf_free (buf_t * b);
 
 void int_to_str (int value, char * result, int base);
 
+void str_to_lower (char * str);
+
 bool is_num (char * str);
+
+char * gnu_getcwd (void);
 
 #endif

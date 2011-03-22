@@ -1,0 +1,19 @@
+// Start
+
+<TMPL_loop array_int>
+	Array size:   <TMPL_var __SIZE__>
+	Counter:      <TMPL_var __COUNTER__>
+	Rev. counter: <TMPL_var __RCOUNTER__>
+	Data: <TMPL_var __CONTENT__>
+	<TMPL_if __FIRST__>First<TMPL_elsif __INNER__>Inner<TMPL_elsif __LAST__>Last</TMPL_if>, <TMPL_if __EVEN__>Even</TMPL_if> <TMPL_if __ODD__>Odd</TMPL_if> iteration
+</TMPL_loop>
+
+<TMPL_foreach array_int as iter>
+	Array size:   <TMPL_var __SIZE__>
+	Counter:      <TMPL_var __COUNTER__>
+	Rev. counter: <TMPL_var __RCOUNTER__>
+	Data: <TMPL_var iter>
+	<TMPL_if __FIRST__>First<TMPL_elsif __INNER__>Inner<TMPL_elsif __LAST__>Last</TMPL_if>, <TMPL_if __EVEN__>Even</TMPL_if> <TMPL_if __ODD__>Odd</TMPL_if> iteration
+</TMPL_foreach>
+
+// End.

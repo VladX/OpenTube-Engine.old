@@ -19,13 +19,13 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "opentube/tpl.h"
-
 WEB_CALLBACK(video, "/video/", false)
 {
-	PRINT(HEADER("Test", ""));
-	PRINT("Test");
-	PRINT(FOOTER);
+	u_str_t * s;
+	tpl_set_var("title", "");
+	s = tpl_load("main.tpl");
+	if (s != NULL)
+		APPEND(s->str, s->len);
 	
 	return input_buffer;
 }

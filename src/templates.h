@@ -19,4 +19,8 @@
  * Boston, MA  02110-1301  USA
  */
 
+void tpl_set_var (const char * name, const char * value);
+
+u_str_t * tpl_load (const char * file);
+
 void tpl_init (void);
