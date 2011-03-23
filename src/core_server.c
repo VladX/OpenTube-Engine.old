@@ -37,6 +37,7 @@
 #include <time.h>
 #include <pthread.h>
 #include "common_functions.h"
+#include "localization.h"
 #ifdef HAVE_EPOLL
  #include <sys/epoll.h>
 #endif
@@ -713,6 +714,8 @@ void init (char * procname)
 {
 	debug_print_3("%s...", "init");
 	worker_pid = 0;
+	
+	localization_init();
 	
 	#if IPV6_SUPPORT
 	if (* (http_server_tcp_addr.str) == '[' && * (http_server_tcp_addr.str + http_server_tcp_addr.len - 1) == ']')

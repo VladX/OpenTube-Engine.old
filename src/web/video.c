@@ -22,7 +22,7 @@
 WEB_CALLBACK(video, "/video/", false)
 {
 	u_str_t * s;
-	tpl_set_var("title", "");
+	tpl_set_var("title", s(1));
 	s = tpl_load("main.tpl");
 	if (s != NULL)
 		APPEND(s->str, s->len);

@@ -34,12 +34,14 @@ add_subdirectory (test_features test_features)
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
-if (GENERATE_CALLBACKS)
- find_program (python_path python)
- if (python_path)
+find_program (python_path python)
+
+if (python_path)
+ if (GENERATE_CALLBACKS)
   execute_process (COMMAND ${python_path} callbacks/generate-callbacks.c.py ${CMAKE_CURRENT_SOURCE_DIR}/web/ WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web)
- endif (python_path)
-endif (GENERATE_CALLBACKS)
+ endif (GENERATE_CALLBACKS)
+ execute_process (COMMAND ${python_path} update-strings.h.py WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lang)
+endif (python_path)
 
 file (GLOB source_files *.c)
 file (STRINGS web/compile.list source_files_web)

@@ -19,36 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <libintl.h>
-#include <locale.h>
-#include "common_functions.h"
-#include "lang/strings.h"
+#undef _
+#define s(STRING) ((void *) localization_get_string(STRING))
 
-static const uchar ** lstrings;
+const uchar * localization_get_string (uint id);
 
-const uchar * localization_get_string (uint id)
-{
-	return lstrings[id];
-}
-
-static void localization_load_strings (void)
-{
-	uint i, len = ARRAY_LENGTH(strings);
-	
-	for (i = 0; i < len; i++)
-	{
-		lstrings[i] = (const uchar *) strings[i];
-		if (strings[i] == NULL)
-			continue;
-		lstrings[i] = (const uchar *) gettext(strings[i]);
-	}
-}
-
-void localization_init (void)
-{
-	setlocale(LC_ALL, "");
-	bindtextdomain(GETTEXT_DOMAIN, LOCALE_DIR);
-	textdomain(GETTEXT_DOMAIN);
-	lstrings = malloc(sizeof(strings));
-	localization_load_strings();
-}
+void localization_init (void);

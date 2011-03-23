@@ -22,6 +22,8 @@
 #define PROG_NAME "Opentube"
 #define PROG_VERSION "0.1alpha"
 #define DEBUG_LEVEL @DEBUG_LEVEL@ // 0 - disabled
+#define GETTEXT_DOMAIN "@GETTEXT_DOMAIN@"
+#define LOCALE_DIR "@LOCALE_DIR@"
 #define SERVER_STRING PROG_NAME "/" PROG_VERSION
 #define IPV6_SUPPORT 1
 #define WORKER_THREADS 5

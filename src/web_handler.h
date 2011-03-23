@@ -23,6 +23,7 @@
 
 #include "common_functions.h"
 #include "templates.h"
+#include "localization.h"
 
 #define E_WEB_HANDLER_H
 
