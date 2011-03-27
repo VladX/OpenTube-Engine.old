@@ -153,6 +153,8 @@ void event_routine (void)
 			}
 			else if (e[i].filter == EVFILT_READ)
 			{
+				debug_print_3("%d", e[i].data);
+				
 				r = event_fetch_request(e[i].ident);
 				
 				if (http_serve_client(r))
