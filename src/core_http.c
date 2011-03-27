@@ -160,7 +160,7 @@ static inline bool http_send (request_t * r)
 			}
 		}
 		
-		set_epollout_event_mask(r->sock);
+		set_epollout_event_mask(r);
 		
 		return false;
 	}
@@ -750,7 +750,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	#endif
 	{
 		r->temp.sendfile_fd = fd;
-		set_epollout_event_mask(r->sock);
+		set_epollout_event_mask(r);
 		
 		return false;
 	}
@@ -1232,7 +1232,7 @@ bool http_serve_client (request_t * request)
 void http_cleanup (request_t * r)
 {
 	if (r->keepalive)
-		set_epollin_event_mask(r->sock);
+		set_epollin_event_mask(r);
 	else
 	{
 		socket_close(r->sock);

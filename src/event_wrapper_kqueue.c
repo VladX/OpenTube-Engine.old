@@ -61,14 +61,14 @@ static inline void kqueue_change (int fd, short filter, void * odata)
 	kevent(kq, &ev, 1, NULL, 0, NULL);
 }
 
-inline void set_read_mask (int fd, void * odata)
+inline void set_read_mask (request_t * r)
 {
-	kqueue_change(fd, EVFILT_READ, odata);
+	kqueue_change(r->sock, EVFILT_READ, r);
 }
 
-inline void set_write_mask (int fd, void * odata)
+inline void set_write_mask (request_t * r)
 {
-	kqueue_change(fd, EVFILT_WRITE, odata);
+	kqueue_change(r->sock, EVFILT_WRITE, r);
 }
 
 inline void end_request(request_t * r)
