@@ -55,7 +55,7 @@ static inline void kqueue_change (int fd, short filter)
 	ev.filter = filter;
 	ev.flags = EV_ADD | EV_ENABLE;
 	ev.fflags = 0;
-	ev.data = NULL;
+	ev.data = 0;
 	ev.udata = NULL;
 	
 	kevent(kq, &ev, 1, NULL, 0, NULL);
@@ -114,7 +114,7 @@ void event_routine (void)
 		timeout.tv_sec = timeout_sec;
 		timeout.tv_nsec = timeout_nsec;
 		
-		n = kevent(kq, NULL, 0, &e, MAX_EVENTS, &timeout);
+		n = kevent(kq, NULL, 0, e, MAX_EVENTS, &timeout);
 		
 		for (i = 0; i < n; i++)
 		{
