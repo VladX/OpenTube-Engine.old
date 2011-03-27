@@ -173,17 +173,17 @@ INT_32 FnIconv::Handler(CDT            * aArguments,
 	size_t iDstLength     = CTPP_ESCAPE_BUFFER_LEN;
 
 	char         aDstData[CTPP_ESCAPE_BUFFER_LEN];
-//#if defined(linux) || defined(__APPLE__)
-//	char       * aSrcData = (char *)sWhat.data();
-//#else
+#if defined(linux) || defined(__APPLE__)
+	char       * aSrcData = (char *)sWhat.data();
+#else
 	const char * aSrcData = (const char *)sWhat.data();
-//#endif
+#endif
 	STLW::string sResult;
 	for (;;)
 	{
 		char * aDstTMP        = aDstData;
 		size_t iDstLengthTMP  = iDstLength;
-		size_t iResult        = iconv(oIconvConverter, (const char **) &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
+		size_t iResult        = iconv(oIconvConverter, &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
 
 		if (aDstTMP - aDstData > 0) { sResult.append(aDstData, aDstTMP - aDstData); }
 
