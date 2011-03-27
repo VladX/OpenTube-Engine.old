@@ -53,5 +53,5 @@ for i in xrange(maxid + 1):
 	if i != maxid:
 		f.write(', ')
 
-f.write('};')
+f.write('};\n')
 f.close()
