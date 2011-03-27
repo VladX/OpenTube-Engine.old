@@ -47,7 +47,7 @@ extern int sockfd;
 static int kq;
 
 
-static inline void kqueue_change (int fd, short filter)
+static inline void kqueue_change (int fd, short filter, void * odata)
 {
 	static struct kevent ev;
 	
@@ -56,19 +56,19 @@ static inline void kqueue_change (int fd, short filter)
 	ev.flags = EV_ADD | EV_ENABLE;
 	ev.fflags = 0;
 	ev.data = 0;
-	ev.udata = NULL;
+	ev.udata = odata;
 	
 	kevent(kq, &ev, 1, NULL, 0, NULL);
 }
 
 inline void set_read_mask (int fd)
 {
-	kqueue_change(fd, EVFILT_READ);
+	kqueue_change(fd, EVFILT_READ, NULL);
 }
 
 inline void set_write_mask (int fd)
 {
-	kqueue_change(fd, EVFILT_WRITE);
+	kqueue_change(fd, EVFILT_WRITE, NULL);
 }
 
 inline void end_request(request_t * r)
@@ -144,7 +144,8 @@ void event_routine (void)
 						break;
 					}
 					
-					kqueue_change(fd, EVFILT_READ);
+					r = event_fetch_request(e[i].ident);
+					kqueue_change(fd, EVFILT_READ, r);
 					
 					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &enable, sizeof(enable)) == -1)
 						perr("setsockopt(): %d", -1);
@@ -153,29 +154,44 @@ void event_routine (void)
 			}
 			else if (e[i].filter == EVFILT_READ)
 			{
-				debug_print_1("%d", e[i].data);
+				if (e[i].data == 0)
+				{
+					r = event_find_request(e[i].ident);
+					
+					if (r != NULL)
+					{
+						r->keepalive = false;
+						end_request(r);
+					}
+					
+					continue;
+				}
 				
-				r = event_fetch_request(e[i].ident);
+				/*r = event_fetch_request(e[i].ident);*/
+				r = e[i].udata;
 				
 				if (http_serve_client(r))
 					end_request(r);
 			}
 			else if (e[i].filter == EVFILT_WRITE)
 			{
+				if (e[i].flags & EV_EOF)
+				{
+					r = event_find_request(e[i].ident);
+					
+					if (r != NULL)
+					{
+						r->keepalive = false;
+						end_request(r);
+					}
+					
+					continue;
+				}
+				
 				pthread_mutex_lock(wmutex);
 				events_out_data(e[i].ident);
 				pthread_mutex_unlock(wmutex);
 			}
-			/*else if (e[i].events & EPOLLHUP)
-			{
-				r = event_find_request(e[i].data.fd);
-				
-				if (r != NULL)
-				{
-					r->keepalive = false;
-					end_request(r);
-				}
-			}*/
 		}
 	}
 }
