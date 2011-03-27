@@ -153,7 +153,7 @@ void event_routine (void)
 			}
 			else if (e[i].filter == EVFILT_READ)
 			{
-				r = event_fetch_request(e[i].data.fd);
+				r = event_fetch_request(e[i].ident);
 				
 				if (http_serve_client(r))
 					end_request(r);
@@ -161,7 +161,7 @@ void event_routine (void)
 			else if (e[i].filter == EVFILT_WRITE)
 			{
 				pthread_mutex_lock(wmutex);
-				events_out_data(e[i].data.fd);
+				events_out_data(e[i].ident);
 				pthread_mutex_unlock(wmutex);
 			}
 			/*else if (e[i].events & EPOLLHUP)
