@@ -85,17 +85,17 @@ INT_32 StringIconvOutputCollector::Collect(const void     * vData,
 	size_t iDstLength     = CTPP_ESCAPE_BUFFER_LEN;
 
 	char         aDstData[CTPP_ESCAPE_BUFFER_LEN];
-#if defined(linux) || defined(__APPLE__)
-	char       * aSrcData = (char *)vData;
-#else
+//#if defined(linux) || defined(__APPLE__)
+//	char       * aSrcData = (char *)vData;
+//#else
 	const char * aSrcData = (const char *)vData;
-#endif
+//#endif
 
 	for (;;)
 	{
 		char * aDstTMP        = aDstData;
 		size_t iDstLengthTMP  = iDstLength;
-		size_t iResult        = iconv(oIconv, (char **) &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
+		size_t iResult        = iconv(oIconv, (const char **) &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
 
 		if (aDstTMP - aDstData > 0) { sResult.append(aDstData, aDstTMP - aDstData); }
 
