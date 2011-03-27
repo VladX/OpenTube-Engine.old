@@ -35,12 +35,12 @@
 #include "FnRandom.hpp"
 
 #include <stdlib.h>
+#include <time.h>
 
-#ifdef _MSC_VER
-	#define random()        rand()
-	#define INT_64(x)       (INT_64)(x)
-	#define srandomdev()    srand( (unsigned)time(NULL) );
-#endif
+#define random()        rand()
+#define INT_64(x)       (INT_64)(x)
+#define srandomdev()    srand( (unsigned)time(NULL) );
+#define srandom(X) srand((unsigned int) X)
 
 namespace CTPP // C++ Template Engine
 {
@@ -89,7 +89,7 @@ INT_32 FnRandom::Handler(CDT            * aArguments,
 		}
 
 		// Invalid data type, just return 0
-		oCDTRetVal = 0;
+		oCDTRetVal = (INT_32) 0;
 		return 0;
 	}
 	// RAND(x, y) -> x .. y
@@ -121,7 +121,7 @@ INT_32 FnRandom::Handler(CDT            * aArguments,
 		}
 
 		// Invalid data type, just return 0
-		oCDTRetVal = 0;
+		oCDTRetVal = (INT_32) 0;
 		return 0;
 	}
 

@@ -37,7 +37,7 @@ typedef struct
 } conf_elem;
 
 static const char * required_directives[] = {
-"listen", "user", "group", "http-temp-dir", "http-document-root", "cache-prefix", "cache-update"
+"listen", "user", "group", "pid-file", "http-document-root", "cache-prefix", "cache-update"
 };
 
 
@@ -79,10 +79,10 @@ static void process_directive (conf_elem * el)
 		if (port != addr)
 		{
 			if (!(* addr))
-				eerr(3, "%s", "Address is empty!"); /* ugly, but eerr() requires an at least one parameter to be specified after format string */
+				eerr(1, "%s", "Address is empty!"); /* ugly, but eerr() requires an at least one parameter to be specified after format string */
 			http_port = atoi(port);
 			if (http_port <= 0 || http_port > 65535)
-				eerr(2, "Invalid port: %s", port);
+				eerr(1, "Invalid port: %s", port);
 			set_cpy_str(&http_server_tcp_addr, addr);
 			set_cpy_str(&http_server_unix_addr, "");
 		}
@@ -98,8 +98,15 @@ static void process_directive (conf_elem * el)
 		config.user = el->value;
 	else if (strcmp(el->key, "group") == 0)
 		config.group = el->value;
-	else if (strcmp(el->key, "http-temp-dir") == 0)
-		config.temp_dir = el->value;
+	else if (strcmp(el->key, "pid-file") == 0)
+	{
+		uint pidlen = strlen(el->value);
+		if (pidlen < 3 || el->value[pidlen - 1] == '/')
+			EINVALIDVAL;
+		if (el->value[0] != '/')
+			eerr(1, "You should specify absolute path name for the \"%s\"", el->key);
+		config.pid = el->value;
+	}
 	else if (strcmp(el->key, "http-document-root") == 0)
 	{
 		config.document_root.str = (uchar *) el->value;

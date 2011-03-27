@@ -39,4 +39,8 @@ ssize_t writev (int fd, const struct iovec * vector, int count);
 
 ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count);
 
+void win32_fatal_error (const char * msg);
+
+LPCWSTR win32_utf8_to_utf16 (const char * src);
+
 #endif

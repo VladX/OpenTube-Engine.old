@@ -19,12 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-void event_startup (const int maxevents, request_t ** request, struct sockaddr ** addr, socklen_t * client_name_len);
+request_t * event_find_request (int sock);
 
-inline void event_iter (request_t ** request);
+request_t * event_fetch_request (int sock);
+
+void event_startup (struct sockaddr ** addr, socklen_t * client_name_len);
+
+inline void event_iter (void);
 
 inline bool limit_requests (struct sockaddr * addr);
 
 inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock);
 
-inline void events_out_data (const int maxevents, int fd, request_t ** request);
+inline void events_out_data (int fd);

@@ -21,6 +21,12 @@
 
 /* This is a simple wrapper for systems, that doesn't support epoll_create() system call, but support select() */
 
+#include "common_functions.h"
+
+#ifndef HAVE_EPOLL
+#ifndef HAVE_KQUEUE
+#ifdef HAVE_SELECT
+
 #define _GNU_SOURCE
 #define __USE_GNU
 #include <sys/types.h>
@@ -34,7 +40,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include "common_functions.h"
 #include "core_http.h"
 #include "event_wrapper.h"
 
@@ -44,9 +49,6 @@
  #endif
 #endif
 
-#ifndef HAVE_EPOLL
-#ifdef HAVE_SELECT
-
 
 extern pthread_mutex_t wmutex[1];
 extern int sockfd;
@@ -54,6 +56,7 @@ extern int sockfd;
 static pthread_mutex_t mutex[1];
 static fd_set rfds;
 static fd_set wfds;
+static fd_set exfds;
 static int socklist[SELECT_MAX_CONNECTIONS];
 static uchar sockmask[SELECT_MAX_CONNECTIONS];
 static uint socklist_len = 0;
@@ -152,14 +155,13 @@ inline void end_request(request_t * r)
 
 void event_routine (void)
 {
-	const int maxevents = MAX_EVENTS;
 	const int srvfd = sockfd;
 	const int enable = 1;
 	const long timeout_sec = EPOLL_TIMEOUT / 1000L;
 	const long timeout_usec = (EPOLL_TIMEOUT % 1000L) * 1000L;
-	int n, i, it, fd;
+	int n, i, fd;
 	socklen_t client_name_len;
-	request_t * request[maxevents];
+	request_t * r;
 	struct sockaddr * addr;
 	struct linger linger_opt;
 	struct timeval tv;
@@ -169,7 +171,7 @@ void event_routine (void)
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;
 	
-	event_startup(maxevents, request, &addr, &client_name_len);
+	event_startup(&addr, &client_name_len);
 	
 	maxfd_plus_one = srvfd + 1;
 	
@@ -177,10 +179,11 @@ void event_routine (void)
 	
 	for (;;)
 	{
-		event_iter(request);
+		event_iter();
 		
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);
+		FD_ZERO(&exfds);
 		FD_SET(srvfd, &rfds);
 		
 		pthread_mutex_lock(mutex);
@@ -192,6 +195,15 @@ void event_routine (void)
 			if (fcntl(socklist[i], F_GETFL) == -1)
 			#endif
 			{
+				#ifdef _WIN
+				r = event_find_request(socklist[i]);
+				
+				if (r != NULL)
+				{
+					r->keepalive = false;
+					end_request(r);
+				}
+				#endif
 				socklist_len--;
 				socklist[i] = socklist[socklist_len];
 				sockmask[i] = sockmask[socklist_len];
@@ -199,6 +211,7 @@ void event_routine (void)
 				i--;
 				continue;
 			}
+			FD_SET(socklist[i], &exfds);
 			if (sockmask[i] == SELECT_READ)
 				FD_SET(socklist[i], &rfds);
 			else
@@ -209,7 +222,7 @@ void event_routine (void)
 		tv.tv_sec = timeout_sec;
 		tv.tv_usec = timeout_usec;
 		
-		n = select(maxfd_plus_one, &rfds, &wfds, NULL, &tv);
+		n = select(maxfd_plus_one, &rfds, &wfds, &exfds, &tv);
 		
 		if (n <= 0)
 			continue;
@@ -259,36 +272,35 @@ void event_routine (void)
 			fd = socklist[i];
 			pthread_mutex_unlock(mutex);
 			
-			if (FD_ISSET(fd, &rfds))
+			if (FD_ISSET(fd, &exfds))
 			{
-				pthread_mutex_lock(wmutex);
+				debug_print_3("select exeption on fd %d", fd);
 				
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == socklist[i])
-						goto _h_req;
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == -1)
-						goto _h_req;
-				pthread_mutex_unlock(wmutex);
-				continue;
-				_h_req:
+				r = event_find_request(fd);
 				
-				request[it]->sock = fd;
+				if (r != NULL)
+				{
+					r->keepalive = false;
+					end_request(r);
+				}
+			}
+			else if (FD_ISSET(fd, &rfds))
+			{
+				r = event_fetch_request(fd);
 				
-				pthread_mutex_unlock(wmutex);
-				
-				if (http_serve_client(request[it]))
-					end_request(request[it]);
+				if (http_serve_client(r))
+					end_request(r);
 			}
 			else if (FD_ISSET(socklist[i], &wfds))
 			{
 				pthread_mutex_lock(wmutex);
-				events_out_data(maxevents, fd, request);
+				events_out_data(fd);
 				pthread_mutex_unlock(wmutex);
 			}
 		}
 	}
 }
 
+#endif
 #endif
 #endif

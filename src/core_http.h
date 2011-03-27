@@ -27,4 +27,4 @@ bool http_temp_file (request_t * r);
 
 void http_cleanup (request_t * r);
 
-void http_prepare (request_t * r);
+void http_prepare (request_t * r, bool save_space);

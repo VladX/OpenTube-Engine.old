@@ -68,12 +68,12 @@ INT_32 FnInSet::Handler(CDT            * aArguments,
 	{
 		if (oCDT1.Equal(aArguments[iI]))
 		{
-			oCDTRetVal = 1;
+			oCDTRetVal = (INT_32) 1;
 			return 0;
 		}
 	}
 
-	oCDTRetVal = 0;
+	oCDTRetVal = (INT_32) 0;
 return 0;
 }
 

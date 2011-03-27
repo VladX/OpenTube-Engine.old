@@ -135,4 +135,26 @@ ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count)
 	return 0;
 }
 
+void win32_fatal_error (const char * msg)
+{
+	LPVOID lpvMessageBuffer;
+	
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (LPTSTR) &lpvMessageBuffer, 0, NULL);
+	
+	eerr(0, "%s: %s (code: %d)", msg, (char *) lpvMessageBuffer, (int) GetLastError());
+	
+	ExitProcess(GetLastError());
+}
+
+LPCWSTR win32_utf8_to_utf16 (const char * src)
+{
+	uint l = (uint) strlen(src);
+	uint len = (uint) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, NULL, 0);
+	wchar_t * dst = malloc(sizeof(wchar_t) * (len + 1));
+	(void) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, (LPWSTR) dst, len);
+	dst[len] = 0;
+	
+	return (LPCWSTR) dst;
+}
+
 #endif

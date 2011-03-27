@@ -83,6 +83,13 @@ typedef struct
 {
 	uint cur_len;
 	uint reserved_len;
+	void ** data;
+} pqueue_t;
+
+typedef struct
+{
+	uint cur_len;
+	uint reserved_len;
 	uint node_size;
 	void * data;
 } buf_t;
@@ -223,7 +230,7 @@ typedef struct
 {
 	const char * user;
 	const char * group;
-	const char * temp_dir;
+	const char * pid;
 	u_str_t document_root;
 	u_str_t keepalive_timeout;
 	uint keepalive_timeout_val;

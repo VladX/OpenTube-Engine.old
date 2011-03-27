@@ -182,7 +182,39 @@ void frag_pool_free (frag_pool_t * p, void * ptr)
 		}
 }
 
-buf_t * buf_create (ulong size, ulong res_len)
+pqueue_t * pqueue_create (ulong res_len)
+{
+	pqueue_t * p;
+	
+	p = (pqueue_t *) malloc(sizeof(pqueue_t));
+	p->cur_len = 0;
+	p->reserved_len = res_len;
+	p->data = malloc(sizeof(void *) * res_len);
+	
+	return p;
+}
+
+void pqueue_push (pqueue_t * p, void * ptr)
+{
+	p->cur_len++;
+	
+	if (p->cur_len > p->reserved_len)
+		p->data = realloc(p->data, sizeof(void *) * p->cur_len);
+	
+	p->data[p->cur_len - 1] = ptr;
+}
+
+void * pqueue_fetch (pqueue_t * p)
+{
+	p->cur_len--;
+	
+	if (p->cur_len > p->reserved_len)
+		p->data = realloc(p->data, sizeof(void *) * p->cur_len);
+	
+	return p->data[p->cur_len];
+}
+
+buf_t * buf_create (uint size, uint res_len)
 {
 	buf_t * b;
 	
@@ -294,10 +326,15 @@ char * gnu_getcwd (void)
 	for (;; size += 64)
 	{
 		buffer = (char *) realloc(buffer, size);
+		#ifdef _WIN
+		if ((buffer = _getcwd(NULL, 0)) == NULL)
+			return NULL;
+		#else
 		if (getcwd(buffer, size) == buffer)
 			return buffer;
 		if (errno != ERANGE)
 			return NULL;
+		#endif
 	}
 }
 

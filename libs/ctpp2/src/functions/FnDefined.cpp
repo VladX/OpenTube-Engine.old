@@ -60,14 +60,14 @@ INT_32 FnDefined::Handler(CDT            * aArguments,
 		return -1;
 	}
 
-	oCDTRetVal = 1;
+	oCDTRetVal = (INT_32) 1;
 
 	INT_32 iI = iArgNum - 1;
 	for (; iI >= 0; --iI)
 	{
 		if (aArguments[iI].GetType() == CDT::UNDEF)
 		{
-			oCDTRetVal = 0;
+			oCDTRetVal = (INT_32) 0;
 			break;
 		}
 	}

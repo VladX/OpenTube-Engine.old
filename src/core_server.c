@@ -51,6 +51,9 @@
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
 int sockfd;
+static const uint requests_vector_prealloc = MAX_EVENTS * 10;
+static uint requests_vector_size;
+static request_t ** request;
 static uint maxfds;
 static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients;
@@ -263,8 +266,74 @@ inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_le
 	return false;
 }
 
-void event_startup (const int maxevents, request_t ** request, struct sockaddr ** addr, socklen_t * client_name_len)
+inline request_t * event_find_request (int sock)
 {
+	static uint it;
+	
+	pthread_mutex_lock(wmutex);
+	
+	for (it = 0; it < requests_vector_size; it++)
+		if (request[it]->sock == sock)
+		{
+			pthread_mutex_unlock(wmutex);
+			return request[it];
+		}
+	
+	for (it = 0; it < requests_vector_size; it++)
+		if (request[it]->sock == -1)
+		{
+			request[it]->sock = sock;
+			pthread_mutex_unlock(wmutex);
+			return request[it];
+		}
+	
+	pthread_mutex_unlock(wmutex);
+	
+	return NULL;
+}
+
+inline request_t * event_fetch_request (int sock)
+{
+	static uint it;
+	
+	pthread_mutex_lock(wmutex);
+	
+	for (it = 0; it < requests_vector_size; it++)
+		if (request[it]->sock == sock)
+		{
+			pthread_mutex_unlock(wmutex);
+			return request[it];
+		}
+	
+	for (it = 0; it < requests_vector_size; it++)
+		if (request[it]->sock == -1)
+		{
+			request[it]->sock = sock;
+			pthread_mutex_unlock(wmutex);
+			return request[it];
+		}
+	
+	requests_vector_size++;
+	
+	debug_print_3("%d", requests_vector_size);
+	
+	if (requests_vector_size > requests_vector_prealloc)
+		request = (request_t **) realloc(request, requests_vector_size * sizeof(request_t *));
+	
+	request[it] = (request_t *) malloc(sizeof(request_t));
+	
+	http_prepare(request[it], true);
+	
+	request[it]->sock = sock;
+	
+	pthread_mutex_unlock(wmutex);
+	
+	return request[it];
+}
+
+void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
+{
+	const uint maxevents = MAX_EVENTS;
 	uint i;
 	
 	#if IPV6_SUPPORT
@@ -284,15 +353,18 @@ void event_startup (const int maxevents, request_t ** request, struct sockaddr *
 		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
 	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
 	
-	for (i = 0; i < maxevents; i++)
+	request = (request_t **) malloc(requests_vector_prealloc * sizeof(request_t *));
+	requests_vector_size = maxevents;
+	
+	for (i = 0; i < requests_vector_size; i++)
 	{
 		request[i] = (request_t *) malloc(sizeof(request_t));
 		
-		http_prepare(request[i]);
+		http_prepare(request[i], false);
 	}
 }
 
-inline void event_iter (request_t ** request)
+inline void event_iter (void)
 {
 	static time_t curtime;
 	static uint i, it;
@@ -312,10 +384,10 @@ inline void event_iter (request_t ** request)
 		
 		if (dlt > config.keepalive_timeout_val || dlt < 0)
 		{
-			for (it = 0; it < MAX_EVENTS; it++)
+			for (it = 0; it < requests_vector_size; it++)
 				if (request[it]->sock == k->sock)
 					break;
-			if (it == MAX_EVENTS)
+			if (it == requests_vector_size)
 			{
 				socket_close(k->sock);
 				debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
@@ -332,15 +404,15 @@ inline void event_iter (request_t ** request)
 	}
 }
 
-inline void end_request(request_t * r);
+inline void end_request (request_t * r);
 
-inline void events_out_data (const int maxevents, int fd, request_t ** request)
+inline void events_out_data (int fd)
 {
 	static uint it;
 	static uint t, d, size;
 	static ssize_t res;
 	
-	for (it = 0; it < maxevents; it++)
+	for (it = 0; it < requests_vector_size; it++)
 		if (request[it]->sock == fd)
 		{
 			if (request[it]->temp.writev_total > 0)
@@ -425,7 +497,7 @@ void set_epollin_event_mask (int sock)
 	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
 }
 
-inline void end_request(request_t * r)
+inline void end_request (request_t * r)
 {
 	static const int disable = 0;
 	
@@ -437,37 +509,37 @@ inline void end_request(request_t * r)
 
 static void event_routine (void)
 {
-	const int maxevents = MAX_EVENTS;
+	const int epollmaxevents = 100;
 	const int srvfd = sockfd;
 	const int enable = 1;
-	int n, i, it;
+	int n, i;
+	request_t * r;
 	socklen_t client_name_len;
-	request_t * request[maxevents];
-	struct epoll_event e[maxevents], ev;
+	struct epoll_event e[epollmaxevents], ev;
 	struct sockaddr * addr;
 	struct linger linger_opt;
 	
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;
 	
-	event_startup(maxevents, request, &addr, &client_name_len);
+	event_startup(&addr, &client_name_len);
 	
-	epfd = epoll_create(maxevents);
+	epfd = epoll_create(epollmaxevents);
 	
 	if (epfd < 0)
-		peerr(17, "epoll_create(): %d", epfd);
+		peerr(0, "epoll_create(): %d", epfd);
 	
 	ev.events = EPOLLIN | EPOLLET;
 	ev.data.fd = srvfd;
 	
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, srvfd, &ev) == -1)
-		peerr(18, "epoll_ctl(): %d", -1);
+		peerr(0, "epoll_ctl(): %d", -1);
 	
 	for (;;)
 	{
-		event_iter(request);
+		event_iter();
 		
-		n = epoll_wait(epfd, e, maxevents, EPOLL_TIMEOUT);
+		n = epoll_wait(epfd, e, epollmaxevents, EPOLL_TIMEOUT);
 		
 		for (i = 0; i < n; i++)
 		{
@@ -506,30 +578,26 @@ static void event_routine (void)
 			}
 			else if (e[i].events == EPOLLIN)
 			{
-				pthread_mutex_lock(wmutex);
+				r = event_fetch_request(e[i].data.fd);
 				
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == e[i].data.fd)
-						goto _h_req;
-				for (it = 0; it < maxevents; it++)
-					if (request[it]->sock == -1)
-						goto _h_req;
-				pthread_mutex_unlock(wmutex);
-				continue;
-				_h_req:
-				
-				pthread_mutex_unlock(wmutex);
-				
-				request[it]->sock = e[i].data.fd;
-				
-				if (http_serve_client(request[it]))
-					end_request(request[it]);
+				if (http_serve_client(r))
+					end_request(r);
 			}
-			else
+			else if (e[i].events == EPOLLOUT)
 			{
 				pthread_mutex_lock(wmutex);
-				events_out_data(maxevents, e[i].data.fd, request);
+				events_out_data(e[i].data.fd);
 				pthread_mutex_unlock(wmutex);
+			}
+			else if (e[i].events & EPOLLHUP)
+			{
+				r = event_find_request(e[i].data.fd);
+				
+				if (r != NULL)
+				{
+					r->keepalive = false;
+					end_request(r);
+				}
 			}
 		}
 	}
@@ -698,7 +766,18 @@ static void win32_exit_function (void)
 void quit (int prm)
 {
 	socket_close(sockfd);
-	#ifndef _WIN
+	remove_pidfile();
+	#ifdef _WIN
+	if (worker_pid && worker_pid != (pid_t) getpid())
+	{
+		HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, worker_pid);
+		if (hProcess != NULL)
+		{
+			(void) TerminateProcess(hProcess, SIGTERM);
+			CloseHandle(hProcess);
+		}
+	}
+	#else
 	if (worker_pid && worker_pid != getpid())
 		(void) kill(worker_pid, SIGTERM);
 	#endif
@@ -763,10 +842,7 @@ void init (char * procname)
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
 	
-	#ifdef _WIN
-	maxfds = 1024;
-	#else
-	
+	#ifdef HAVE_GETRLIMIT
 	struct rlimit lim;
 	
 	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
@@ -778,6 +854,8 @@ void init (char * procname)
 		peerr(0, "setrlimit(): %d", -1);
 	
 	maxfds = (uint) lim.rlim_cur;
+	#else
+	maxfds = 1024;
 	#endif
 	
 	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);

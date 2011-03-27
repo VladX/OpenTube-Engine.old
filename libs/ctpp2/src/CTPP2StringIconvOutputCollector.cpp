@@ -95,7 +95,7 @@ INT_32 StringIconvOutputCollector::Collect(const void     * vData,
 	{
 		char * aDstTMP        = aDstData;
 		size_t iDstLengthTMP  = iDstLength;
-		size_t iResult        = iconv(oIconv, &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
+		size_t iResult        = iconv(oIconv, (char **) &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
 
 		if (aDstTMP - aDstData > 0) { sResult.append(aDstData, aDstTMP - aDstData); }
 

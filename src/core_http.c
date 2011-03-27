@@ -48,8 +48,7 @@ static sem_t wsem[1];
 pthread_mutex_t wmutex[1];
 static pthread_mutex_t mutex_cbuf[1];
 static pthread_t wthreads[WORKER_THREADS];
-static request_t * wr_buf[MAX_EVENTS];
-static uint wr_cur = 0;
+static pqueue_t * wr_queue;
 static const char * http_error_message[506];
 static const char * http_status_code[506];
 static ushort http_error_message_len[506];
@@ -780,8 +779,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		sem_wait(wsem);
 		
 		pthread_mutex_lock(mutex_cbuf);
-		wr_cur--;
-		r = wr_buf[wr_cur];
+		r = pqueue_fetch(wr_queue);
 		pthread_mutex_unlock(mutex_cbuf);
 		
 		r->out.content_type.str = (uchar *) "text/html";
@@ -923,8 +921,7 @@ static bool http_response (request_t * r)
 		r->temp.func = m[i].func;
 		
 		pthread_mutex_lock(mutex_cbuf);
-		wr_buf[wr_cur] = r;
-		wr_cur++;
+		pqueue_push(wr_queue, r);
 		pthread_mutex_unlock(mutex_cbuf);
 		sem_post(wsem);
 		
@@ -1273,8 +1270,13 @@ static void http_prepare_once (void)
 	if (http_prepare_once_flag)
 		return;
 	
+	header_server_string.str = "Server: " SERVER_STRING;
+	header_server_string.len = strlen(header_server_string.str);
+	
 	http_init_constants();
 	cache_create();
+	
+	wr_queue = pqueue_create(MAX_EVENTS * 2);
 	
 	sem_init(wsem, 0, 0);
 	pthread_mutex_init(wmutex, NULL);
@@ -1289,21 +1291,11 @@ static void http_prepare_once (void)
 		peerr(0, "chdir(%s): ", config.document_root.str);
 }
 
-void http_prepare (request_t * r)
+void http_prepare (request_t * r, bool save_space)
 {
 	int res;
 	
 	http_prepare_once();
-	
-	header_server_string.str = "Server: " SERVER_STRING;
-	header_server_string.len = strlen(header_server_string.str);
-	
-	/*r->temp.temppath = (char *) malloc(512);
-	r->temp.temppath_len = strlen(config.temp_dir);
-	memcpy(r->temp.temppath, config.temp_dir, r->temp.temppath_len);
-	if (r->temp.temppath[r->temp.temppath_len - 1] != '/')
-		r->temp.temppath[r->temp.temppath_len++] = '/';
-	r->temp.temppath[r->temp.temppath_len] = '\0';*/
 	
 	r->sock = -1;
 	r->keepalive = false;
@@ -1336,17 +1328,33 @@ void http_prepare (request_t * r)
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);
 	
-	r->b = buf_create(1, HTTP_BUFFER_RESERVED_SIZE);
+	if (save_space)
+		r->b = buf_create(1, 1);
+	else
+		r->b = buf_create(1, HTTP_BUFFER_RESERVED_SIZE);
+	
 	r->in.p = pool_create(sizeof(header_t), HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
 	
 	r->in.args.b = buf_create(sizeof(url_arg_t), HTTP_URL_ARGS_BUFFER_RESERVED_SIZE);
-	r->in.args.v = buf_create(1, HTTP_URL_VALS_BUFFER_RESERVED_SIZE);
+	
+	if (save_space)
+		r->in.args.v = buf_create(1, 1);
+	else
+		r->in.args.v = buf_create(1, HTTP_URL_VALS_BUFFER_RESERVED_SIZE);
 	
 	r->in.cookies.b = buf_create(sizeof(cookie_t), HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
-	r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
+	
+	if (save_space)
+		r->in.cookies.v = buf_create(1, 1);
+	else
+		r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
 	
 	r->body.post.b = buf_create(sizeof(post_arg_t), HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
-	r->body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
+	
+	if (save_space)
+		r->body.post.v = buf_create(1, 1);
+	else
+		r->body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
 	
 	r->body.files.b = buf_create(sizeof(post_file_t), HTTP_POST_FILES_BUFFER_RESERVED_SIZE);
 }

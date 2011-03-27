@@ -183,7 +183,7 @@ INT_32 FnIconv::Handler(CDT            * aArguments,
 	{
 		char * aDstTMP        = aDstData;
 		size_t iDstLengthTMP  = iDstLength;
-		size_t iResult        = iconv(oIconvConverter, &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
+		size_t iResult        = iconv(oIconvConverter, (char **) &aSrcData, &iSrcLength, &aDstTMP, &iDstLengthTMP);
 
 		if (aDstTMP - aDstData > 0) { sResult.append(aDstData, aDstTMP - aDstData); }
 

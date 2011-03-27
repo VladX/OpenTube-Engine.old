@@ -34,7 +34,11 @@
 #include "CTPP2Logger.hpp"
 #include "FnHostname.hpp"
 
-#include <unistd.h>
+#ifdef WIN32
+ #include <winsock2.h>
+#else
+ #include <unistd.h>
+#endif
 
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 255

@@ -53,10 +53,15 @@
 #define WEB_DATA_BUFFER_RESERVED_SIZE 65536
 #define READ_SIZE 8192
 #define SELECT_MAX_CONNECTIONS 10000
+#define WIN32_DEFAULT_PASWORD L"opentube"
 
 #cmakedefine HAVE_ACCEPT4
 #cmakedefine HAVE_EPOLL
+#cmakedefine HAVE_KQUEUE
 #cmakedefine HAVE_SELECT
+#cmakedefine HAVE_GETRLIMIT
+#cmakedefine HAVE_FORK_SYSCALL
+#cmakedefine HAVE_CREATE_PROCESS_WITH_LOGONW
 
 #cmakedefine _LINUX
 #cmakedefine _BSD

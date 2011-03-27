@@ -109,7 +109,13 @@ void frag_pool_free (frag_pool_t * p, void * ptr);
 
 void frag_pool_free_alt (frag_pool_t * p, uint i);
 
-buf_t * buf_create (ulong size, ulong res_len);
+pqueue_t * pqueue_create (ulong res_len);
+
+void pqueue_push (pqueue_t * p, void * ptr);
+
+void * pqueue_fetch (pqueue_t * p);
+
+buf_t * buf_create (uint size, uint res_len);
 
 void buf_destroy (buf_t * b);
 

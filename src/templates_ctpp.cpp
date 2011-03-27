@@ -44,6 +44,10 @@ extern "C"
 
 #include "common_functions.h"
 
+#ifdef _WIN
+#include <io.h>
+#endif
+
 typedef struct
 {
 	const VMExecutable * exec;
@@ -74,6 +78,17 @@ static pthread_mutex_t mutex_access[1];
 #undef error_in_file
 #define error_in_file(PATTERN, ...) eerr(0, "An error occurred while trying to parse \"%s\": " PATTERN, file, __VA_ARGS__)
 
+#ifdef _WIN
+ static pthread_t _ptnew;
+ #define pthread_t_cmp(X, Y) pthread_equal(X, Y)
+ #define pthread_t_isnew(X) memcmp(&_ptnew, &(X), sizeof(_ptnew))
+ #define pthread_t_setnew(X) memset(&(X), 0, sizeof(_ptnew))
+#else
+ #define pthread_t_cmp(X, Y) X == Y
+ #define pthread_t_isnew(X) X == (unsigned int) -1
+ #define pthread_t_setnew(X) X = -1
+#endif
+
 
 void ctpp_set_var (const char * name, const char * value)
 {
@@ -87,9 +102,9 @@ void ctpp_run (const char * file, u_str_t ** out)
 	id = pthread_self();
 	static uint i;
 	for (i = 0; i < WORKER_THREADS; i++)
-		if (ctx[i].id == id)
+		if (pthread_t_cmp(ctx[i].id, id))
 			break;
-		else if (ctx[i].id == -1)
+		else if (pthread_t_isnew(ctx[i].id))
 		{
 			ctx[i].id = id;
 			break;
@@ -232,6 +247,9 @@ void ctpp_compile (const char * file)
 
 void ctpp_init (void)
 {
+	#ifdef _WIN
+	memset(&_ptnew, 0, sizeof(_ptnew));
+	#endif
 	pthread_mutex_init(mutex_access, NULL);
 	uint i;
 	for (i = 0; i < WORKER_THREADS; i++)
@@ -240,7 +258,7 @@ void ctpp_init (void)
 		STDLibInitializer::InitLibrary(* (ctx[i].oSyscallFactory));
 		ctx[i].oVM = new VM(ctx[i].oSyscallFactory);
 		ctx[i].oLogger = new FileLogger(stderr);
-		ctx[i].id = -1;
+		pthread_t_setnew(ctx[i].id);
 	}
 }
 
