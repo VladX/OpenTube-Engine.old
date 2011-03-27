@@ -153,7 +153,7 @@ void event_routine (void)
 			}
 			else if (e[i].filter == EVFILT_READ)
 			{
-				if (e[i].data == 0)
+				/*if (e[i].data == 0)
 				{
 					r = event_find_request(e[i].ident);
 					
@@ -164,7 +164,7 @@ void event_routine (void)
 					}
 					
 					continue;
-				}
+				}*/
 				
 				r = event_fetch_request(e[i].ident);
 				
