@@ -47,7 +47,7 @@ extern int sockfd;
 static int kq;
 
 
-static inline void kqueue_change (int fd, short filter, void * odata)
+static inline void kqueue_change (int fd, short filter)
 {
 	static struct kevent ev;
 	
@@ -56,19 +56,19 @@ static inline void kqueue_change (int fd, short filter, void * odata)
 	ev.flags = EV_ADD | EV_ENABLE;
 	ev.fflags = 0;
 	ev.data = 0;
-	ev.udata = odata;
+	ev.udata = NULL;
 	
 	kevent(kq, &ev, 1, NULL, 0, NULL);
 }
 
-inline void set_read_mask (request_t * r)
+inline void set_read_mask (int fd)
 {
-	kqueue_change(r->sock, EVFILT_READ, r);
+	kqueue_change(fd, EVFILT_READ);
 }
 
-inline void set_write_mask (request_t * r)
+inline void set_write_mask (int fd)
 {
-	kqueue_change(r->sock, EVFILT_WRITE, r);
+	kqueue_change(fd, EVFILT_WRITE);
 }
 
 inline void end_request(request_t * r)
@@ -105,7 +105,7 @@ void event_routine (void)
 	if (kq == -1)
 		peerr(0, "kqueue(): %d", -1);
 	
-	kqueue_change(srvfd, EVFILT_READ, NULL);
+	kqueue_change(srvfd, EVFILT_READ);
 	
 	for (;;)
 	{
@@ -144,8 +144,7 @@ void event_routine (void)
 						break;
 					}
 					
-					r = event_fetch_request(fd);
-					kqueue_change(fd, EVFILT_READ, r);
+					kqueue_change(fd, EVFILT_READ);
 					
 					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &enable, sizeof(enable)) == -1)
 						perr("setsockopt(): %d", -1);
@@ -167,8 +166,7 @@ void event_routine (void)
 					continue;
 				}
 				
-				/*r = event_fetch_request(e[i].ident);*/
-				r = e[i].udata;
+				r = event_fetch_request(e[i].ident);
 				
 				if (http_serve_client(r))
 					end_request(r);
