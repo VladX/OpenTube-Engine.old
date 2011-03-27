@@ -144,7 +144,7 @@ void event_routine (void)
 						break;
 					}
 					
-					r = event_fetch_request(e[i].ident);
+					r = event_fetch_request(fd);
 					kqueue_change(fd, EVFILT_READ, r);
 					
 					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &enable, sizeof(enable)) == -1)
