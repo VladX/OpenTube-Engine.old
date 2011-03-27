@@ -146,7 +146,7 @@ void event_routine (void)
 					
 					kqueue_change(fd, EVFILT_READ);
 					
-					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
+					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_NOPUSH, &enable, sizeof(enable)) == -1)
 						perr("setsockopt(): %d", -1);
 				}
 				continue;
