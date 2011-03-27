@@ -604,8 +604,12 @@ static void event_routine (void)
 }
 
 #else
- #ifdef HAVE_SELECT
-  #include "event_wrapper_select.h"
+ #ifdef HAVE_KQUEUE
+  #include "event_wrapper_kqueue.h"
+ #else
+  #ifdef HAVE_SELECT
+   #include "event_wrapper_select.h"
+  #endif
  #endif
 #endif
 

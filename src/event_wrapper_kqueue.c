@@ -19,7 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-/* This is a simple wrapper for systems, that doesn't support epoll_create() system call, but support select() */
+/* Wrapper for FreeBSD */
 
 #include "common_functions.h"
 
@@ -47,6 +47,30 @@ extern int sockfd;
 static int kq;
 
 
+static inline void kqueue_change (int fd, short filter)
+{
+	static struct kevent ev;
+	
+	ev.ident = fd;
+	ev.filter = filter;
+	ev.flags = EV_ADD | EV_ENABLE;
+	ev.fflags = 0;
+	ev.data = NULL;
+	ev.udata = NULL;
+	
+	kevent(kq, &ev, 1, NULL, 0, NULL);
+}
+
+inline void set_read_mask (int fd)
+{
+	kqueue_change(fd, EVFILT_READ);
+}
+
+inline void set_write_mask (int fd)
+{
+	kqueue_change(fd, EVFILT_WRITE);
+}
+
 inline void end_request(request_t * r)
 {
 	static const int disable = 0;
@@ -59,12 +83,99 @@ inline void end_request(request_t * r)
 
 void event_routine (void)
 {
+	const int srvfd = sockfd;
+	const int enable = 1;
+	const long timeout_sec = EPOLL_TIMEOUT / 1000L;
+	const long timeout_nsec = (EPOLL_TIMEOUT % 1000L) * 1000000L;
+	int n, i, fd;
+	request_t * r;
+	socklen_t client_name_len;
+	struct timespec timeout;
+	struct kevent e[MAX_EVENTS];
+	struct sockaddr * addr;
+	struct linger linger_opt;
+	
+	linger_opt.l_onoff = 1;
+	linger_opt.l_linger = 0;
+	
+	event_startup(&addr, &client_name_len);
+	
 	kq = kqueue();
 	
 	if (kq == -1)
-		peerr(0, "kqueue()");
+		peerr(0, "kqueue(): %d", -1);
 	
+	kqueue_change(srvfd, EVFILT_READ);
 	
+	for (;;)
+	{
+		event_iter();
+		
+		timeout.tv_sec = timeout_sec;
+		timeout.tv_nsec = timeout_nsec;
+		
+		n = kevent(kq, NULL, 0, &e, MAX_EVENTS, &timeout);
+		
+		for (i = 0; i < n; i++)
+		{
+			if (e[i].ident == srvfd)
+			{
+				#ifdef HAVE_ACCEPT4
+				while ((fd = accept4(srvfd, addr, &client_name_len, SOCK_NONBLOCK)) != -1)
+				{
+				#else
+				while ((fd = accept(srvfd, addr, &client_name_len)) != -1)
+				{
+					(void) fcntl(fd, F_SETFL, O_NONBLOCK);
+				#endif
+					debug_print_2("accept(): %d", fd);
+					if (config.limit_req && limit_requests(addr))
+					{
+						debug_print_2("client has exceeded the allowable requests per second (rps) limit, request %d discarded", fd);
+						setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						socket_close(fd);
+						break;
+					}
+					if (config.limit_sim_req && limit_sim_requests(addr, client_name_len, fd))
+					{
+						debug_print_2("client has exceeded the allowable simultaneous requests limit, request %d discarded", fd);
+						setsockopt(fd, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt));
+						socket_close(fd);
+						break;
+					}
+					
+					kqueue_change(fd, EVFILT_READ);
+					
+					if (* http_server_tcp_addr.str && setsockopt(fd, IPPROTO_TCP, TCP_CORK, &enable, sizeof(enable)) == -1)
+						perr("setsockopt(): %d", -1);
+				}
+				continue;
+			}
+			else if (e[i].filter == EVFILT_READ)
+			{
+				r = event_fetch_request(e[i].data.fd);
+				
+				if (http_serve_client(r))
+					end_request(r);
+			}
+			else if (e[i].filter == EVFILT_WRITE)
+			{
+				pthread_mutex_lock(wmutex);
+				events_out_data(e[i].data.fd);
+				pthread_mutex_unlock(wmutex);
+			}
+			/*else if (e[i].events & EPOLLHUP)
+			{
+				r = event_find_request(e[i].data.fd);
+				
+				if (r != NULL)
+				{
+					r->keepalive = false;
+					end_request(r);
+				}
+			}*/
+		}
+	}
 }
 
 #endif
