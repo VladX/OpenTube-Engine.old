@@ -85,8 +85,13 @@ static pthread_mutex_t mutex_access[1];
  #define pthread_t_setnew(X) memset(&(X), 0, sizeof(_ptnew))
 #else
  #define pthread_t_cmp(X, Y) X == Y
- #define pthread_t_isnew(X) X == (unsigned int) -1
- #define pthread_t_setnew(X) X = -1
+ #ifdef _BSD
+  #define pthread_t_isnew(X) X == NULL
+  #define pthread_t_setnew(X) X = NULL
+ #else
+  #define pthread_t_isnew(X) X == (unsigned int) -1
+  #define pthread_t_setnew(X) X = -1
+ #endif
 #endif
 
 
