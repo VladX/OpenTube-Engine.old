@@ -21,6 +21,8 @@
 
 #ifdef _WIN
  #include <direct.h>
+#else
+ #include <unistd.h>
 #endif
 #include "common_functions.h"
 
