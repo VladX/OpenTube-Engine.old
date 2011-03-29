@@ -315,7 +315,7 @@ inline request_t * event_fetch_request (int sock)
 	
 	requests_vector_size++;
 	
-	debug_print_3("%d", requests_vector_size);
+	debug_print_3("new request structure (current number: %d)", requests_vector_size);
 	
 	if (requests_vector_size > requests_vector_prealloc)
 		request = (request_t **) realloc(request, requests_vector_size * sizeof(request_t *));
