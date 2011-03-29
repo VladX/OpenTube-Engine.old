@@ -1127,13 +1127,13 @@ bool http_serve_client (request_t * request)
 		
 		if (request->in.uri.len == 0)
 		{
-			if (request->b->cur_len > HTTP_MAX_HEADERS_SIZE)
-				return http_error(request, 414);
-			
 			for (i = 4; i < r; i++)
 			{
 				if (buf[i] == '\n' && buf[i - 1] == '\r' && buf[i - 2] == '\n' && buf[i - 3] == '\r')
 				{
+					if (request->b->cur_len > HTTP_MAX_HEADERS_SIZE)
+						return http_error(request, 414);
+					
 					buf[i - 1] = 1;
 					code = http_parse_headers(request);
 					
@@ -1179,6 +1179,9 @@ bool http_serve_client (request_t * request)
 					}
 				}
 			}
+			
+			if (request->b->cur_len > HTTP_MAX_HEADERS_SIZE)
+				return http_error(request, 414);
 			
 			goto _loop_end_;
 		}

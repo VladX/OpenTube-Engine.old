@@ -24,11 +24,20 @@ from tests import *
 
 def run_test():
 	test = Tests()
-	line = 'GET '
-	for i in range(10000):
-		line += '/veeeeeeeeeeeeeeeeeeeeeeeeeeeeeryloooooooooooooooooooooooooooooooooooooooong'
-	line += ' HTTP/1.0'
-	response_line, headers, body = test.do([line])
 	
-	if response_line['code'] != 414:
-		raise UnitTestError('Server return %d response code for long request line' % response_line['code'])
+	test.send('HTTP/1.1 ')
+	s = '/loooooooooooooooooooooooooooooooooooooooooooooong/uri'
+	limit = 0
+	
+	while 1:
+		try:
+			test.send(s)
+		except socket.error:
+			break
+		limit += len(s)
+	
+	code = str(test.recv(20)).split(' ')[1]
+	code = int(code)
+	
+	if code != 414:
+		raise UnitTestError('Server return %d response code for long request line' % code)

@@ -23,17 +23,15 @@
 from tests import *
 
 request_headers = [
-	'POST / HTTP/1.0',
-	'Content-Type: application/x-www-form-urlencoded'
+	'POST / HTTP/1.1',
+	'Content-Type: application/x-www-form-urlencoded',
+	'Content-Length: 999999999'
 ]
 
 def run_test():
 	test = Tests()
-	c = 1000000
-	add = 'x' * 100
-	request_headers.append('Content-Length: %d' % (len(add) * c))
-	body = add * c
-	response_line, headers, body = test.do(request_headers, body)
+	
+	response_line, headers, body = test.do(request_headers, 'test')
 	
 	if response_line['code'] != 413:
-		raise UnitTestError('Server return %d response code for long request body' % response_line['code'])
+		raise UnitTestError('Server return %d response code for long request body' % code)

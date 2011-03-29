@@ -95,11 +95,7 @@ class Tests:
 		r.append(str(body))
 		r = '\r\n'.join(r)
 		self.send(r)
-		r = self.sock.recv(recv_buf)
-		try:
-			r = r.decode('ascii')
-		except: pass
-		return self.parse(r)
+		return self.parse(self.recv(recv_buf))
 
 class UnitTestError(Exception):
 	
