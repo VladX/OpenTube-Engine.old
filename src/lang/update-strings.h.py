@@ -44,7 +44,7 @@ f.write('''/* Please, do not touch this file. Edit strings.json instead. */
 
 static const char * strings[%d] = {''' % (maxid + 1))
 
-for i in xrange(maxid + 1):
+for i in range(maxid + 1):
 	if i in ids:
 		val = '"%s"' % lang[str(i)]
 	else:

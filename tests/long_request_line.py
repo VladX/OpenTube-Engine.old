@@ -25,7 +25,7 @@ from tests import *
 def run_test():
 	test = Tests()
 	line = 'GET '
-	for i in xrange(10000):
+	for i in range(10000):
 		line += '/veeeeeeeeeeeeeeeeeeeeeeeeeeeeeryloooooooooooooooooooooooooooooooooooooooong'
 	line += ' HTTP/1.0'
 	response_line, headers, body = test.do([line])

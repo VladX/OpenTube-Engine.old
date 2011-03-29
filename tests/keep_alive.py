@@ -38,8 +38,8 @@ def run_test():
 		if k.lower() == 'connection' and v.lower().find('keep-alive') == -1:
 			raise UnitTestError()
 	
-	test = range(1000)
-	for i in xrange(1000):
+	test = list(range(1000))
+	for i in range(1000):
 		test[i] = Tests()
 		response_line, headers, body = test[i].do(request_headers)
 		for (k, v) in headers:

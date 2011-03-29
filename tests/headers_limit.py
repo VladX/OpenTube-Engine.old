@@ -26,21 +26,21 @@ max_headers = 10000
 
 def run_test():
 	test = Tests()
-	test.sock.send('GET / HTTP/1.0\r\n')
+	test.send('GET / HTTP/1.0\r\n')
 	hdr = 'Header: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\n'
 	limit = 0
-	for i in xrange(max_headers):
+	for i in range(max_headers):
 		try:
-			test.sock.send(hdr)
+			test.send(hdr)
 			limit += len(hdr)
 		except socket.error:
 			break
 	
 	if i == max_headers - 1:
-		test.sock.send('\r\n')
+		test.send('\r\n')
 	else:
 		print('Headers size limit: about %d bytes' % (limit))
-		code = test.sock.recv(20).split(' ')[1]
+		code = str(test.recv(20)).split(' ')[1]
 		code = int(code)
 		if code != 414:
 			raise UnitTestError('Server return %d response code for long request line' % response_line['code'])

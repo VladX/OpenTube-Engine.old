@@ -47,6 +47,21 @@ class Tests:
 		
 		self.sock.close()
 	
+	def send(self, buf):
+		
+		try: # Python 3.x
+			self.sock.send(bytes(buf, 'ascii'))
+		except TypeError:
+			self.sock.send(buf)
+	
+	def recv(self, count):
+		
+		r = self.sock.recv(count)
+		try:
+			r = r.decode('ascii')
+		except: pass
+		return r
+	
 	def parse(self, buf):
 		
 		response_line = {'ver': '', 'code': 0, 'code_msg': ''}
@@ -61,7 +76,7 @@ class Tests:
 			response_line['code'] = int(m.group(2))
 			response_line['code_msg'] = m.group(3)
 		
-		for i in xrange(len(buf)):
+		for i in range(len(buf)):
 			s = buf.pop(0)
 			if s == '':
 				break
@@ -79,8 +94,12 @@ class Tests:
 		r.append('')
 		r.append(str(body))
 		r = '\r\n'.join(r)
-		self.sock.send(r)
-		return self.parse(self.sock.recv(recv_buf))
+		self.send(r)
+		r = self.sock.recv(recv_buf)
+		try:
+			r = r.decode('ascii')
+		except: pass
+		return self.parse(r)
 
 class UnitTestError(Exception):
 	

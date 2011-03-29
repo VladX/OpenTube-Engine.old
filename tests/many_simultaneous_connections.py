@@ -23,16 +23,17 @@
 from tests import *
 import time
 import sys
+import errno
 
 maxconn = 100
 
 def run_test():
 	counter = 0
-	conn = range(maxconn)
-	for i in xrange(maxconn):
+	conn = list(range(maxconn))
+	for i in range(maxconn):
 		conn[i] = Tests()
 		try:
-			conn[i].sock.send('POST / HTTP/1.1')
+			conn[i].send('POST / HTTP/1.1')
 		except:
 			break
 		conn[i].sock.setblocking(0)
@@ -43,8 +44,8 @@ def run_test():
 		except: pass
 		try:
 			conn[i].sock.recv(0)
-		except socket.error as (errno, string):
-			if errno == 11:
+		except socket.error as e:
+			if e.errno == 11:
 				continue
 			else:
 				break

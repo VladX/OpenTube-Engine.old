@@ -52,7 +52,7 @@ request_headers = [
 ]
 
 def run_test():
-	for i in xrange(len(request_headers)):
+	for i in range(len(request_headers)):
 		test = Tests()
 		response_line, headers, body = test.do(request_headers[i])
 		
