@@ -22,13 +22,25 @@
 
 from tests import *
 
-request_headers = ['GET / HTTP/1.0']
+max_headers = 10000
 
 def run_test():
 	test = Tests()
-	for i in xrange(10000):
-		request_headers.append('Header: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-	response_line, headers, body = test.do(request_headers)
+	test.sock.send('GET / HTTP/1.0\r\n')
+	hdr = 'Header: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\n'
+	limit = 0
+	for i in xrange(max_headers):
+		try:
+			test.sock.send(hdr)
+			limit += len(hdr)
+		except socket.error:
+			break
 	
-	if response_line['code'] != 414:
-		raise UnitTestError('Server return %d response code for long request line' % response_line['code'])
+	if i == max_headers - 1:
+		test.sock.send('\r\n')
+	else:
+		print('Headers size limit: about %d bytes' % (limit))
+		code = test.sock.recv(20).split(' ')[1]
+		code = int(code)
+		if code != 414:
+			raise UnitTestError('Server return %d response code for long request line' % response_line['code'])
