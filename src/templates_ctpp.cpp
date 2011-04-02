@@ -58,64 +58,30 @@ typedef struct
 	UINT_32 size;
 } compiled_template;
 
-struct thread_context
-{
-	pthread_t id;
-	SyscallFactory * oSyscallFactory;
-	VM * oVM;
-	FileLogger * oLogger;
-};
-
 typedef std::map <std::string, compiled_template *> ct_map;
 
-static const char * tplwdir = "/home/vlad/src/OpenTube-Engine/web/templates/default/";
+extern const char * cur_template_dir;
 
-static struct thread_context ctx[WORKER_THREADS];
+static threadsafe SyscallFactory * oSyscallFactory;
+static threadsafe VM * oVM;
+static threadsafe FileLogger * oLogger;
+static threadsafe CDT * oHash;
+
 static ct_map compiled_templates;
-static CDT oHash;
 static pthread_mutex_t mutex_access[1];
 
 #undef error_in_file
 #define error_in_file(PATTERN, ...) eerr(0, "An error occurred while trying to parse \"%s\": " PATTERN, file, __VA_ARGS__)
 
-#ifdef _WIN
- static pthread_t _ptnew;
- #define pthread_t_cmp(X, Y) pthread_equal(X, Y)
- #define pthread_t_isnew(X) memcmp(&_ptnew, &(X), sizeof(_ptnew))
- #define pthread_t_setnew(X) memset(&(X), 0, sizeof(_ptnew))
-#else
- #define pthread_t_cmp(X, Y) X == Y
- #ifdef _BSD
-  #define pthread_t_isnew(X) X == NULL
-  #define pthread_t_setnew(X) X = NULL
- #else
-  #define pthread_t_isnew(X) X == (unsigned int) -1
-  #define pthread_t_setnew(X) X = -1
- #endif
-#endif
-
 
 void ctpp_set_var (const char * name, const char * value)
 {
-	oHash[name] = value;
+	(* oHash)[name] = value;
 }
 
 void ctpp_run (const char * file, u_str_t ** out)
 {
 	pthread_mutex_lock(mutex_access);
-	static pthread_t id;
-	id = pthread_self();
-	static uint i;
-	for (i = 0; i < WORKER_THREADS; i++)
-		if (pthread_t_cmp(ctx[i].id, id))
-			break;
-		else if (pthread_t_isnew(ctx[i].id))
-		{
-			ctx[i].id = id;
-			break;
-		}
-	
-	struct thread_context * c = &(ctx[i]);
 	
 	static ct_map::iterator it;
 	static std::string mkey;
@@ -138,9 +104,9 @@ void ctpp_run (const char * file, u_str_t ** out)
 	ct->data.clear();
 	StringOutputCollector oOutputCollector(ct->data);
 	
-	c->oVM->Init(ct->vmmemcore, &oOutputCollector, c->oLogger);
+	oVM->Init(ct->vmmemcore, &oOutputCollector, oLogger);
 	UINT_32 iIP = 0;
-	c->oVM->Run(ct->vmmemcore, &oOutputCollector, iIP, oHash, c->oLogger);
+	oVM->Run(ct->vmmemcore, &oOutputCollector, iIP, * oHash, oLogger);
 	
 	ct->out->len = ct->data.size();
 	ct->out->str = (uchar *) ct->data.data();
@@ -159,9 +125,9 @@ void ctpp_compile (const char * file)
 	
 	if (cwd != NULL)
 	{
-		r = chdir(tplwdir);
+		r = chdir(cur_template_dir);
 		if (r == -1)
-			peerr(0, "chdir(%s)", tplwdir);
+			peerr(0, "chdir(%s)", cur_template_dir);
 	}
 	
 	if (stat(file, &st) == -1)
@@ -205,7 +171,7 @@ void ctpp_compile (const char * file)
 	{
 		CTPP2FileSourceLoader oSourceLoader;
 		
-		std::string includedir = tplwdir;
+		std::string includedir = cur_template_dir;
 		const std::vector <std::string> includedirs(&includedir, &includedir + 1);
 		oSourceLoader.SetIncludeDirs(includedirs);
 		oSourceLoader.LoadTemplate(file);
@@ -215,11 +181,11 @@ void ctpp_compile (const char * file)
 	}
 	catch (CTPPParserSyntaxError & e)
 	{
-		error_in_file("At line %d, pos. %d: %s", e.GetLine(), e.GetLinePos(), e.what());
+		error_in_file("At line %u, pos. %u: %s", (uint) e.GetLine(), (uint) e.GetLinePos(), e.what());
 	}
 	catch (CTPPParserOperatorsMismatch & e)
 	{
-		error_in_file("At line %d, pos. %d: expected %s, but found </%s>", e.GetLine(), e.GetLinePos(), e.Expected(), e.Found());
+		error_in_file("At line %u, pos. %u: expected %s, but found </%s>", (uint) e.GetLine(), (uint) e.GetLinePos(), e.Expected(), e.Found());
 	}
 	catch (CTPPLogicError & e)
 	{
@@ -252,19 +218,12 @@ void ctpp_compile (const char * file)
 
 void ctpp_init (void)
 {
-	#ifdef _WIN
-	memset(&_ptnew, 0, sizeof(_ptnew));
-	#endif
 	pthread_mutex_init(mutex_access, NULL);
-	uint i;
-	for (i = 0; i < WORKER_THREADS; i++)
-	{
-		ctx[i].oSyscallFactory = new SyscallFactory(WORKER_THREADS);
-		STDLibInitializer::InitLibrary(* (ctx[i].oSyscallFactory));
-		ctx[i].oVM = new VM(ctx[i].oSyscallFactory);
-		ctx[i].oLogger = new FileLogger(stderr);
-		pthread_t_setnew(ctx[i].id);
-	}
+	oSyscallFactory = new SyscallFactory(WORKER_THREADS);
+	STDLibInitializer::InitLibrary(* (oSyscallFactory));
+	oVM = new VM(oSyscallFactory);
+	oLogger = new FileLogger(stderr);
+	oHash = new CDT();
 }
 
 }

@@ -64,12 +64,12 @@ extern pthread_mutex_t wmutex[1];
 
 bool new_keepalive_socket (int sock)
 {
-	static uchar * bin1, * bin2;
-	static uchar len;
-	static uint i, total, percli;
+	register uchar * bin1, * bin2;
+	register uchar len;
+	register uint i, total, percli;
 	static socklen_t client_name_len;
-	static keepalive_sock_t * k;
-	static time_t curtime;
+	register keepalive_sock_t * k;
+	register time_t curtime;
 	static struct sockaddr addr, saddr;
 	
 	curtime = time(NULL);
@@ -132,8 +132,8 @@ bool new_keepalive_socket (int sock)
 
 void remove_keepalive_socket(int sock)
 {
-	static uint i;
-	static keepalive_sock_t * k;
+	register uint i;
+	register keepalive_sock_t * k;
 	
 	for (i = 0; i < keepalive_sockets->real_len; i++)
 	{
@@ -153,11 +153,11 @@ void remove_keepalive_socket(int sock)
 
 inline bool limit_requests (struct sockaddr * addr)
 {
-	static uchar * bin;
-	static uchar len;
-	static uint i;
-	static limit_req_t * cli;
-	static time_t curtime;
+	register uchar * bin;
+	register uchar len;
+	register uint i;
+	register limit_req_t * cli;
+	register time_t curtime;
 	
 	curtime = time(NULL);
 	
@@ -217,10 +217,10 @@ inline bool limit_requests (struct sockaddr * addr)
 
 inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
 {
-	static uchar * bin1, * bin2;
-	static uchar len;
-	static uint i, total;
-	static int * cli;
+	register uchar * bin1, * bin2;
+	register uchar len;
+	register uint i, total;
+	register int * cli;
 	static struct sockaddr saddr;
 	
 	#if IPV6_SUPPORT
@@ -268,7 +268,7 @@ inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_le
 
 inline request_t * event_find_request (int sock)
 {
-	static uint it;
+	register uint it;
 	
 	pthread_mutex_lock(wmutex);
 	
@@ -294,7 +294,7 @@ inline request_t * event_find_request (int sock)
 
 inline request_t * event_fetch_request (int sock)
 {
-	static uint it;
+	register uint it;
 	
 	pthread_mutex_lock(wmutex);
 	
@@ -366,10 +366,10 @@ void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 
 inline void event_iter (void)
 {
-	static time_t curtime;
-	static uint i, it;
-	static int dlt;
-	static keepalive_sock_t * k;
+	register time_t curtime;
+	register uint i, it;
+	register int dlt;
+	register keepalive_sock_t * k;
 	
 	curtime = time(NULL);
 	
@@ -408,9 +408,9 @@ inline void end_request (request_t * r);
 
 inline void events_out_data (int fd)
 {
-	static uint it;
-	static uint t, d, size;
-	static ssize_t res;
+	register uint it;
+	register uint t, d, size;
+	register ssize_t res;
 	
 	for (it = 0; it < requests_vector_size; it++)
 		if (request[it]->sock == fd)
@@ -448,7 +448,8 @@ inline void events_out_data (int fd)
 			if (request[it]->temp.sendfile_fd != -1)
 			{
 				#ifdef _BSD
-				static off_t sbytes = 0;
+				static off_t sbytes;
+				sbytes = 0;
 				res = sendfile(request[it]->temp.sendfile_fd, request[it]->sock, request[it]->temp.sendfile_offset, request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset, NULL, &sbytes, 0);
 				request[it]->temp.sendfile_offset += sbytes;
 				#else
@@ -518,6 +519,8 @@ static void event_routine (void)
 	struct epoll_event e[epollmaxevents], ev;
 	struct sockaddr * addr;
 	struct linger linger_opt;
+	
+	memset(&ev, 0, sizeof(struct epoll_event));
 	
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;

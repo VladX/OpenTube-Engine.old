@@ -19,13 +19,10 @@
  * Boston, MA  02110-1301  USA
  */
 
-WEB_CALLBACK(video, "/video/", false)
+struct captcha_output
 {
-	u_str_t * s;
-	tpl_set_var("title", _l(1));
-	s = tpl_load("main.tpl");
-	if (s != NULL)
-		APPEND(s->str, s->len);
-	
-	return thread_global_buffer;
-}
+	u_str_t keyword;
+	u_str_t png_data;
+};
+
+void captcha_init (void);

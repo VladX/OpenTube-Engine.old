@@ -19,9 +19,14 @@
  * Boston, MA  02110-1301  USA
  */
 
-#undef _
-#define s(STRING) ((void *) localization_get_string(STRING))
+#ifndef LOCALIZATION_H
+#define LOCALIZATION_H 1
+
+#undef _l
+#define _l(ID) ((void *) localization_get_string(ID))
 
 const uchar * localization_get_string (uint id);
 
 void localization_init (void);
+
+#endif

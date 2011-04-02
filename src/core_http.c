@@ -36,6 +36,7 @@
 #include "common_functions.h"
 #include "core_server.h"
 #include "web.h"
+#include "templates.h"
 #include "error_page.h"
 #include "mime.h"
 #include "memcache.h"
@@ -63,8 +64,8 @@ static inline void http_buffer_moved (request_t * r, long offset)
 	r->in.http_version.str += offset;
 	r->body.data.str += offset;
 	
-	static header_t * hdr;
-	static uint i;
+	register header_t * hdr;
+	register uint i;
 	
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
@@ -122,9 +123,9 @@ static inline void http_append_headers (request_t * r, ushort code)
 
 static inline bool http_send (request_t * r)
 {
-	static ssize_t res;
-	static uint size, i, d;
-	static struct iovec * data;
+	register ssize_t res;
+	register uint size, i, d;
+	register struct iovec * data;
 	
 	data = (struct iovec *) r->out_vec->data;
 	
@@ -514,8 +515,8 @@ void http_parse_post (request_t * r)
 
 static bool http_divide_uri (request_t * r)
 {
-	static uchar * c, * d;
-	static uint i;
+	register uchar * c, * d;
+	register uint i;
 	
 	if (r->in.uri.len > HTTP_PATH_PREALLOC)
 		r->in.path.str = (uchar *) realloc(r->in.path.str, r->in.uri.len);
@@ -572,8 +573,8 @@ static inline void http_rfc822_date (char * str, struct tm * ctime)
 
 static inline void http_set_mime_type (request_t * r)
 {
-	static uchar * fileext;
-	static uint i;
+	register uchar * fileext;
+	register uint i;
 	
 	fileext = r->in.path.str + r->in.path.len;
 	
@@ -596,7 +597,7 @@ static inline void http_set_mime_type (request_t * r)
 
 static inline bool http_send_file (request_t * r, const char * filepath)
 {
-	static uint i, it;
+	register uint i, it;
 	static bool ret;
 	static struct stat st;
 	static int fd, t;
@@ -633,13 +634,15 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	http_set_mime_type(r);
 	
-	static ushort code = 200;
+	static ushort code;
 	static ssize_t res;
 	static header_t * hdr;
 	static struct tm c_time, m_time;
 	static time_t curtime;
+	static char * rfc822_date_str;
 	
-	char * rfc822_date_str = r->temp.dates;
+	code = 200;
+	rfc822_date_str = r->temp.dates;
 	
 	r->temp.sendfile_last = st.st_size;
 	r->temp.sendfile_offset = 0;
@@ -730,7 +733,8 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	}
 	
 	#ifdef _BSD
-	static off_t sbytes = 0;
+	static off_t sbytes;
+	sbytes = 0;
 	res = sendfile(fd, r->sock, r->temp.sendfile_offset, (size_t) r->out.content_length, NULL, &sbytes, 0);
 	r->temp.sendfile_offset += sbytes;
 	#else
@@ -760,6 +764,8 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	return true;
 }
 
+void run_init_callbacks (void);
+
 static void * http_pass_to_handlers_routine (void * ptr)
 {
 	uint i = 0;
@@ -769,6 +775,11 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	bool accept_gzip;
 	struct tm c_time;
 	time_t curtime;
+	
+	pthread_mutex_lock(mutex_cbuf);
+	tpl_init();
+	run_init_callbacks();
+	pthread_mutex_unlock(mutex_cbuf);
 	
 	for (;;)
 	{
@@ -785,9 +796,9 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		r->out.content_type.str = (uchar *) "text/html";
 		r->out.content_type.len = 9;
 		
-		buf_free(r->out_data);
+		web_setup_global_buffer(r->out_data);
 		
-		buf = ((web_func_t) r->temp.func)(r, r->out_data);
+		buf = ((web_func_t) r->temp.func)(r);
 		
 		if (config.gzip && buf->cur_len > config.gzip_min_page_size)
 		{
@@ -890,8 +901,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 
 static bool http_response (request_t * r)
 {
-	static uint i;
-	static uri_map_t * m;
+	register uint i;
+	register uri_map_t * m;
 	
 	m = (uri_map_t *) uri_map->data;
 	
@@ -928,9 +939,9 @@ static bool http_response (request_t * r)
 		return false;
 	}
 	
-	static u_str_t * cached_content;
-	static header_t * hdr;
-	static bool accept_gzip;
+	register u_str_t * cached_content;
+	register header_t * hdr;
+	register bool accept_gzip;
 	
 	cached_content = NULL;
 	accept_gzip = false;
@@ -958,7 +969,7 @@ static bool http_response (request_t * r)
 	{
 		http_set_mime_type(r);
 		
-		static ushort code;
+		register ushort code;
 		
 		code = 200;
 		
@@ -1012,7 +1023,7 @@ static bool http_response (request_t * r)
 
 static ushort http_parse_headers (request_t * r)
 {
-	static uchar * p;
+	register uchar * p;
 	
 	p = (uchar *) r->b->data;
 	

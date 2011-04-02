@@ -22,6 +22,8 @@
 #include "common_functions.h"
 #include "templates_ctpp.h"
 
+char * cur_template_dir = NULL;
+
 void tpl_set_var (const char * name, const char * value)
 {
 	ctpp_set_var(name, value);
@@ -51,5 +53,15 @@ u_str_t * tpl_load (const char * file)
 
 void tpl_init (void)
 {
+	if (cur_template_dir == NULL)
+	{
+		cur_template_dir = (char *) malloc(config.data.len + config.template_name.len + 12);
+		strcpy(cur_template_dir, (char *) config.data.str);
+		strcat(cur_template_dir, "/templates/");
+		strcat(cur_template_dir, (char *) config.template_name.str);
+		if (!is_directory_exists(cur_template_dir))
+			eerr(0, "Template directory \"%s\" does not exists.", cur_template_dir);
+		debug_print_1("Template directory is \"%s\"", cur_template_dir);
+	}
 	ctpp_init();
 }

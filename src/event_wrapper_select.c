@@ -59,7 +59,7 @@ static fd_set wfds;
 static fd_set exfds;
 static int socklist[SELECT_MAX_CONNECTIONS];
 static uchar sockmask[SELECT_MAX_CONNECTIONS];
-static uint socklist_len = 0;
+static volatile uint socklist_len = 0;
 static int maxfd_plus_one = 0;
 
 #define SELECT_READ 1

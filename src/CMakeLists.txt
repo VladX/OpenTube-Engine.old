@@ -3,7 +3,7 @@ set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
 set (CCFLAGS "")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
 
-set (link_libraries_list pthread z pcre ctpp2-st)
+set (link_libraries_list pthread z pcre png ctpp2-st)
 set (link_directories_list)
 set (exec_filename opentube-server)
 
@@ -33,9 +33,9 @@ if (CMAKE_SYSTEM_NAME MATCHES "Linux")
  set (_LINUX 1)
 endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 
-if (NOT _LINUX)
+if (NOT _LINUX OR MINGW)
  set (link_libraries_list ${link_libraries_list} intl iconv)
-endif (NOT _LINUX)
+endif (NOT _LINUX OR MINGW)
 
 add_subdirectory (test_features test_features)
 
@@ -44,9 +44,7 @@ configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_D
 find_program (python_path python)
 
 if (python_path)
- if (GENERATE_CALLBACKS)
   execute_process (COMMAND ${python_path} callbacks/generate-callbacks.c.py ${CMAKE_CURRENT_SOURCE_DIR}/web/ WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web)
- endif (GENERATE_CALLBACKS)
  execute_process (COMMAND ${python_path} update-strings.h.py WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lang)
 endif (python_path)
 

@@ -24,6 +24,8 @@
 #else
  #include <unistd.h>
 #endif
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "common_functions.h"
 
 
@@ -50,8 +52,8 @@ str_t * new_str (char * src)
 
 pool_t * pool_create (uint size, uint start_len)
 {
-	pool_t * p;
-	uint i;
+	register pool_t * p;
+	register uint i;
 	
 	p = (pool_t *) malloc(sizeof(pool_t));
 	p->cur_len = 0;
@@ -79,7 +81,7 @@ void * pool_alloc (pool_t * p)
 
 void pool_free (pool_t * p, uint len)
 {
-	uint i = len;
+	register uint i = len;
 	
 	for (; i < p->real_len; i++)
 		free(p->data[i]);
@@ -101,8 +103,8 @@ void pool_free_last (pool_t * p, uint len)
 
 frag_pool_t * frag_pool_create (uint size, uint res_len)
 {
-	frag_pool_t * p;
-	uint i;
+	register frag_pool_t * p;
+	register uint i;
 	
 	p = (frag_pool_t *) malloc(sizeof(frag_pool_t));
 	p->cur_len = 0;
@@ -122,7 +124,7 @@ frag_pool_t * frag_pool_create (uint size, uint res_len)
 
 void * frag_pool_alloc (frag_pool_t * p)
 {
-	uint i;
+	register uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (p->e[i].free)
@@ -171,7 +173,7 @@ void frag_pool_free_alt (frag_pool_t * p, uint i)
 
 void frag_pool_free (frag_pool_t * p, void * ptr)
 {
-	uint i;
+	register uint i;
 	
 	for (i = 0; i < p->real_len; i++)
 		if (!(p->e[i].free) && p->e[i].data == ptr)
@@ -186,7 +188,7 @@ void frag_pool_free (frag_pool_t * p, void * ptr)
 
 pqueue_t * pqueue_create (ulong res_len)
 {
-	pqueue_t * p;
+	register pqueue_t * p;
 	
 	p = (pqueue_t *) malloc(sizeof(pqueue_t));
 	p->cur_len = 0;
@@ -218,7 +220,7 @@ void * pqueue_fetch (pqueue_t * p)
 
 buf_t * buf_create (uint size, uint res_len)
 {
-	buf_t * b;
+	register buf_t * b;
 	
 	b = (buf_t *) malloc(sizeof(buf_t));
 	b->cur_len = 0;
@@ -237,7 +239,7 @@ void buf_destroy (buf_t * b)
 
 long buf_expand (buf_t * b, uint add)
 {
-	void * old_ptr;
+	register void * old_ptr;
 	
 	b->cur_len += add;
 	
@@ -254,7 +256,7 @@ long buf_expand (buf_t * b, uint add)
 
 long buf_resize (buf_t * b, uint new_size)
 {
-	void * old_ptr;
+	register void * old_ptr;
 	
 	b->cur_len = new_size;
 	
@@ -279,8 +281,8 @@ void buf_free (buf_t * b)
 
 void int_to_str (int value, char * result, int base)
 {
-	char * ptr = result, * ptr1 = result, tmp_char;
-	int tmp_value;
+	register char * ptr = result, * ptr1 = result, tmp_char;
+	register int tmp_value;
 	
 	do
 	{
@@ -318,6 +320,16 @@ bool is_num (char * str)
 			return false;
 	
 	return true;
+}
+
+bool is_directory_exists (const char * path)
+{
+	struct stat st;
+	if (stat(path, &st) == -1)
+		return false;
+	if (st.st_mode & S_IFDIR)
+		return true;
+	return false;
 }
 
 char * gnu_getcwd (void)

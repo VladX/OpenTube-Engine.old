@@ -37,7 +37,7 @@ typedef struct
 } conf_elem;
 
 static const char * required_directives[] = {
-"listen", "user", "group", "pid-file", "http-document-root", "cache-prefix", "cache-update"
+"listen", "user", "group", "pid-file", "http-document-root", "cache-prefix", "cache-update", "data", "template"
 };
 
 
@@ -117,6 +117,28 @@ static void process_directive (conf_elem * el)
 			config.document_root.len--;
 			config.document_root.str[config.document_root.len] = '\0';
 		}
+	}
+	else if (strcmp(el->key, "data") == 0)
+	{
+		config.data.str = (uchar *) el->value;
+		config.data.len = strlen(el->value);
+		
+		if (config.data.str[config.data.len - 1] == '/')
+		{
+			config.data.len--;
+			config.data.str[config.data.len] = '\0';
+		}
+		
+		if (!is_directory_exists((const char *) config.data.str))
+			eerr(1, "Directory \"%s\" does not exists.", (const char *) config.data.str);
+	}
+	else if (strcmp(el->key, "template") == 0)
+	{
+		config.template_name.str = (uchar *) el->value;
+		config.template_name.len = strlen(el->value);
+		
+		if (!(* config.template_name.str))
+			EINVALIDVAL;
 	}
 	else if (strcmp(el->key, "http-keepalive-timeout") == 0)
 	{

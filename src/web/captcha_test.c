@@ -19,13 +19,21 @@
  * Boston, MA  02110-1301  USA
  */
 
-WEB_CALLBACK(video, "/video/", false)
+#include "utils/captcha.h"
+
+WEB_CALLBACK(captcha_test, "/captcha_test", true)
 {
-	u_str_t * s;
-	tpl_set_var("title", _l(1));
-	s = tpl_load("main.tpl");
-	if (s != NULL)
-		APPEND(s->str, s->len);
+	struct captcha_output captcha;
+	if (captcha_generate(&captcha) != NULL)
+	{
+		APPEND(captcha.png_data.str, captcha.png_data.len);
+		debug_print_3("captcha: %s", captcha.keyword.str);
+	}
 	
 	return thread_global_buffer;
+}
+
+WEB_INIT(captcha_test)
+{
+	captcha_init();
 }

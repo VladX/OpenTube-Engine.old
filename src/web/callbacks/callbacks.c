@@ -27,6 +27,7 @@
 #include "../form.c"
 #include "../hello.c"
 #include "../video.c"
+#include "../captcha_test.c"
 
 
 #include <web.h>
@@ -37,9 +38,11 @@ void set_callbacks (void)
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(form), "/form", true);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(hello), "/hello", true);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(video), "/video/", false);
+	web_set_callback(WEB_CALLBACK_TO_C_FUNC(captcha_test), "/captcha_test", true);
 }
 
 void run_init_callbacks (void)
 {
 	/* Automatically inserted by script generate-callbacks.c.py */
+	WEB_INIT_CALLBACK_TO_C_FUNC(captcha_test) ();
 }

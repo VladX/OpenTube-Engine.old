@@ -24,6 +24,7 @@
 #include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
+threadsafe buf_t * thread_global_buffer;
 
 void web_set_callback (web_func_t func, const char * uri, bool full_match)
 {
@@ -36,11 +37,16 @@ void web_set_callback (web_func_t func, const char * uri, bool full_match)
 	m->full_match = full_match;
 }
 
+void web_setup_global_buffer (buf_t * buffer)
+{
+	buf_free(buffer);
+	thread_global_buffer = buffer;
+}
+
 void web_init (void)
 {
 	uri_map = buf_create(sizeof(uri_map_t), 10);
 	
 	tpl_init();
 	set_callbacks();
-	run_init_callbacks();
 }

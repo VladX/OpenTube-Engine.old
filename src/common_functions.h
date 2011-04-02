@@ -30,6 +30,7 @@
 #include "config.h"
 #include "common_types.h"
 #include "global.h"
+#include "localization.h"
 
 #define E_COMMON_FUNCTIONS_H
 
@@ -46,8 +47,10 @@
 
 #if DEBUG_LEVEL > 0
  #define debug_print_1(FMT, ...) _debug_print(1, FMT, __VA_ARGS__)
+ #include <assert.h>
 #else
  #define debug_print_1(FMT, ...)
+ #define assert(ignore)
 #endif
 
 #if DEBUG_LEVEL > 1
@@ -76,6 +79,12 @@
 #define IS_VALID_PATH_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '/' || (X) == '-' || (X) == '_' || (X) == '.' || (X) == ',' || (X) == ':' || (X) == '~')
 #define IS_VALID_URL_KEY_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '-' || (X) == '_')
 #define IS_VALID_URL_VALUE_CHARACTER(X) (IS_VALID_URL_KEY_CHARACTER(X) || (X) == '+' || (X) == '%')
+
+#ifdef __GNUC__
+ #define threadsafe __thread
+#else
+ #define threadsafe __declspec(thread)
+#endif
 
 /* Platform-specific */
 #ifdef _WIN
@@ -130,6 +139,8 @@ void int_to_str (int value, char * result, int base);
 void str_to_lower (char * str);
 
 bool is_num (char * str);
+
+bool is_directory_exists (const char * path);
 
 char * gnu_getcwd (void);
 

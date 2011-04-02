@@ -46,7 +46,7 @@ static const char * strings[%d] = {''' % (maxid + 1))
 
 for i in range(maxid + 1):
 	if i in ids:
-		val = '"%s"' % lang[str(i)]
+		val = '"%s"' % (lang[str(i)].replace('"', '\\"'))
 	else:
 		val = 'NULL'
 	f.write(val)

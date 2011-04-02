@@ -38,6 +38,8 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef unsigned long ulong;
+typedef long long int64;
+typedef unsigned long long uint64;
 
 #ifdef _WIN
 typedef uint __uint32_t;
@@ -216,7 +218,7 @@ typedef struct
 	} temp;
 } request_t;
 
-typedef buf_t * (* web_func_t) (request_t *, buf_t *);
+typedef buf_t * (* web_func_t) (request_t *);
 
 typedef struct
 {
@@ -232,6 +234,8 @@ typedef struct
 	const char * group;
 	const char * pid;
 	u_str_t document_root;
+	u_str_t data;
+	u_str_t template_name;
 	u_str_t keepalive_timeout;
 	uint keepalive_timeout_val;
 	uint keepalive_max_conn_per_client;

@@ -23,5 +23,5 @@ WEB_CALLBACK(hello, "/hello", true)
 {
 	PRINT("Hello World!");
 	
-	return input_buffer;
+	return thread_global_buffer;
 }
