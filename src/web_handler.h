@@ -30,15 +30,18 @@
 #define WEB_CALLBACK_TO_C_FUNC(NAME) web_cb__##NAME
 #define WEB_INIT_CALLBACK_TO_C_FUNC(NAME) web_init_cb__##NAME
 
-#define WEB_CALLBACK(NAME, URI, FULL_MATCH) buf_t * WEB_CALLBACK_TO_C_FUNC(NAME) (request_t * r)
+#define WEB_CALLBACK(NAME, URI, FULL_MATCH) buf_t * WEB_CALLBACK_TO_C_FUNC(NAME) (void)
 #define WEB_INIT(NAME) void WEB_INIT_CALLBACK_TO_C_FUNC(NAME) (void)
 
 extern threadsafe buf_t * thread_global_buffer;
+extern threadsafe request_t * thread_request;
 
 void http_parse_query_string (request_t * r);
 
 void http_parse_cookies (request_t * r);
 
 void http_parse_post (request_t * r);
+
+void web_raise (ushort code);
 
 #endif

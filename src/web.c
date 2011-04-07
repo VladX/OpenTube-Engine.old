@@ -19,12 +19,15 @@
  * Boston, MA  02110-1301  USA
  */
 
+#include <setjmp.h>
 #include "common_functions.h"
 #include "templates.h"
 #include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
 threadsafe buf_t * thread_global_buffer;
+threadsafe request_t * thread_request;
+threadsafe jmp_buf web_exceptions_jmpbuf;
 
 void web_set_callback (web_func_t func, const char * uri, bool full_match)
 {
@@ -37,10 +40,16 @@ void web_set_callback (web_func_t func, const char * uri, bool full_match)
 	m->full_match = full_match;
 }
 
-void web_setup_global_buffer (buf_t * buffer)
+void web_setup_global_buffer (request_t * r)
 {
-	buf_free(buffer);
-	thread_global_buffer = buffer;
+	thread_request = r;
+	thread_global_buffer = r->out_data;
+	buf_free(thread_global_buffer);
+}
+
+void web_raise (ushort code)
+{
+	longjmp(web_exceptions_jmpbuf, code);
 }
 
 void web_init (void)

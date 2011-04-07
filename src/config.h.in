@@ -62,6 +62,7 @@
 #cmakedefine HAVE_GETRLIMIT
 #cmakedefine HAVE_FORK_SYSCALL
 #cmakedefine HAVE_CREATE_PROCESS_WITH_LOGONW
+#cmakedefine HAVE_OPENSSL_SHA1
 
 #cmakedefine _LINUX
 #cmakedefine _BSD

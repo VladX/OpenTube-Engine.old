@@ -202,8 +202,6 @@ typedef struct
 	struct
 	{
 		char content_length[16];
-		//char * temppath;
-		//int temppath_len;
 		long writev_total;
 		struct iovec * out_vec;
 		uint out_vec_len;
@@ -218,7 +216,7 @@ typedef struct
 	} temp;
 } request_t;
 
-typedef buf_t * (* web_func_t) (request_t *);
+typedef buf_t * (* web_func_t) (void);
 
 typedef struct
 {

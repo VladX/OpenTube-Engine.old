@@ -35,7 +35,8 @@ u_str_t * tpl_load (const char * file)
 	
 	if (config.tpl_cache_update)
 	{
-		ctpp_compile(file);
+		if (!ctpp_compile(file))
+			return NULL;
 		ctpp_run(file, &out);
 	}
 	else
@@ -43,7 +44,8 @@ u_str_t * tpl_load (const char * file)
 		ctpp_run(file, &out);
 		if (out == NULL)
 		{
-			ctpp_compile(file);
+			if (!ctpp_compile(file))
+				return NULL;
 			ctpp_run(file, &out);
 		}
 	}

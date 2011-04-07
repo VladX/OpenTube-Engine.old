@@ -28,7 +28,7 @@ WEB_CALLBACK(form, "/form", true)
 	
 	//http_parse_query_string(r);
 	//http_parse_cookies(r);
-	http_parse_post(r);
+	http_parse_post(thread_request);
 	
 	return thread_global_buffer;
 }

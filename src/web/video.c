@@ -24,7 +24,9 @@ WEB_CALLBACK(video, "/video/", false)
 	u_str_t * s;
 	tpl_set_var("title", _l(1));
 	s = tpl_load("main.tpl");
-	if (s != NULL)
+	if (s == NULL)
+		internal_server_error();
+	else
 		APPEND(s->str, s->len);
 	
 	return thread_global_buffer;

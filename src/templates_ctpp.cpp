@@ -71,7 +71,7 @@ static ct_map compiled_templates;
 static pthread_mutex_t mutex_access[1];
 
 #undef error_in_file
-#define error_in_file(PATTERN, ...) eerr(0, "An error occurred while trying to parse \"%s\": " PATTERN, file, __VA_ARGS__)
+#define error_in_file(PATTERN, ...) { err("An error occurred while trying to parse \"%s\": " PATTERN, file, __VA_ARGS__); return false; }
 
 
 void ctpp_set_var (const char * name, const char * value)
@@ -114,7 +114,7 @@ void ctpp_run (const char * file, u_str_t ** out)
 	* out = ct->out;
 }
 
-void ctpp_compile (const char * file)
+bool ctpp_compile (const char * file)
 {
 	pthread_mutex_lock(mutex_access);
 	
@@ -127,11 +127,19 @@ void ctpp_compile (const char * file)
 	{
 		r = chdir(cur_template_dir);
 		if (r == -1)
-			peerr(0, "chdir(%s)", cur_template_dir);
+		{
+			perr("chdir(%s)", cur_template_dir);
+			pthread_mutex_unlock(mutex_access);
+			return false;
+		}
 	}
 	
 	if (stat(file, &st) == -1)
-		peerr(0, "stat(%s)", file);
+	{
+		perr("stat(%s)", file);
+		pthread_mutex_unlock(mutex_access);
+		return false;
+	}
 	
 	if (cwd != NULL)
 	{
@@ -150,7 +158,7 @@ void ctpp_compile (const char * file)
 		if (st.st_mtime == ((* it).second)->mtime)
 		{
 			pthread_mutex_unlock(mutex_access);
-			return;
+			return true;
 		}
 		((* it).second)->data.clear();
 		delete ((* it).second)->vmmemcore;
@@ -181,22 +189,27 @@ void ctpp_compile (const char * file)
 	}
 	catch (CTPPParserSyntaxError & e)
 	{
+		pthread_mutex_unlock(mutex_access);
 		error_in_file("At line %u, pos. %u: %s", (uint) e.GetLine(), (uint) e.GetLinePos(), e.what());
 	}
 	catch (CTPPParserOperatorsMismatch & e)
 	{
+		pthread_mutex_unlock(mutex_access);
 		error_in_file("At line %u, pos. %u: expected %s, but found </%s>", (uint) e.GetLine(), (uint) e.GetLinePos(), e.Expected(), e.Found());
 	}
 	catch (CTPPLogicError & e)
 	{
+		pthread_mutex_unlock(mutex_access);
 		error_in_file("%s", e.what());
 	}
 	catch (CTPPUnixException & e)
 	{
+		pthread_mutex_unlock(mutex_access);
 		error_in_file("I/O in %s: %s", e.what(), strerror(e.ErrNo()));
 	}
 	catch (...)
 	{
+		pthread_mutex_unlock(mutex_access);
 		error_in_file("%s", "Unknown error");
 	}
 	
@@ -214,6 +227,8 @@ void ctpp_compile (const char * file)
 	ct->mtime = st.st_mtime;
 	compiled_templates[mkey] = ct;
 	pthread_mutex_unlock(mutex_access);
+	
+	return true;
 }
 
 void ctpp_init (void)

@@ -32,3 +32,8 @@ inline void print_to_buffer (void * ptr)
 {
 	append_to_buffer(ptr, strlen((char *) ptr));
 }
+
+inline void internal_server_error (void)
+{
+	web_raise(500);
+}

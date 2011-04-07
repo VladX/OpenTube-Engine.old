@@ -140,6 +140,15 @@ static void process_directive (conf_elem * el)
 		if (!(* config.template_name.str))
 			EINVALIDVAL;
 	}
+	else if (strcmp(el->key, "template-update-bytecode") == 0)
+	{
+		if (strcmp(el->value, "never") == 0)
+			config.tpl_cache_update = 0;
+		else if (strcmp(el->value, "source-modified") == 0)
+			config.tpl_cache_update = 1;
+		else
+			EINVALIDVAL;
+	}
 	else if (strcmp(el->key, "http-keepalive-timeout") == 0)
 	{
 		int timeout;

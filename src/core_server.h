@@ -19,6 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
+#include "event_wrapper_kqueue.h"
+#include "event_wrapper_select.h"
+
 #ifdef HAVE_EPOLL
 
 #define socket_del_from_event_list(SOCKET)
@@ -28,16 +31,7 @@ void set_epollout_event_mask (int sock);
 void set_epollin_event_mask (int sock);
 
 void end_request(request_t * r);
-#else
-#ifdef HAVE_KQUEUE
-#include "event_wrapper_kqueue.h"
-#else
-#ifdef HAVE_SELECT
-#include "event_wrapper_select.h"
 #endif
-#endif
-#endif
-
 bool new_keepalive_socket (int sock);
 
 void remove_keepalive_socket(int sock);

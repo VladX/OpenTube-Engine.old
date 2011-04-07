@@ -19,6 +19,11 @@
  * Boston, MA  02110-1301  USA
  */
 
+#include "common_functions.h"
+
+#ifndef HAVE_EPOLL
+#ifdef HAVE_KQUEUE
+
 #define set_epollout_event_mask set_write_mask
 #define set_epollin_event_mask set_read_mask
 #define socket_del_from_event_list(SOCKET)
@@ -30,3 +35,6 @@ void set_write_mask (int fd);
 void end_request(request_t * r);
 
 void event_routine (void);
+
+#endif
+#endif

@@ -46,9 +46,9 @@ static const char gzip_header[10] = GZIP_HEADER;
 
 static void gen_gzipped_value (cache_t * c)
 {
-	static int r;
-	static uchar * ptr;
-	static uint len;
+	register int r;
+	register uchar * ptr;
+	register uint len;
 	
 	ptr = NULL;
 	len = 0;
@@ -106,8 +106,8 @@ static void gen_gzipped_value (cache_t * c)
 
 u_str_t * cache_find (u_str_t * name, bool accept_gzip)
 {
-	static uint i;
-	static cache_t * c;
+	register uint i;
+	register cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
@@ -127,8 +127,8 @@ u_str_t * cache_find (u_str_t * name, bool accept_gzip)
 
 void cache_update (u_str_t * name)
 {
-	static uint i;
-	static cache_t * c;
+	register uint i;
+	register cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
@@ -171,8 +171,8 @@ void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
 
 void cache_free (void)
 {
-	static uint i;
-	static cache_t * c;
+	register uint i;
+	register cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{

@@ -19,4 +19,4 @@
  * Boston, MA  02110-1301  USA
  */
 
-void tiger_hash (void * str, uint64 length, uint64 * res);
+void sha1 (const void * data, uint length, uchar * result);

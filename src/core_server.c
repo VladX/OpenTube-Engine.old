@@ -606,15 +606,11 @@ static void event_routine (void)
 	}
 }
 
-#else
- #ifdef HAVE_KQUEUE
-  #include "event_wrapper_kqueue.h"
- #else
-  #ifdef HAVE_SELECT
-   #include "event_wrapper_select.h"
-  #endif
- #endif
-#endif
+#endif /* HAVE_EPOLL */
+
+/* If we don't have epoll */
+#include "event_wrapper_kqueue.h"
+#include "event_wrapper_select.h"
 
 static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 {

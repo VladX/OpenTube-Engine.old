@@ -21,6 +21,6 @@
 
 void web_set_callback (web_func_t func, const char * uri, bool strict_comparison);
 
-void web_setup_global_buffer (buf_t * buffer);
+void web_setup_global_buffer (request_t * r);
 
 void web_init (void);

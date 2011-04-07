@@ -30,6 +30,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <setjmp.h>
 #include "sendfile.h"
 #include "endianness.h"
 #include "libs/zlib.h"
@@ -602,15 +603,20 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	static struct stat st;
 	static int fd, t;
 	
+	if (* filepath == '\0')
+		return http_error(r, 403);
+	
 	fd = open(filepath, O_RDONLY);
 	
 	if (fd == -1)
 	{
-		if (errno == ENOENT || errno == ENOTDIR)
+		if (io_errno == ENOENT || errno == ENOTDIR)
 			return http_error(r, 404);
 		
-		if (errno == EACCES)
+		if (io_errno == EACCES)
 			return http_error(r, 403);
+		
+		perr("Access to file \"%s\"", filepath);
 		
 		return http_error(r, 500);
 	}
@@ -769,7 +775,7 @@ void run_init_callbacks (void);
 static void * http_pass_to_handlers_routine (void * ptr)
 {
 	uint i = 0;
-	request_t * r;
+	request_t * r = NULL;
 	int res;
 	buf_t * buf;
 	bool accept_gzip;
@@ -780,6 +786,20 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	tpl_init();
 	run_init_callbacks();
 	pthread_mutex_unlock(mutex_cbuf);
+	
+	extern threadsafe jmp_buf web_exceptions_jmpbuf;
+	extern threadsafe request_t * thread_request;
+	ushort code;
+	code = (ushort) setjmp(web_exceptions_jmpbuf);
+	
+	if (code)
+	{
+		pthread_mutex_lock(wmutex);
+		debug_print_3("exception code %u", (uint) code);
+		if (http_error(thread_request, code))
+			end_request(thread_request);
+		pthread_mutex_unlock(wmutex);
+	}
 	
 	for (;;)
 	{
@@ -796,9 +816,9 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		r->out.content_type.str = (uchar *) "text/html";
 		r->out.content_type.len = 9;
 		
-		web_setup_global_buffer(r->out_data);
+		web_setup_global_buffer(r);
 		
-		buf = ((web_func_t) r->temp.func)(r);
+		buf = ((web_func_t) r->temp.func)();
 		
 		if (config.gzip && buf->cur_len > config.gzip_min_page_size)
 		{
@@ -817,7 +837,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		if (accept_gzip)
 		{
-			z_stream * z = r->temp.gzip_stream;
+			register z_stream * z = r->temp.gzip_stream;
 			buf_expand(r->temp.gzip_buf, buf->cur_len);
 			z->avail_in = buf->cur_len;
 			z->next_in = buf->data;
@@ -1121,9 +1141,9 @@ static ushort http_parse_headers (request_t * r)
 bool http_serve_client (request_t * request)
 {
 	static ushort code;
-	static int r;
-	static uint i;
-	static header_t * hdr;
+	register int r;
+	register uint i;
+	register header_t * hdr;
 	static uchar * buf;
 	static long offset;
 	

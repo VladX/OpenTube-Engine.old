@@ -32,7 +32,7 @@
 #include "global.h"
 #include "localization.h"
 
-#define E_COMMON_FUNCTIONS_H
+#define E_COMMON_FUNCTIONS_H 1
 
 
 #define err_f(FILE, FMT, ...) fprintf(FILE, FMT, __VA_ARGS__)
@@ -92,8 +92,12 @@
  #define getpid (int) GetCurrentProcessId
  #undef errno
  #define errno WSAGetLastError()
+ #define socket_errno WSAGetLastError()
+ #define io_errno GetLastError()
 #else
  #define socket_close(SOCKET) close(SOCKET)
+ #define socket_errno errno
+ #define io_errno errno
 #endif
 
 void set_str (str_t * str, char * src);
