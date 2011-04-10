@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004 - 2011 CTPP Team
+ * Copyright (c) 2004 - 2010 CTPP Team
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      CTPP2SimpleCompiler.hpp
+ *      SimpleCompiler.hpp
  *
  * $CTPP$
  */
@@ -58,6 +58,12 @@ struct SimpleCompiler::_SimpleCompiler
 	const VMExecutable * vm_executable;
 	// Template core
 	const VMMemoryCore   vm_core;
+//
+//		UINT_32 iSize = 0;
+//		const VMExecutable * aProgramCore = oDumper.GetExecutable(iSize);
+//
+//		// Get program core
+//		const VMMemoryCore oVMMemoryCore(aProgramCore);
 
 	_SimpleCompiler(VMDumper * pVMDumper);
 
@@ -84,7 +90,7 @@ SimpleCompiler::_SimpleCompiler::~_SimpleCompiler() throw()
 //
 // Constructor
 //
-SimpleCompiler::SimpleCompiler(const STLW::string & sSourceFile)
+SimpleCompiler::SimpleCompiler(const std::string & sSourceFile)
 {
 	VMOpcodeCollector  oVMOpcodeCollector;
 	StaticText         oSyscalls;
@@ -113,7 +119,7 @@ SimpleCompiler::SimpleCompiler(const STLW::string & sSourceFile)
 //
 // Save compiled data to file
 //
-UINT_32 SimpleCompiler::Save(const STLW::string & sCompiledFile) const
+UINT_32 SimpleCompiler::Save(const std::string & sCompiledFile) const
 {
 	INT_32 iRC = -1;
 

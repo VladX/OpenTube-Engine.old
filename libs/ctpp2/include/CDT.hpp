@@ -91,6 +91,12 @@ public:
 	                REFERENCE_VAL   = 0x80 */
 	                 };
 
+	/**
+	  @enum eMergeStrategy CDT.hpp <CDT.hpp>
+	  @brief Describes merging strategy for HASH-es and ARRAY-s
+	*/
+	enum eMergeStrategy { FAST_MERGE, DEEP_MERGE };
+
 	// FWD
 	class SortingComparator;
 
@@ -237,14 +243,14 @@ public:
 	  @param iPos - The index of the element
 	  @return Object with data
 	*/
-	CDT GetCDT(const UINT_32  iPos) const;
+	const CDT & GetCDT(const UINT_32  iPos) const;
 
 	/**
 	  @brief Provides constant access to the data contained in CDT
 	  @param sKey - The key of the hash
 	  @return Object with data
 	*/
-	CDT GetCDT(const STLW::string & sKey) const;
+	const CDT & GetCDT(const STLW::string & sKey) const;
 
 	/**
 	  @brief Provides constant access to the data contained in CDT
@@ -252,7 +258,7 @@ public:
 	  @param bCDTExist - Existence flag [out], is set to true if object exist or false otherwise
 	  @return Object with data
 	*/
-	CDT GetExistedCDT(const STLW::string & sKey, bool & bCDTExist) const;
+	const CDT & GetExistedCDT(const STLW::string & sKey, bool & bCDTExist) const;
 
 	/**
 	  @brief Erase element from HASH
@@ -1676,6 +1682,46 @@ public:
 	CDT & Swap(CDT & oCDT);
 
 	/**
+	  @brief Join array elements to string
+	  @brief sDelimiter - delimiter between elements
+	  @return string as result of join array values
+	*/
+	STLW::string JoinArrayElements(const STLW::string  & sDelimiter = "") const;
+
+	/**
+	  @brief Join hash keys
+	  @brief sDelimiter - delimiter between keys
+	  @return string as result of join hash keys
+	*/
+	STLW::string JoinHashKeys(const STLW::string  & sDelimiter = "") const;
+
+	/**
+	  @brief Join hash values
+	  @brief sDelimiter - delimiter between keys
+	  @return string as result of join hash values
+	*/
+	STLW::string JoinHashValues(const STLW::string  & sDelimiter = "") const;
+
+	/**
+	  @brief Get hash keys
+	  @return CDT with ARRAY type with hash keys
+	*/
+	CDT GetHashKeys() const;
+
+	/**
+	  @brief Get hash values
+	  @return CDT with ARRAY type with hash values
+	*/
+	CDT GetHashValues() const;
+
+	/**
+	  @brief Merge two CDT's
+	  @param oSource - source object
+	  @param eStrategy - Merging strategy
+	*/
+	void MergeCDT(const CDT & oSource, const eMergeStrategy & eStrategy = FAST_MERGE);
+
+	/**
 	  @brief Quick sort ARRAY
 	  @param oSortingComparator - variables comparator
 	*/
@@ -1932,6 +1978,14 @@ private:
 	  @param sResult - string to put result in
 	*/
 	static void DumpData(UINT_32 iLevel, UINT_32 iOffset, const CDT & oData, STLW::string & sResult);
+
+	/**
+	  @brief Merge two CDT's
+	  @param oDestination - destination object
+	  @param oSource - source object
+	  @param eStrategy - Merging strategy
+	*/
+	static void MergeCDT(CDT & oDestination, const CDT & oSource, const eMergeStrategy & eStrategy);
 
 	/**
 	  @brief Check complex data type and change value type, if need

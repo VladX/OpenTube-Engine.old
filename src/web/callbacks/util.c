@@ -37,3 +37,15 @@ inline void internal_server_error (void)
 {
 	web_raise(500);
 }
+
+inline void set_content_type (uchar * str, uint len)
+{
+	thread_request->out.content_type.str = str;
+	thread_request->out.content_type.len = len;
+}
+
+inline void disable_page_compression (void)
+{
+	extern threadsafe volatile bool thread_allow_compression;
+	thread_allow_compression = false;
+}

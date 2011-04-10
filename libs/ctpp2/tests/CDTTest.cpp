@@ -580,7 +580,15 @@ $H{'q'} -> [1] -> {"test"} = "passed";
 
 	fprintf(stderr, "oCDT_empty = `%s`\n\n", oCDT_empty["test"].GetString().c_str());
 
-	fprintf(stderr, "DUMP: %s", oCDT_array.RecursiveDump().c_str());
+	fprintf(stderr, "DUMP: %s\n", oCDT_array.RecursiveDump().c_str());
+
+	fprintf(stderr, "Join HASH keys: %s\n", oCDT_array.JoinHashKeys(":").c_str());
+
+	fprintf(stderr, "Join HASH values: %s\n", oCDT_array.JoinHashValues(":").c_str());
+
+	fprintf(stderr, "Get HASH keys: %s\n", oCDT_array.GetHashKeys().Dump().c_str());
+
+	fprintf(stderr, "Get HASH values: %s\n", oCDT_array.GetHashValues().Dump().c_str());
 
 	CDT::Iterator itCDTArray = oCDT_array.Begin();
 	while (itCDTArray != oCDT_array.End())
@@ -608,6 +616,8 @@ $H{'q'} -> [1] -> {"test"} = "passed";
 	fprintf(stderr, "DUMP: %s", oCDT_array1.RecursiveDump().c_str());
 
 	fprintf(stderr, "DUMP: %s\n", oCDT_array1.RecursiveDump().c_str());
+
+	fprintf(stderr, "Join ARRAY: %s\n", oCDT_array1.JoinArrayElements(":").c_str());
 
 	// Swap two values
 	{
@@ -673,6 +683,85 @@ $H{'q'} -> [1] -> {"test"} = "passed";
 		oCDT1.SortArray(SortCompareStrHashElement("foo", CDT::SortingComparator::DESC));
 		fprintf(stderr, "SortCompareNumHashElement(DESC): `%s`\n", oCDT1.RecursiveDump().c_str());
 
+	}
+
+	// Merge hashes, arrays, etc
+	fprintf(stderr, "== Merge ARRAYS & HASHES ====================\n");
+	{
+		CDT oSource;
+		CDT oDestination;
+		oDestination.MergeCDT(oSource);
+
+		// Array-to-array
+		oDestination[0] = "one";
+		oDestination[1] = "two";
+		oDestination[2] = "three";
+		oDestination.MergeCDT(oSource);
+
+		oSource[0] = "four";
+		oSource[1] = "five";
+		oSource[2] = "six";
+
+		oDestination.MergeCDT(oSource);
+		fprintf(stderr, "Merge: `%s`\n", oDestination.RecursiveDump().c_str());
+
+		// Array-to-hash
+		oDestination = CDT(CDT::HASH_VAL);
+		oDestination["one"]   = 1;
+		oDestination["two"]   = 2;
+		oDestination["three"] = 3;
+		oDestination.MergeCDT(oSource);
+		fprintf(stderr, "Merge: `%s`\n", oDestination.RecursiveDump().c_str());
+
+		// Hash-to-array
+		oDestination = CDT(CDT::ARRAY_VAL);
+		oDestination[0] = "one";
+		oDestination[1] = "two";
+		oDestination[2] = "three";
+
+		oSource = CDT(CDT::HASH_VAL);
+		oSource["four"] = 4;
+		oSource["five"] = 5;
+		oSource["six"]  = 6;
+		oDestination.MergeCDT(oSource);
+		fprintf(stderr, "Merge: `%s`\n", oDestination.RecursiveDump().c_str());
+
+		// Hash-to-hash
+		oDestination = CDT(CDT::HASH_VAL);
+		oDestination["one"]   = 1;
+		oDestination["two"]   = 2;
+		oDestination["three"] = 3;
+		oDestination.MergeCDT(oSource);
+		fprintf(stderr, "Merge: `%s`\n", oDestination.RecursiveDump().c_str());
+	}
+
+	fprintf(stderr, "== Merge DEEP ARRAYS & HASHES ===============\n");
+	{
+		CDT oSource;
+		CDT oDestination;
+
+		oSource["foo"][0] = "apple";
+		oSource["bar"][0] = "cat";
+		oSource["foo"][1] = "pera";
+		oSource["bar"][1] = "dog";
+		oSource["foo"][2] = "orange";
+		oSource["bar"][2] = "fox";
+		oSource["foo"][3] = "raspberry";
+		oSource["bar"][3] = "bear";
+		oSource["foo"][4] = "banana";
+		oSource["bar"][4] = "rat";
+
+		oDestination["foo"][0] = "melon";
+		oDestination["baz"][0] = "whale";
+		oDestination["baz"][1] = "dolphin";
+		oDestination["boo"][1] = "raven";
+		CDT oDestination1 = oDestination;
+
+		oDestination.MergeCDT(oSource);
+		fprintf(stderr, "Merge: `%s`\n", oDestination.RecursiveDump().c_str());
+
+		oDestination1.MergeCDT(oSource, CDT::DEEP_MERGE);
+		fprintf(stderr, "Merge: `%s`\n", oDestination1.RecursiveDump().c_str());
 	}
 	fprintf(stderr, "== END ======================================\n");
 

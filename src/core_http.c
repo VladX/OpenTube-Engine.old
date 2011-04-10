@@ -789,6 +789,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	
 	extern threadsafe jmp_buf web_exceptions_jmpbuf;
 	extern threadsafe request_t * thread_request;
+	extern threadsafe volatile bool thread_allow_compression;
+	
 	ushort code;
 	code = (ushort) setjmp(web_exceptions_jmpbuf);
 	
@@ -820,7 +822,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		buf = ((web_func_t) r->temp.func)();
 		
-		if (config.gzip && buf->cur_len > config.gzip_min_page_size)
+		if (config.gzip && thread_allow_compression && buf->cur_len > config.gzip_min_page_size)
 		{
 			header_t * hdr;
 			

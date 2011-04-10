@@ -3,7 +3,7 @@ set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
 set (CCFLAGS "")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
 
-set (link_libraries_list pthread z pcre png ctpp2-st)
+set (link_libraries_list pthread z pcre ctpp2-st)
 set (link_directories_list)
 set (exec_filename opentube-server)
 

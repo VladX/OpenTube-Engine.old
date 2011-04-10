@@ -521,7 +521,7 @@ static void FmtFloat(StringBuffer            & oBuffer,
 		}
 		else
 		{
-			iFormattedLength = iPrecision + iExponent + 1;
+			iFormattedLength = iPrecision + iExponent + 2;
 		}
 
 	}
@@ -545,8 +545,8 @@ static void FmtFloat(StringBuffer            & oBuffer,
 		if (iPos > iPrecision) { iPos = iPrecision; }
 		else                   { iPrecision = iPos; }
 
-		iFormattedLength = iPrecision;
-		if (iExponent < 0) { iFormattedLength += 1 - iExponent; }
+		iFormattedLength = iPrecision + 1;
+		if (iExponent < 0) { iFormattedLength -= iExponent; }
 	}
 
 	// Sign?

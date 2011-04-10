@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004 - 2011 CTPP Team
+ * Copyright (c) 2004 - 2010 CTPP Team
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,20 +25,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      CTPP2SimpleVM.hpp
+ *      SimpleVM.hpp
  *
  * $CTPP$
  */
-#ifndef _CTPP2_SIMPLE_VM_HPP__
-#define _CTPP2_SIMPLE_VM_HPP__ 1
+#ifndef _SIMPLE_VM_HPP__
+#define _SIMPLE_VM_HPP__ 1
 
 /**
-  @file CTPP2SimpleVM.hpp
-  @brief Virtual Machine, simple API
+  @file SimpleVM.hpp
+  @brief Virtual Machine, simple use case
 */
 
 #include "CTPP2Types.h"
-#include "STLString.hpp"
 #include <string>
 #include <stdio.h>
 
@@ -53,7 +52,7 @@ class VMLoader;
 struct VMMemoryCore;
 
 /**
-  @class SimpleVM CTPP2SimpleVM.hpp <CTPP2SimpleVM.hpp>
+  @class SimpleVM SimpleVM.hpp <SimpleVM.hpp>
   @brief Simple CTPP2 Virtual machine
 */
 class CTPP2DECL SimpleVM
@@ -81,7 +80,7 @@ public:
 	  @param oLogger - logger object
 	  @return instruction pointer
 	*/
-	UINT_32 Run(CDT & oData, const VMLoader & oLoader, STLW::string & sResult, Logger & oLogger);
+	UINT_32 Run(CDT & oData, const VMLoader & oLoader, std::string & sResult, Logger & oLogger);
 
 	/**
 	  @brief Run program
@@ -111,7 +110,7 @@ public:
 	  @param oLogger - logger object
 	  @return instruction pointer
 	*/
-	UINT_32 Run(CDT & oData, const VMMemoryCore * pCore, STLW::string & sResult, Logger & oLogger);
+	UINT_32 Run(CDT & oData, const VMMemoryCore * pCore, std::string & sResult, Logger & oLogger);
 
 	/**
 	  @brief Run program

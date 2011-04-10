@@ -28,6 +28,7 @@ buf_t * uri_map;
 threadsafe buf_t * thread_global_buffer;
 threadsafe request_t * thread_request;
 threadsafe jmp_buf web_exceptions_jmpbuf;
+threadsafe volatile bool thread_allow_compression;
 
 void web_set_callback (web_func_t func, const char * uri, bool full_match)
 {
@@ -42,6 +43,7 @@ void web_set_callback (web_func_t func, const char * uri, bool full_match)
 
 void web_setup_global_buffer (request_t * r)
 {
+	thread_allow_compression = true;
 	thread_request = r;
 	thread_global_buffer = r->out_data;
 	buf_free(thread_global_buffer);

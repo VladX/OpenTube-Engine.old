@@ -1,20 +1,26 @@
+ctpp2 (2.6.13) unstable; urgency=low
+
+ * Bug fixes
+
+ -- Andrei V. Shetuhin <reki@reki.ru> Fri,  1 Apr 2011 19:24:00 +0400
+
 ctpp2 (2.6.12) unstable; urgency=low
 
  * Bug fixes
 
- -- Andrei V. Shetuhin <reki@reki.ru> Tue, 15 Mar 2010 14:15:00 +0400
+ -- Andrei V. Shetuhin <reki@reki.ru> Tue, 15 Mar 2011 14:15:00 +0400
 
 ctpp2 (2.6.11) unstable; urgency=low
 
  * Bug fixes
 
- -- Andrei V. Shetuhin <reki@reki.ru> Mon, 28 Feb 2010 20:00:00 +0400
+ -- Andrei V. Shetuhin <reki@reki.ru> Mon, 28 Feb 2011 20:00:00 +0400
 
 ctpp2 (2.6.10) unstable; urgency=low
 
  * Bug fixes, new functions: GET_TYPE and HOSTNAME
 
- -- Andrei V. Shetuhin <reki@reki.ru> Fri, 11 Feb 2010 19:49:00 +0400
+ -- Andrei V. Shetuhin <reki@reki.ru> Fri, 11 Feb 2011 19:49:00 +0400
 
 ctpp2 (2.6.7) unstable; urgency=low
 

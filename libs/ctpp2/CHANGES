@@ -1,4 +1,4 @@
- CTPP version 2.6.12 change log
+ CTPP version 2.6.13 change log
  ------------------------------
 
  Legend
@@ -10,10 +10,14 @@
    = = Unresolved
    # = Other stuff
 
+ Version 2.6.13 (05.04.2011)
+ ---------------------------
+  01. ! Fixes in SPRINTF function (thanks for patch to Varinov Nicolay <nic@sotcom.ru>)
+  02. New methods in CDT class: JoinArrayElements, JoinHashKeys, JoinHashKeys, GetHashKeys, GetHashValues, MergeCDT
+
  Version 2.6.12 (15.03.2011)
  ---------------------------
   01. ! Fixes in Unicode unescape algorithm, thanks to <demonister @ gmail.com>
-  02. + "Simple" API classesm see include/CTPP2Simple* files
 
  Version 2.6.11 (28.02.2011)
  ---------------------------

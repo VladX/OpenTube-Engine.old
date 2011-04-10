@@ -1,6 +1,6 @@
 Summary: 	CTPP2 template engine.
 Name: 		ctpp2
-Version: 	2.6.12
+Version: 	2.6.13
 Release: 	0%{?dist}
 License: 	BSD
 Source: 	ctpp2-%{version}.tar.gz
@@ -67,6 +67,9 @@ rm -rf %{buildroot}
 %{_libdir}/libctpp2-st.a
 
 %changelog
+* Fri Apr  1 2011 Andrei V. Shetuhin <reki@reki.ru> - 2.6.13-0
+- Bug fixes
+
 * Tue Mar 11 2011 Andrei V. Shetuhin <reki@reki.ru> - 2.6.12-0
 - Bug fixes
 

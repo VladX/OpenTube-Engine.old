@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004 - 2011 CTPP Team
+ * Copyright (c) 2004 - 2010 CTPP Team
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -97,7 +97,7 @@ SimpleVM::SimpleVM(const UINT_32  & iIMaxFunctions,
 //
 // Write Output to STL string
 //
-UINT_32 SimpleVM::Run(CDT & oData, const VMLoader & oLoader, STLW::string & sResult, Logger & oLogger)
+UINT_32 SimpleVM::Run(CDT & oData, const VMLoader & oLoader, std::string & sResult, Logger & oLogger)
 {
 	StringOutputCollector oOutputCollector(sResult);
 
@@ -127,7 +127,7 @@ return Run(oData, pCore, oCollector, oLogger);
 //
 // Write Output to string
 //
-UINT_32 SimpleVM::Run(CDT & oData, const VMMemoryCore * pCore, STLW::string & sResult, Logger & oLogger)
+UINT_32 SimpleVM::Run(CDT & oData, const VMMemoryCore * pCore, std::string & sResult, Logger & oLogger)
 {
 	StringOutputCollector oOutputCollector(sResult);
 

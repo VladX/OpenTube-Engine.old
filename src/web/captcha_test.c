@@ -24,11 +24,15 @@
 WEB_CALLBACK(captcha_test, "/captcha_test", true)
 {
 	struct captcha_output captcha;
-	if (captcha_generate(&captcha) != NULL)
-	{
-		APPEND(captcha.png_data.str, captcha.png_data.len);
-		debug_print_3("captcha: %s", captcha.keyword.str);
-	}
+	
+	if (captcha_generate(&captcha) == NULL)
+		internal_server_error();
+	
+	APPEND(captcha.png_data.str, captcha.png_data.len);
+	debug_print_3("captcha: %s", captcha.keyword.str);
+	
+	set_content_type((uchar *) "image/png", 9);
+	disable_page_compression();
 	
 	return thread_global_buffer;
 }

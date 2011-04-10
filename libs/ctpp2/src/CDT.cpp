@@ -92,6 +92,12 @@ CDT::_CDT::_CDT(): refcount(1), value_type(UNDEF)
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// Static vars
+//
+static const CDT oNonExistentCDT;
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // Class Iterator
 //
 
@@ -658,19 +664,19 @@ return u.p_data -> u.m_data -> operator[](sKey);
 //
 // Provides constant access to the data contained in CDT
 //
-CDT CDT::GetCDT(const UINT_32  iPos) const
+const CDT & CDT::GetCDT(const UINT_32  iPos) const
 {
-	if (eValueType != ARRAY_VAL) { return CDT(); }
+	if (eValueType != ARRAY_VAL) { return oNonExistentCDT; }
 
 	if (iPos >= u.p_data -> u.v_data -> size()) { throw CDTRangeException(); }
 
-return CDT(u.p_data -> u.v_data -> operator[](iPos));
+return u.p_data -> u.v_data -> operator[](iPos);
 }
 
 //
 // Provides constant access to the data contained in CDT
 //
-CDT CDT::GetCDT(const STLW::string & sKey) const
+const CDT & CDT::GetCDT(const STLW::string & sKey) const
 {
 	bool bFlag = 0;
 
@@ -680,24 +686,24 @@ return GetExistedCDT(sKey, bFlag);
 //
 // Provides constant access to the data contained in CDT
 //
-CDT CDT::GetExistedCDT(const STLW::string & sKey, bool & bCDTExist) const
+const CDT & CDT::GetExistedCDT(const STLW::string & sKey, bool & bCDTExist) const
 {
 	// CDT Does Not exist
 	if (eValueType != HASH_VAL)
 	{
 		bCDTExist = false;
-		return CDT();
+		return oNonExistentCDT;
 	}
 
 	Map::const_iterator itmHash = u.p_data -> u.m_data -> find(sKey);
 	if (itmHash == u.p_data -> u.m_data -> end())
 	{
 		bCDTExist = false;
-		return CDT();
+		return oNonExistentCDT;
 	}
 	bCDTExist = true;
 
-return CDT(itmHash -> second);
+return itmHash -> second;
 }
 
 //
@@ -1540,7 +1546,7 @@ CDT & CDT::operator*=(const INT_64  oValue)
 	switch (eValueType)
 	{
 		case UNDEF:
-			::new (this)CDT((INT_64) 0);
+			::new (this)CDT((INT_32) 0);
 			break;
 
 		case INT_VAL:
@@ -4202,6 +4208,272 @@ CDT & CDT::Swap(CDT & oCDT)
 	*this = oTMP;
 
 return *this;
+}
+
+//
+// Join array elements to string
+//
+STLW::string CDT::JoinArrayElements(const STLW::string  & sDelimiter) const
+{
+	STLW::string sResult;
+
+	if (eValueType != ARRAY_VAL) { throw CDTAccessException(); }
+
+	Vector::const_iterator itvArray = u.p_data -> u.v_data -> begin();
+	const Vector::const_iterator itvEnd = u.p_data -> u.v_data -> end();
+
+	if (itvArray == itvEnd) { return sResult; }
+
+	for(;;)
+	{
+		sResult.append(itvArray -> GetString());
+		++itvArray;
+		if (itvArray == itvEnd) { break; }
+		sResult.append(sDelimiter);
+	}
+
+return sResult;
+}
+
+//
+// Join hash keys
+//
+STLW::string CDT::JoinHashKeys(const STLW::string  & sDelimiter) const
+{
+	STLW::string sResult;
+
+	if (eValueType != HASH_VAL) { throw CDTAccessException(); }
+
+	Map::const_iterator itmHash = u.p_data -> u.m_data -> begin();
+	const Map::const_iterator itmEnd = u.p_data -> u.m_data -> end();
+
+	if (itmHash == itmEnd) { return sResult; }
+
+	for(;;)
+	{
+		sResult.append(itmHash -> first);
+		++itmHash;
+		if (itmHash == itmEnd) { break; }
+		sResult.append(sDelimiter);
+	}
+
+return sResult;
+}
+
+//
+// Join hash values
+//
+STLW::string CDT::JoinHashValues(const STLW::string  & sDelimiter) const
+{
+	STLW::string sResult;
+
+	if (eValueType != HASH_VAL) { throw CDTAccessException(); }
+
+	Map::const_iterator itmHash = u.p_data -> u.m_data -> begin();
+	const Map::const_iterator itmEnd = u.p_data -> u.m_data -> end();
+
+	if (itmHash == itmEnd) { return sResult; }
+
+	for(;;)
+	{
+		sResult.append(itmHash -> second.GetString());
+		++itmHash;
+		if (itmHash == itmEnd) { break; }
+		sResult.append(sDelimiter);
+	}
+
+return sResult;
+}
+
+//
+// Get hash keys
+//
+CDT CDT::GetHashKeys() const
+{
+	CDT oResult(CDT::ARRAY_VAL);
+
+	if (eValueType != HASH_VAL) { throw CDTAccessException(); }
+
+	Map::const_iterator itmHash = u.p_data -> u.m_data -> begin();
+	const Map::const_iterator itmEnd = u.p_data -> u.m_data -> end();
+
+	while(itmHash != itmEnd)
+	{
+		oResult.PushBack(itmHash -> first);
+		++itmHash;
+	}
+
+return oResult;
+}
+
+//
+// Get hash values
+//
+CDT CDT::GetHashValues() const
+{
+	CDT oResult(CDT::ARRAY_VAL);
+
+	if (eValueType != HASH_VAL) { throw CDTAccessException(); }
+
+	Map::const_iterator itmHash = u.p_data -> u.m_data -> begin();
+	const Map::const_iterator itmEnd = u.p_data -> u.m_data -> end();
+
+	while(itmHash != itmEnd)
+	{
+		oResult.PushBack(itmHash -> second);
+		++itmHash;
+	}
+
+return oResult;
+}
+
+//
+// Merge two CDT's
+//
+void CDT::MergeCDT(const CDT & oSource, const eMergeStrategy & eStrategy)
+{
+	MergeCDT(*this, oSource, eStrategy);
+}
+
+//
+// Merge two CDT's
+//
+void CDT::MergeCDT(CDT & oDestination, const CDT & oSource, const eMergeStrategy & eStrategy)
+{
+	if (oDestination.eValueType == UNDEF)
+	{
+		oDestination = oSource;
+	}
+	else if (oDestination.eValueType == ARRAY_VAL)
+	{
+		// Unshare complex type
+		oDestination.Unshare();
+
+		// Special case for undef
+		if (oSource.eValueType == UNDEF) { return; }
+		// Array-to-array
+		else if (oSource.eValueType == ARRAY_VAL)
+		{
+			Vector::const_iterator itvArray = oSource.u.p_data -> u.v_data -> begin();
+			const Vector::const_iterator itvEnd = oSource.u.p_data -> u.v_data -> end();
+
+			while(itvArray != itvEnd)
+			{
+				oDestination.u.p_data -> u.v_data -> push_back(*itvArray);
+				++itvArray;
+			}
+		}
+		// Hash-to-array
+		else if (oSource.eValueType == HASH_VAL)
+		{
+			Map::const_iterator itmHash = oSource.u.p_data -> u.m_data -> begin();
+			const Map::const_iterator itmEnd = oSource.u.p_data -> u.m_data -> end();
+
+			while(itmHash != itmEnd)
+			{
+				oDestination.u.p_data -> u.v_data -> push_back(itmHash -> first);
+				oDestination.u.p_data -> u.v_data -> push_back(itmHash -> second);
+				++itmHash;
+			}
+		}
+		else { throw CDTAccessException(); }
+	}
+	else if (oDestination.eValueType == HASH_VAL)
+	{
+		// Unshare complex type
+		oDestination.Unshare();
+
+		if (eStrategy == FAST_MERGE)
+		{
+			// Special case for undef
+			if (oSource.eValueType == UNDEF) { return; }
+			// Array-to-hash
+			else if (oSource.eValueType == ARRAY_VAL)
+			{
+				Vector::const_iterator itvArray = oSource.u.p_data -> u.v_data -> begin();
+				const Vector::const_iterator itvEnd = oSource.u.p_data -> u.v_data -> end();
+
+				for (;;)
+				{
+					Vector::const_iterator itvKey = itvArray;
+					++itvArray;
+					if (itvArray == itvEnd)
+					{
+						oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itvKey -> GetString(), CDT()));
+						break;
+					}
+
+					oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itvKey -> GetString(), *itvArray));
+
+					++itvArray;
+					if (itvArray == itvEnd) { break; }
+				}
+			}
+			// Hash-to-hash
+			else if (oSource.eValueType == HASH_VAL)
+			{
+				Map::const_iterator itmHash = oSource.u.p_data -> u.m_data -> begin();
+				const Map::const_iterator itmEnd = oSource.u.p_data -> u.m_data -> end();
+
+				while(itmHash != itmEnd)
+				{
+					oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itmHash -> first, itmHash -> second));
+					++itmHash;
+				}
+			}
+			else { throw CDTAccessException(); }
+
+			return;
+		}
+		// DEEP_MERGE
+
+		// Special case for undef
+		if (oSource.eValueType == UNDEF) { return; }
+		// Array-to-hash
+		else if (oSource.eValueType == ARRAY_VAL)
+		{
+			Vector::const_iterator itvArray = oSource.u.p_data -> u.v_data -> begin();
+			const Vector::const_iterator itvEnd = oSource.u.p_data -> u.v_data -> end();
+
+			for (;;)
+			{
+				Vector::const_iterator itvKey = itvArray;
+				++itvArray;
+				if (itvArray == itvEnd)
+				{
+					oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itvKey -> GetString(), CDT()));
+					break;
+				}
+
+				oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itvKey -> GetString(), *itvArray));
+
+				++itvArray;
+				if (itvArray == itvEnd) { break; }
+			}
+		}
+		// Hash-to-hash
+		else if (oSource.eValueType == HASH_VAL)
+		{
+			Map::const_iterator itmHash = oSource.u.p_data -> u.m_data -> begin();
+			const Map::const_iterator itmEnd = oSource.u.p_data -> u.m_data -> end();
+
+			while(itmHash != itmEnd)
+			{
+				Map::iterator itmElement = oDestination.u.p_data -> u.m_data -> find(itmHash -> first);
+				if (itmElement == oDestination.u.p_data -> u.m_data -> end())
+				{
+					oDestination.u.p_data -> u.m_data -> insert(STLW::pair<String, CDT>(itmHash -> first, itmHash -> second));
+				}
+				else
+				{
+					MergeCDT(itmElement -> second, itmHash -> second, eStrategy);
+				}
+				++itmHash;
+			}
+		}
+		else { throw CDTAccessException(); }
+	}
+	else { throw CDTAccessException(); }
 }
 
 //

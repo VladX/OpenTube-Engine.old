@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004 - 2011 CTPP Team
+ * Copyright (c) 2004 - 2010 CTPP Team
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,20 +25,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *      CTPP2SimpleCompiler.hpp
+ *      SimpleCompiler.hpp
  *
  * $CTPP$
  */
-#ifndef _CTPP2_SIMPLE_COMPILER_HPP__
-#define _CTPP2_SIMPLE_COMPILER_HPP__ 1
+#ifndef _SIMPLE_COMPILER_HPP__
+#define _SIMPLE_COMPILER_HPP__ 1
 
 /**
-  @file CTPP2SimpleCompiler.hpp
-  @brief Compiler, simple API
+  @file SimpleVM.hpp
+  @brief Virtual Machine, simple use case
 */
 
 #include "CTPP2Types.h"
-#include "STLString.hpp"
 #include <string>
 #include <stdio.h>
 
@@ -52,7 +51,7 @@ class VMLoader;
 struct VMMemoryCore;
 
 /**
-  @class SimpleCompiler CTPP2SimpleCompiler.hpp <CTPP2SimpleCompiler.hpp>
+  @class SimpleCompiler SimpleCompiler.hpp <SimpleCompiler.hpp>
   @brief Simple CTPP2 template compiler
 */
 class CTPP2DECL SimpleCompiler
@@ -62,14 +61,14 @@ public:
 	  @brief Constructor
 	  @param sSourceFile - source file
 	*/
-	SimpleCompiler(const STLW::string & sSourceFile);
+	SimpleCompiler(const std::string & sSourceFile);
 
 	/**
 	  @brief Save compiled data to file
 	  @param sCompiledFile - compiled file
 	  @return 0 - if success, -1 - if any error occured
 	*/
-	UINT_32 Save(const STLW::string & sCompiledFile) const;
+	UINT_32 Save(const std::string & sCompiledFile) const;
 
 	/**
 	  @brief Get memory core
@@ -95,5 +94,5 @@ private:
 };
 
 } // namespace CTPP
-#endif // _CTPP2_SIMPLE_COMPILER_HPP__
+#endif // _SIMPLE_COMPILER_HPP__
 // End.

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004 - 2011 CTPP Team
+ * Copyright (c) 2004 - 2010 CTPP Team
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

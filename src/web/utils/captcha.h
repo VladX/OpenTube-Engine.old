@@ -26,3 +26,5 @@ struct captcha_output
 };
 
 void captcha_init (void);
+
+struct captcha_output * captcha_generate (struct captcha_output * output);
