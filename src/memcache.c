@@ -22,6 +22,7 @@
 #include "common_functions.h"
 #include <time.h>
 #include "endianness.h"
+#include "win32_utils.h"
 #include "libs/zlib.h"
 
 #define GZIP_BUFFER_SIZE 512

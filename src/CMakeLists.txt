@@ -3,7 +3,7 @@ set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
 set (CCFLAGS "")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
 
-set (link_libraries_list pthread z pcre ctpp2-st)
+set (link_libraries_list pthread z m pcre ctpp2-st)
 set (link_directories_list)
 set (exec_filename opentube-server)
 
@@ -56,6 +56,20 @@ foreach (source_file ${source_files_web})
 endforeach (source_file)
 
 set (source_files ${source_files} templates_ctpp.cpp)
+
+if (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN)
+ set (CCFLAGS "${CCFLAGS} -fuse-linker-plugin -flto")
+endif (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN)
+
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+ set (CLANG_COMPILER 1)
+endif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+
+if (CLANG_COMPILER)
+ set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith ${DEBUG_CCFLAGS}")
+ set (CMAKE_C_FLAGS "${CCFLAGS} -std=gnu89")
+ set (CMAKE_CXX_FLAGS "${CCFLAGS}")
+endif (CLANG_COMPILER)
 
 if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
  set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")

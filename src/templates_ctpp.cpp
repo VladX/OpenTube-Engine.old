@@ -43,6 +43,7 @@ extern "C"
 {
 
 #include "common_functions.h"
+#include "win32_utils.h"
 
 #ifdef _WIN
 #include <io.h>
@@ -60,7 +61,7 @@ typedef struct
 
 typedef std::map <std::string, compiled_template *> ct_map;
 
-extern const char * cur_template_dir;
+extern char * cur_template_dir;
 
 static threadsafe SyscallFactory * oSyscallFactory;
 static threadsafe VM * oVM;
