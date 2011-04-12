@@ -19,7 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "config.h"
+#include "common_functions.h"
 
 #ifdef _BSD
  #include <sys/endian.h>

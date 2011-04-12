@@ -23,8 +23,91 @@
 #ifdef _WIN
 #include <win32_utils.h>
 #include <io.h>
+#include <glob.h>
+#include <dirent.h>
 
 /* Wrapper functions for Windows */
+
+/* Very simple version of POSIX glob() for Windows */
+int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob)
+{
+	pglob->gl_pathc = 0;
+	pglob->gl_pathv = NULL;
+	
+	WIN32_FIND_DATAA data;
+	
+	HANDLE h = FindFirstFileA(pattern, &data);
+	
+	if (h == INVALID_HANDLE_VALUE && io_errno == ERROR_FILE_NOT_FOUND)
+		return 0;
+	if (h == INVALID_HANDLE_VALUE)
+		return -1;
+	
+	char * p = (char *) pattern + (strlen(pattern) - 1);
+	char * basedir = NULL;
+	uint basedir_len = 0, len;
+	
+	while (* p != '/' && p != pattern)
+		p--;
+	
+	if (p != pattern)
+	{
+		p++;
+		basedir = malloc((p - pattern) + 1);
+		memcpy(basedir, pattern, p - pattern);
+		basedir[p - pattern] = '\0';
+		basedir_len = p - pattern;
+	}
+	
+	if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+	{
+		pglob->gl_pathv = NULL;
+		pglob->gl_pathc = 0;
+	}
+	else
+	{
+		pglob->gl_pathv = malloc(sizeof(char *));
+		len = strlen(data.cFileName);
+		pglob->gl_pathv[0] = malloc(basedir_len + len + 1);
+		memcpy(pglob->gl_pathv[0], basedir, basedir_len);
+		(pglob->gl_pathv[0])[basedir_len] = '\0';
+		strcat(pglob->gl_pathv[0], data.cFileName);
+		pglob->gl_pathc = 1;
+	}
+	
+	while (FindNextFileA(h, &data) != 0)
+	{
+		if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			continue;
+		pglob->gl_pathv = realloc(pglob->gl_pathv, sizeof(char *) * (pglob->gl_pathc + 1));
+		len = strlen(data.cFileName);
+		pglob->gl_pathv[pglob->gl_pathc] = malloc(basedir_len + len + 1);
+		memcpy(pglob->gl_pathv[pglob->gl_pathc], basedir, basedir_len);
+		(pglob->gl_pathv[pglob->gl_pathc])[basedir_len] = '\0';
+		strcat(pglob->gl_pathv[pglob->gl_pathc], data.cFileName);
+		pglob->gl_pathc++;
+	}
+	
+	if (basedir)
+		free(basedir);
+	
+	FindClose(h);
+	
+	return 0;
+}
+
+void win32_globfree (glob_t * pglob)
+{
+	uint i;
+	
+	for (i = 0; i < pglob->gl_pathc; i++)
+	{
+		free(pglob->gl_pathv[i]);
+		pglob->gl_pathv[i] = NULL;
+	}
+	
+	free(pglob->gl_pathv);
+}
 
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt)
 {

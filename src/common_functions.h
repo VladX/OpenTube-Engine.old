@@ -94,6 +94,8 @@
  #define errno WSAGetLastError()
  #define socket_errno WSAGetLastError()
  #define io_errno GetLastError()
+ #undef peerr
+ #define peerr(EXIT_CODE, ...) { err(__VA_ARGS__); win32_fatal_error(""); }
 #else
  #define socket_close(SOCKET) close(SOCKET)
  #define socket_errno errno

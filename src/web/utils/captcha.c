@@ -26,6 +26,7 @@
 #include <math.h>
 #include <common_functions.h>
 #include <endianness.h>
+#include <win32_utils.h>
 #include "captcha.h"
 
 #ifndef M_PI
@@ -435,6 +436,11 @@ static struct ppm_image * ppm_load (struct ppm_image * ppm, FILE * f)
 	return ppm;
 }
 
+#ifdef _WIN
+ #define glob(P, F, R, G) win32_glob(P, F, R, G)
+ #define globfree(G) win32_globfree(G)
+#endif
+
 void captcha_init (void)
 {
 	pthread_mutex_lock(mutex);
@@ -449,7 +455,9 @@ void captcha_init (void)
 	
 	glob_t globbuf;
 	int ret = glob(captcha_pat, 0, NULL, &globbuf);
-	assert(ret == 0);
+	
+	if (ret != 0)
+		peerr(0, "glob(%s)", captcha_pat);
 	
 	uint i, k, len;
 	char * sym;

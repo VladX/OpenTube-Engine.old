@@ -20,6 +20,7 @@
  */
 
 #include "common_functions.h"
+#include "win32_utils.h"
 
 #define CONFIG_IS_FLAG_ENABLED(F) (strcmp(F, "on") == 0 || strcmp(F, "enable") == 0 || strcmp(F, "1") == 0)
 #define EINVALIDVAL eerr(1, "Invalid value for \"%s\".", el->key)

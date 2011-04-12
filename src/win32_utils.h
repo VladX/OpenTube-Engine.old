@@ -19,17 +19,27 @@
  * Boston, MA  02110-1301  USA
  */
 
+#include "common_functions.h"
+
+#ifndef _WIN32_UTILS_H
+#define _WIN32_UTILS_H 1
+
 #ifdef _WIN
 #undef WINVER
 #define WINVER 0x0501
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <glob.h>
 #undef WINVER
 
 struct iovec {
 	void * iov_base;
 	size_t iov_len;
 };
+
+int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob);
+
+void win32_globfree (glob_t * pglob);
 
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt);
 
@@ -43,4 +53,5 @@ void win32_fatal_error (const char * msg);
 
 LPCWSTR win32_utf8_to_utf16 (const char * src);
 
+#endif
 #endif
