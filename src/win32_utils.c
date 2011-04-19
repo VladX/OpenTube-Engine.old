@@ -220,16 +220,19 @@ ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count)
 
 void win32_fatal_error (const char * msg)
 {
-	LPVOID lpvMessageBuffer;
+	void * lpvMessageBuffer;
 	
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (LPTSTR) &lpvMessageBuffer, 0, NULL);
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (void *) &lpvMessageBuffer, 0, NULL);
 	
-	eerr(0, "%s: %s (code: %d)", msg, (char *) lpvMessageBuffer, (int) GetLastError());
+	if (* msg)
+		printf("%s: %s (code: %lu)", msg, (char *) lpvMessageBuffer, (ulong) GetLastError());
+	else
+		printf("%s (code: %lu)", (char *) lpvMessageBuffer, (ulong) GetLastError());
 	
 	ExitProcess(GetLastError());
 }
 
-LPCWSTR win32_utf8_to_utf16 (const char * src)
+LPWSTR win32_utf8_to_utf16 (const char * src)
 {
 	uint l = (uint) strlen(src);
 	uint len = (uint) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, NULL, 0);
@@ -237,7 +240,7 @@ LPCWSTR win32_utf8_to_utf16 (const char * src)
 	(void) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, (LPWSTR) dst, len);
 	dst[len] = 0;
 	
-	return (LPCWSTR) dst;
+	return (LPWSTR) dst;
 }
 
 #endif

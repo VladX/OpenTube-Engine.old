@@ -149,13 +149,12 @@ static bool create_pidfile (void)
 
 pid_t spawn_worker (char * procname)
 {
+	#ifdef HAVE_FORK_SYSCALL
 	unsigned char respawn_fails = 0;
 	int status;
 	time_t start_time;
 	pid_t pid = 0;
 	bool lock = create_pidfile();
-	
-	#ifdef HAVE_FORK_SYSCALL
 	
 	struct passwd * pwd;
 	struct group * grp;
@@ -221,75 +220,7 @@ pid_t spawn_worker (char * procname)
 	}
 	
 	#else
-	#ifdef HAVE_CREATE_PROCESS_WITH_LOGONW
-	
-	if (!lock)
-	{
-		pid = getpid();
-		
-		if (signal(SIGINT, quit_worker) == SIG_ERR)
-			err("can't handle signal %d", SIGINT);
-		if (signal(SIGTERM, quit_worker) == SIG_ERR)
-			err("can't handle signal %d", SIGTERM);
-		
-		return pid;
-	}
-	
-	extern int sockfd;
-	socket_close(sockfd);
-	
-	STARTUPINFO lpStartupInfo;
-	PROCESS_INFORMATION lpProcessInfo;
-	LPCWSTR user, group;
-	
-	user = win32_utf8_to_utf16(config.user);
-	group = win32_utf8_to_utf16(config.group);
-	
-	LPWSTR cmdline = _wcsdup(GetCommandLineW());
-	
-	setprocname(procname, PROG_NAME " (master)");
-	
-	for (;;)
-	{
-		memset(&lpStartupInfo, 0, sizeof(STARTUPINFO));
-		memset(&lpProcessInfo, 0, sizeof(PROCESS_INFORMATION));
-		lpStartupInfo.cb = sizeof(STARTUPINFO);
-		
-		if (CreateProcessWithLogonW(user, group, WIN32_DEFAULT_PASWORD, 0, NULL, cmdline, 0, NULL, NULL, &lpStartupInfo, &lpProcessInfo) == 0)
-			win32_fatal_error("CreateProcessWithLogonW()");
-		
-		start_time = time(NULL);
-		
-		worker_pid = (pid_t) GetProcessId(lpProcessInfo.hProcess);
-		WaitForSingleObject(lpProcessInfo.hProcess, INFINITE);
-		DWORD exit_code;
-		GetExitCodeProcess(lpProcessInfo.hProcess, &exit_code);
-		status = exit_code;
-		CloseHandle(lpProcessInfo.hProcess);
-		CloseHandle(lpProcessInfo.hThread);
-		
-		if (status == 0)
-			quit(0);
-		else
-		{
-			if (time(NULL) - start_time <= 1)
-				respawn_fails++;
-			else
-				respawn_fails = 0;
-			
-			if (respawn_fails > 10)
-				eerr(12, "worker crashed with status %d (%s)", status, statustomsg(status));
-		}
-		
-		debug_print_1("worker process terminated with status %d (%s), respawning...", status, statustomsg(status));
-	}
-	
-	free((void *) user);
-	free((void *) group);
-	free((void *) cmdline);
-	#else
-	pid = getpid();
-	#endif
+	pid_t pid = getpid();
 	#endif
 	
 	return pid;

@@ -235,7 +235,7 @@ bool ctpp_compile (const char * file)
 void ctpp_init (void)
 {
 	pthread_mutex_init(mutex_access, NULL);
-	oSyscallFactory = new SyscallFactory(WORKER_THREADS);
+	oSyscallFactory = new SyscallFactory(config.worker_threads);
 	STDLibInitializer::InitLibrary(* (oSyscallFactory));
 	oVM = new VM(oSyscallFactory);
 	oLogger = new FileLogger(stderr);

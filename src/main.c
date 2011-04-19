@@ -22,17 +22,61 @@
 #include "common_functions.h"
 #include "core_server.h"
 #include "core_config.h"
+#include "win32_service.h"
 
 #define COPYRIGHT "Copyright (C) 2011 VladX (http://vladx.net/); Bugs to <vvladxx@gmail.com>"
 
-
-void parse_args (char ** args, int n)
+#ifndef _WIN
+static void detach_process (void)
 {
+	pid_t pid = fork();
+	if (pid != 0)
+		exit(0);
+	(void) setsid();
+}
+#endif
+
+static void parse_args (char ** args, int n)
+{
+	char * config_path = NULL;
+	#ifdef _WIN
+	
 	if (n > 1 && (strcmp("-c", args[1]) != 0 || n < 3))
 		eerr(1, "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
 	
 	if (n >= 3)
-		load_config(args[2]);
+		config_path = args[2];
+	#else
+	uint i;
+	bool detach = false;
+	
+	for (i = 1; i < n; i++)
+	{
+		if (strcmp(args[i], "-c") == 0)
+		{
+			i++;
+			if (i < n)
+			{
+				config_path = args[i];
+				continue;
+			}
+		}
+		else if (strcmp(args[i], "--detach") == 0 || strcmp(args[i], "-d") == 0)
+		{
+			detach = true;
+			continue;
+		}
+		
+		err_f(stderr, "Usage: %s [--detach] [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
+		exit(1);
+	}
+	
+	if (detach)
+		detach_process();
+	#endif
+	
+	if (config_path)
+		load_config(config_path);
 	else
 		load_config(CONFIG_PATH);
 }
@@ -40,6 +84,9 @@ void parse_args (char ** args, int n)
 int main (int argc, char ** argv)
 {
 	parse_args(argv, argc);
+	#ifdef _WIN
+	win32_service_init();
+	#endif
 	init(* argv);
 	
 	return 0;

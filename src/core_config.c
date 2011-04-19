@@ -59,6 +59,8 @@ static void default_config (void)
 	config.cache_prefix.len = strlen((char *) config.cache_prefix.str);
 	config.cache_update = 0;
 	config.tpl_cache_update = 0;
+	config.worker_threads = 5;
+	config.prealloc_request_structures = 10;
 }
 
 static void process_directive (conf_elem * el)
@@ -262,6 +264,20 @@ static void process_directive (conf_elem * el)
 			config.cache_update = 1;
 		else
 			EINVALIDVAL;
+	}
+	else if (strcmp(el->key, "worker-threads") == 0)
+	{
+		int threads = atoi(el->value);
+		if (threads < 2)
+			EINVALIDVAL;
+		config.worker_threads = threads;
+	}
+	else if (strcmp(el->key, "pre-allocated-request-structures") == 0)
+	{
+		int prealloc_rs = atoi(el->value);
+		if (prealloc_rs < 2)
+			EINVALIDVAL;
+		config.prealloc_request_structures = prealloc_rs;
 	}
 	else
 		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);

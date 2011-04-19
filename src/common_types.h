@@ -248,4 +248,6 @@ typedef struct
 	uchar cache_update;
 	u_str_t cache_prefix;
 	uchar tpl_cache_update;
+	uint worker_threads;
+	uint prealloc_request_structures;
 } config_t;

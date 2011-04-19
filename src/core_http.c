@@ -49,7 +49,7 @@
 static sem_t wsem[1];
 pthread_mutex_t wmutex[1];
 static pthread_mutex_t mutex_cbuf[1];
-static pthread_t wthreads[WORKER_THREADS];
+static pthread_t * wthreads;
 static pqueue_t * wr_queue;
 static const char * http_error_message[506];
 static const char * http_status_code[506];
@@ -1312,13 +1312,15 @@ static void http_prepare_once (void)
 	http_init_constants();
 	cache_create();
 	
-	wr_queue = pqueue_create(MAX_EVENTS * 2);
+	wr_queue = pqueue_create(config.prealloc_request_structures * 2);
 	
 	sem_init(wsem, 0, 0);
 	pthread_mutex_init(wmutex, NULL);
 	pthread_mutex_init(mutex_cbuf, NULL);
 	
-	for (i = 0; i < WORKER_THREADS; i++)
+	wthreads = (pthread_t *) malloc(config.worker_threads * sizeof(pthread_t));
+	
+	for (i = 0; i < config.worker_threads; i++)
 		pthread_create(&(wthreads[i]), NULL, http_pass_to_handlers_routine, NULL);
 	
 	http_prepare_once_flag = true;

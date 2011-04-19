@@ -51,7 +51,7 @@
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
 int sockfd;
-static const uint requests_vector_prealloc = MAX_EVENTS * 10;
+static uint requests_vector_prealloc;
 static uint requests_vector_size;
 static request_t ** request;
 static uint maxfds;
@@ -333,7 +333,7 @@ inline request_t * event_fetch_request (int sock)
 
 void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 {
-	const uint maxevents = MAX_EVENTS;
+	const uint maxevents = config.prealloc_request_structures;
 	uint i;
 	
 	#if IPV6_SUPPORT
@@ -788,8 +788,13 @@ void quit (int prm)
 	debug_print_1("terminate process: %d", prm);
 	#ifdef _WIN
 	win32_exit_function();
-	#endif
+	extern bool win32_service_running;
+	
+	if (!win32_service_running)
+		exit(prm);
+	#else
 	exit(prm);
+	#endif
 }
 
 void init (char * procname)
@@ -863,7 +868,8 @@ void init (char * procname)
 	
 	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);
 	
-	keepalive_max_conn = max((maxfds - MAX_EVENTS) - 2, 2);
+	keepalive_max_conn = max((maxfds - config.prealloc_request_structures) - 2, 2);
+	requests_vector_prealloc = config.prealloc_request_structures * 10;
 	
 	event_routine();
 }

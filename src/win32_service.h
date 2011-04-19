@@ -19,39 +19,14 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef _WIN32_SERVICE_H
+#define _WIN32_SERVICE_H 1
+
 #include "common_functions.h"
 
-#ifndef _WIN32_UTILS_H
-#define _WIN32_UTILS_H 1
-
 #ifdef _WIN
-#undef WINVER
-#define WINVER 0x0501
-#include <windows.h>
-#include <ws2tcpip.h>
-#include <glob.h>
-#undef WINVER
 
-struct iovec {
-	void * iov_base;
-	size_t iov_len;
-};
-
-int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob);
-
-void win32_globfree (glob_t * pglob);
-
-char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt);
-
-int inet_pton (int af, const char * src, void * dst);
-
-ssize_t writev (int fd, const struct iovec * vector, int count);
-
-ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count);
-
-void win32_fatal_error (const char * msg);
-
-LPWSTR win32_utf8_to_utf16 (const char * src);
+void win32_service_init (void);
 
 #endif
 #endif

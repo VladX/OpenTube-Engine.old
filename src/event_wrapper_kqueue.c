@@ -91,7 +91,7 @@ void event_routine (void)
 	request_t * r;
 	socklen_t client_name_len;
 	struct timespec timeout;
-	struct kevent e[MAX_EVENTS];
+	struct kevent e[config.prealloc_request_structures];
 	struct sockaddr * addr;
 	struct linger linger_opt;
 	
@@ -114,7 +114,7 @@ void event_routine (void)
 		timeout.tv_sec = timeout_sec;
 		timeout.tv_nsec = timeout_nsec;
 		
-		n = kevent(kq, NULL, 0, e, MAX_EVENTS, &timeout);
+		n = kevent(kq, NULL, 0, e, config.prealloc_request_structures, &timeout);
 		
 		for (i = 0; i < n; i++)
 		{
