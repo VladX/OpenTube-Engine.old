@@ -84,8 +84,10 @@ static void parse_args (char ** args, int n)
 int main (int argc, char ** argv)
 {
 	parse_args(argv, argc);
+	#if DEBUG_LEVEL
 	#ifdef _WIN
 	win32_service_init();
+	#endif
 	#endif
 	init(* argv);
 	

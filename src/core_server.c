@@ -542,7 +542,7 @@ static void event_routine (void)
 	{
 		event_iter();
 		
-		n = epoll_wait(epfd, e, epollmaxevents, EPOLL_TIMEOUT);
+		n = epoll_wait(epfd, e, epollmaxevents, EVENTS_WAIT_TIMEOUT);
 		
 		for (i = 0; i < n; i++)
 		{

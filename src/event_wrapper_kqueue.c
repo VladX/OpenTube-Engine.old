@@ -85,8 +85,8 @@ void event_routine (void)
 {
 	const int srvfd = sockfd;
 	const int enable = 1;
-	const long timeout_sec = EPOLL_TIMEOUT / 1000L;
-	const long timeout_nsec = (EPOLL_TIMEOUT % 1000L) * 1000000L;
+	const long timeout_sec = EVENTS_WAIT_TIMEOUT / 1000L;
+	const long timeout_nsec = (EVENTS_WAIT_TIMEOUT % 1000L) * 1000000L;
 	int n, i, fd;
 	request_t * r;
 	socklen_t client_name_len;

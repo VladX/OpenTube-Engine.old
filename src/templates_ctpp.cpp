@@ -69,7 +69,7 @@ static threadsafe FileLogger * oLogger;
 static threadsafe CDT * oHash;
 
 static ct_map compiled_templates;
-static pthread_mutex_t mutex_access[1];
+static pthread_spinlock_t spin_access[1];
 
 #undef error_in_file
 #define error_in_file(PATTERN, ...) { err("An error occurred while trying to parse \"%s\": " PATTERN, file, __VA_ARGS__); return false; }
@@ -82,7 +82,7 @@ void ctpp_set_var (const char * name, const char * value)
 
 void ctpp_run (const char * file, u_str_t ** out)
 {
-	pthread_mutex_lock(mutex_access);
+	pthread_spin_lock(spin_access);
 	
 	static ct_map::iterator it;
 	static std::string mkey;
@@ -92,7 +92,7 @@ void ctpp_run (const char * file, u_str_t ** out)
 	
 	if (it == compiled_templates.end())
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		* out = NULL;
 		return;
 	}
@@ -100,7 +100,7 @@ void ctpp_run (const char * file, u_str_t ** out)
 	compiled_template * ct;
 	ct = (* it).second;
 	
-	pthread_mutex_unlock(mutex_access);
+	pthread_spin_unlock(spin_access);
 	
 	ct->data.clear();
 	StringOutputCollector oOutputCollector(ct->data);
@@ -117,7 +117,7 @@ void ctpp_run (const char * file, u_str_t ** out)
 
 bool ctpp_compile (const char * file)
 {
-	pthread_mutex_lock(mutex_access);
+	pthread_spin_lock(spin_access);
 	
 	static struct stat st;
 	
@@ -130,7 +130,7 @@ bool ctpp_compile (const char * file)
 		if (r == -1)
 		{
 			perr("chdir(%s)", cur_template_dir);
-			pthread_mutex_unlock(mutex_access);
+			pthread_spin_unlock(spin_access);
 			return false;
 		}
 	}
@@ -138,7 +138,7 @@ bool ctpp_compile (const char * file)
 	if (stat(file, &st) == -1)
 	{
 		perr("stat(%s)", file);
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		return false;
 	}
 	
@@ -158,7 +158,7 @@ bool ctpp_compile (const char * file)
 	{
 		if (st.st_mtime == ((* it).second)->mtime)
 		{
-			pthread_mutex_unlock(mutex_access);
+			pthread_spin_unlock(spin_access);
 			return true;
 		}
 		((* it).second)->data.clear();
@@ -190,27 +190,27 @@ bool ctpp_compile (const char * file)
 	}
 	catch (CTPPParserSyntaxError & e)
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		error_in_file("At line %u, pos. %u: %s", (uint) e.GetLine(), (uint) e.GetLinePos(), e.what());
 	}
 	catch (CTPPParserOperatorsMismatch & e)
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		error_in_file("At line %u, pos. %u: expected %s, but found </%s>", (uint) e.GetLine(), (uint) e.GetLinePos(), e.Expected(), e.Found());
 	}
 	catch (CTPPLogicError & e)
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		error_in_file("%s", e.what());
 	}
 	catch (CTPPUnixException & e)
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		error_in_file("I/O in %s: %s", e.what(), strerror(e.ErrNo()));
 	}
 	catch (...)
 	{
-		pthread_mutex_unlock(mutex_access);
+		pthread_spin_unlock(spin_access);
 		error_in_file("%s", "Unknown error");
 	}
 	
@@ -227,15 +227,15 @@ bool ctpp_compile (const char * file)
 	ct->out = new u_str_t;
 	ct->mtime = st.st_mtime;
 	compiled_templates[mkey] = ct;
-	pthread_mutex_unlock(mutex_access);
+	pthread_spin_unlock(spin_access);
 	
 	return true;
 }
 
 void ctpp_init (void)
 {
-	pthread_mutex_init(mutex_access, NULL);
-	oSyscallFactory = new SyscallFactory(config.worker_threads);
+	pthread_spin_init(spin_access, PTHREAD_PROCESS_PRIVATE);
+	oSyscallFactory = new SyscallFactory(config.worker_threads + 1);
 	STDLibInitializer::InitLibrary(* (oSyscallFactory));
 	oVM = new VM(oSyscallFactory);
 	oLogger = new FileLogger(stderr);

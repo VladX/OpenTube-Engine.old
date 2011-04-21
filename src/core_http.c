@@ -48,7 +48,7 @@
 
 static sem_t wsem[1];
 pthread_mutex_t wmutex[1];
-static pthread_mutex_t mutex_cbuf[1];
+static pthread_spinlock_t spin_queue_atomic[1];
 static pthread_t * wthreads;
 static pqueue_t * wr_queue;
 static const char * http_error_message[506];
@@ -782,10 +782,10 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	struct tm c_time;
 	time_t curtime;
 	
-	pthread_mutex_lock(mutex_cbuf);
+	pthread_spin_lock(spin_queue_atomic);
 	tpl_init();
 	run_init_callbacks();
-	pthread_mutex_unlock(mutex_cbuf);
+	pthread_spin_unlock(spin_queue_atomic);
 	
 	extern threadsafe jmp_buf web_exceptions_jmpbuf;
 	extern threadsafe request_t * thread_request;
@@ -811,9 +811,9 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		sem_wait(wsem);
 		
-		pthread_mutex_lock(mutex_cbuf);
+		pthread_spin_lock(spin_queue_atomic);
 		r = pqueue_fetch(wr_queue);
-		pthread_mutex_unlock(mutex_cbuf);
+		pthread_spin_unlock(spin_queue_atomic);
 		
 		r->out.content_type.str = (uchar *) "text/html";
 		r->out.content_type.len = 9;
@@ -953,9 +953,9 @@ static bool http_response (request_t * r)
 		
 		r->temp.func = m[i].func;
 		
-		pthread_mutex_lock(mutex_cbuf);
+		pthread_spin_lock(spin_queue_atomic);
 		pqueue_push(wr_queue, r);
-		pthread_mutex_unlock(mutex_cbuf);
+		pthread_spin_unlock(spin_queue_atomic);
 		sem_post(wsem);
 		
 		return false;
@@ -1316,7 +1316,7 @@ static void http_prepare_once (void)
 	
 	sem_init(wsem, 0, 0);
 	pthread_mutex_init(wmutex, NULL);
-	pthread_mutex_init(mutex_cbuf, NULL);
+	pthread_spin_init(spin_queue_atomic, PTHREAD_PROCESS_PRIVATE);
 	
 	wthreads = (pthread_t *) malloc(config.worker_threads * sizeof(pthread_t));
 	

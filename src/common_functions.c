@@ -19,11 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-#ifdef _WIN
- #include <direct.h>
-#else
- #include <unistd.h>
-#endif
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "common_functions.h"
@@ -332,24 +328,17 @@ bool is_directory_exists (const char * path)
 	return false;
 }
 
+#ifdef _WIN
+char * _getcwd (char *, int);
+#endif
+
 char * gnu_getcwd (void)
 {
-	uint size = 64;
-	char * buffer = NULL;
-	
-	for (;; size += 64)
-	{
-		buffer = (char *) realloc(buffer, size);
-		#ifdef _WIN
-		if ((buffer = _getcwd(NULL, 0)) == NULL)
-			return NULL;
-		#else
-		if (getcwd(buffer, size) == buffer)
-			return buffer;
-		if (errno != ERANGE)
-			return NULL;
-		#endif
-	}
+	#ifdef _WIN
+	return _getcwd(NULL, 0);
+	#else
+	return getcwd(NULL, 0);
+	#endif
 }
 
 #ifdef _WIN
