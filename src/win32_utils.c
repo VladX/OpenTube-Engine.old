@@ -218,17 +218,26 @@ ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count)
 	return 0;
 }
 
-void win32_fatal_error (const char * msg)
+/* The caller must free returned buffer with LocalFree() after dealing with it */
+char * win32_strerror (DWORD err)
 {
 	void * lpvMessageBuffer;
 	
-	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (void *) &lpvMessageBuffer, 0, NULL);
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (void *) &lpvMessageBuffer, 0, NULL);
+	
+	return lpvMessageBuffer;
+}
+
+void win32_fatal_error (const char * msg)
+{
+	char * errstr = win32_strerror(GetLastError());
 	
 	if (* msg)
-		printf("%s: %s (code: %lu)", msg, (char *) lpvMessageBuffer, (ulong) GetLastError());
+		printf("%s: %s (code: %lu)", msg, errstr, (ulong) GetLastError());
 	else
-		printf("%s (code: %lu)", (char *) lpvMessageBuffer, (ulong) GetLastError());
+		printf("%s (code: %lu)", errstr, (ulong) GetLastError());
 	
+	LocalFree(errstr);
 	ExitProcess(GetLastError());
 }
 

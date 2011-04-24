@@ -25,3 +25,5 @@ extern bool ipv6_addr;
 extern pid_t worker_pid;
 extern config_t config;
 extern buf_t * uri_map;
+extern volatile time_t current_time_sec;
+extern volatile uint64 current_time_msec;

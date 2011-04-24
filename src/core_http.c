@@ -701,7 +701,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	http_append_to_output_buf(r, rfc822_date_str, 29);
 	http_append_to_output_buf(r, CLRF, 2);
 	
-	curtime = time(NULL);
+	curtime = current_time_sec;
 	gmtime_r(&curtime, &c_time);
 	http_rfc822_date(rfc822_date_str + 30, &c_time);
 	http_append_to_output_buf(r, "Date: ", 6);
@@ -890,7 +890,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		}
 		
 		http_append_to_output_buf(r, "Cache-Control: no-cache, must-revalidate" CLRF "Pragma: no-cache" CLRF, 60);
-		curtime = time(NULL);
+		curtime = current_time_sec;
 		(void) gmtime_r(&curtime, &c_time);
 		http_rfc822_date(r->temp.dates, &c_time);
 		http_append_to_output_buf(r, "Date: ", 6);
@@ -1013,7 +1013,7 @@ static bool http_response (request_t * r)
 		if (accept_gzip)
 			http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
 		
-		time_t curtime = time(NULL);
+		time_t curtime = current_time_sec;
 		struct tm c_time;
 		(void) gmtime_r(&curtime, &c_time);
 		http_rfc822_date(r->temp.dates, &c_time);

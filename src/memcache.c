@@ -145,7 +145,7 @@ void cache_update (u_str_t * name)
 				c->value.str = realloc(c->value.str, res->len);
 				memcpy(c->value.str, res->str, res->len);
 				c->value.len = res->len;
-				c->time = time(NULL);
+				c->time = current_time_sec;
 				gen_gzipped_value(c);
 			}
 			
@@ -166,7 +166,7 @@ void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
 	memcpy(c->value.str, data->str, data->len);
 	c->value.len = data->len;
 	c->update_callback = (cache_update_cb) update_callback;
-	c->time = time(NULL);
+	c->time = current_time_sec;
 	gen_gzipped_value(c);
 }
 

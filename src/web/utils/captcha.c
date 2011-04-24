@@ -81,7 +81,7 @@ static uint png_trailer[] = {0x00000000, 0x00000000, 0x49454E44, 0xAE426082};
 
 static uint png_header[] = {
 	1196314761, 169478669, 218103808, 1380206665, (((CAPTCHA_WIDTH << 24) & 0xff000000) | ((CAPTCHA_WIDTH << 8) & 0x00ff0000) | ((CAPTCHA_WIDTH >> 8) & 0x0000ff00) | ((CAPTCHA_WIDTH >> 24) & 0x000000ff)), (((CAPTCHA_HEIGHT << 24) & 0xff000000) | ((CAPTCHA_HEIGHT << 8) & 0x00ff0000) | ((CAPTCHA_HEIGHT >> 8) & 0x0000ff00) | ((CAPTCHA_HEIGHT >> 24) & 0x000000ff)), 520,
-	3363454720, 241, 1229091587, 134744148, 3763331547, 0, 1413563465
+	3363454720U, 241, 1229091587, 134744148, 3763331547U, 0, 1413563465
 };
 
 static uint png_trailer[] = {0x00000000, 0x00000000, 0x444E4549, 0x826042AE};
@@ -340,9 +340,7 @@ struct captcha_output * captcha_generate (struct captcha_output * output)
 	buf_free(outputbuffer);
 	memset(blankimg[0], 0xFF, CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
 	
-	struct timeval dtime;
-	gettimeofday(&dtime, NULL);
-	srand(dtime.tv_sec + dtime.tv_usec);
+	srand(current_time_msec);
 	uchar nchars = (rand() % ((CAPTCHA_MAX_CHARS - CAPTCHA_MIN_CHARS) + 1)) + CAPTCHA_MIN_CHARS;
 	uint st = (CAPTCHA_WIDTH - 2 * CAPTCHA_X_PADDING) / nchars;
 	

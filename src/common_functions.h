@@ -24,24 +24,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "config.h"
 #ifdef _WIN
  #include <windows.h>
 #endif
-#include "config.h"
 #include "common_types.h"
 #include "global.h"
 #include "localization.h"
+#include "core_logger.h"
 
 #define E_COMMON_FUNCTIONS_H 1
 
 
 #define err_f(FILE, FMT, ...) fprintf(FILE, FMT, __VA_ARGS__)
-#define err(FMT, ...) err_f(stderr, "(File \"%s\", line %d): " FMT "\n", __FILE__, __LINE__, __VA_ARGS__)
-#define perr(FMT, ...) ((errno) ? err(FMT ": %s", __VA_ARGS__, strerror(errno)) : err(FMT, __VA_ARGS__))
-#define eerr(EXIT_CODE, ...) { err(__VA_ARGS__); exit(EXIT_CODE); }
-#define peerr(EXIT_CODE, ...) { perr(__VA_ARGS__); exit(EXIT_CODE); }
+#define err(FMT, ...) logger_log_error("(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
+#define perr(FMT, ...) logger_log_perror("(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
+#define eerr(EXIT_CODE, FMT, ...) logger_log_critical(EXIT_CODE, "(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
+#define peerr(EXIT_CODE, FMT, ...) logger_log_pcritical(EXIT_CODE, "(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
 
-#define _debug_print(LEVEL, FMT, ...) printf("(Debug level %d, file \"%s\", line %d): " FMT "\n", LEVEL, __FILE__, __LINE__, __VA_ARGS__)
+#define _debug_print(LEVEL, FMT, ...) logger_log("(Debug level %d, file \"%s\", line %d): " FMT, LEVEL, __FILE__, __LINE__, __VA_ARGS__)
 
 #define debug_print_0(FMT, ...) _debug_print(0, FMT, __VA_ARGS__)
 
@@ -94,8 +95,6 @@
  #define errno WSAGetLastError()
  #define socket_errno WSAGetLastError()
  #define io_errno GetLastError()
- #undef peerr
- #define peerr(EXIT_CODE, ...) { err(__VA_ARGS__); win32_fatal_error(""); }
 #else
  #define socket_close(SOCKET) close(SOCKET)
  #define socket_errno errno

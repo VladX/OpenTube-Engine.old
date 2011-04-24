@@ -72,7 +72,7 @@ bool new_keepalive_socket (int sock)
 	register time_t curtime;
 	static struct sockaddr addr, saddr;
 	
-	curtime = time(NULL);
+	curtime = current_time_sec;
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -159,7 +159,7 @@ inline bool limit_requests (struct sockaddr * addr)
 	register limit_req_t * cli;
 	register time_t curtime;
 	
-	curtime = time(NULL);
+	curtime = current_time_sec;
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -371,7 +371,7 @@ inline void event_iter (void)
 	register int dlt;
 	register keepalive_sock_t * k;
 	
-	curtime = time(NULL);
+	curtime = current_time_sec;
 	
 	for (i = 0; i < keepalive_sockets->real_len; i++)
 	{
@@ -759,6 +759,122 @@ static int connect_to_socket (void)
 	return sockfd;
 }
 
+volatile time_t current_time_sec;
+volatile uint64 current_time_msec;
+
+static void * _time_routine (void * ptr)
+{
+	const uchar upd_interval = 100;
+	#ifdef _WIN
+	SYSTEMTIME tm;
+	#else
+	struct timeval ctv;
+	struct timespec tv;
+	tv.tv_sec = 0;
+	tv.tv_nsec = upd_interval * 1000000L;
+	#endif
+	
+	ulong i = 0;
+	
+	for (;; i++)
+	{
+		#ifdef _WIN
+		Sleep(upd_interval);
+		#else
+		(void) nanosleep(&tv, NULL);
+		#endif
+		
+		if (i % 50 == 0)
+		{
+			#ifdef _WIN
+			GetSystemTime(&tm);
+			current_time_sec = time(NULL);
+			current_time_msec = tm.wMilliseconds;
+			#else
+			(void) gettimeofday(&ctv, NULL);
+			current_time_sec = ctv.tv_sec;
+			current_time_msec = (ctv.tv_sec * 1000ULL) + (ctv.tv_usec / 1000ULL);
+			#endif
+		}
+		else
+		{
+			current_time_msec += 100;
+			current_time_sec = current_time_msec / 1000;
+		}
+	}
+	
+	return NULL;
+}
+
+static void time_routine (void)
+{
+	#ifdef _WIN
+	current_time_sec = 0;
+	current_time_msec = 0;
+	
+	HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) _time_routine, NULL, 0, NULL);
+	SetThreadPriority(hThread, THREAD_PRIORITY_LOWEST);
+	#else
+	const int policy = SCHED_FIFO;
+	int r;
+	pthread_t thread;
+	pthread_attr_t attr[1];
+	
+	r = pthread_attr_init(attr);
+	assert(r == 0);
+	r = pthread_attr_setschedpolicy(attr, policy);
+	assert(r == 0);
+	struct sched_param param;
+	memset(&param, 0, sizeof(param));
+	param.sched_priority = sched_get_priority_min(policy);
+	r = pthread_attr_setschedparam(attr, &param);
+	assert(r == 0);
+	
+	current_time_sec = 0;
+	current_time_msec = 0;
+	
+	r = pthread_create(&thread, attr, _time_routine, NULL);
+	assert(r == 0);
+	
+	pthread_attr_destroy(attr);
+	#endif
+	
+	while (current_time_sec == 0) {}
+}
+
+static void pr_set_limits (void)
+{
+	#ifdef HAVE_GETRLIMIT
+	struct rlimit lim;
+	
+	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
+		peerr(0, "getrlimit(): %d", -1);
+	
+	lim.rlim_cur = lim.rlim_max;
+	
+	if (setrlimit(RLIMIT_NOFILE, &lim) == -1)
+		peerr(0, "setrlimit(): %d", -1);
+	
+	maxfds = (uint) lim.rlim_cur;
+	
+	if (getrlimit(RLIMIT_CORE, &lim) == -1)
+		peerr(0, "getrlimit(): %d", -1);
+	
+	lim.rlim_cur = min(lim.rlim_max, CORE_DUMP_MAX_FILESIZE);
+	
+	if (setrlimit(RLIMIT_CORE, &lim) == -1)
+		peerr(0, "setrlimit(): %d", -1);
+	
+	debug_print_2("system limit: maximum core dump size: %u", (uint) lim.rlim_cur);
+	#else
+	maxfds = 1024;
+	#endif
+	
+	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);
+	
+	keepalive_max_conn = max((maxfds - config.prealloc_request_structures) - 2, 2);
+}
+
 #ifdef _WIN
 static void win32_exit_function (void)
 {
@@ -850,26 +966,9 @@ void init (char * procname)
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
 	
-	#ifdef HAVE_GETRLIMIT
-	struct rlimit lim;
-	
-	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
-		peerr(0, "getrlimit(): %d", -1);
-	
-	lim.rlim_cur = lim.rlim_max;
-	
-	if (setrlimit(RLIMIT_NOFILE, &lim) == -1)
-		peerr(0, "setrlimit(): %d", -1);
-	
-	maxfds = (uint) lim.rlim_cur;
-	#else
-	maxfds = 1024;
-	#endif
-	
-	debug_print_2("system limit: maximum file descriptors per process: %u", maxfds);
-	
-	keepalive_max_conn = max((maxfds - config.prealloc_request_structures) - 2, 2);
 	requests_vector_prealloc = config.prealloc_request_structures * 10;
 	
+	pr_set_limits();
+	time_routine();
 	event_routine();
 }

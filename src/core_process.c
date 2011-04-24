@@ -32,6 +32,9 @@
 #include "core_server.h"
 #include "core_process.h"
 #include "win32_utils.h"
+#ifdef HAVE_PRCTL_H
+ #include <sys/prctl.h>
+#endif
 
 
 static const char * statustomsg (int status)
@@ -57,10 +60,15 @@ static const char * statustomsg (int status)
 
 static void setprocname (char * procname, const char * newprocname)
 {
-	#ifndef _WIN
+	#ifdef _WIN
+	(void) SetConsoleTitleA(newprocname);
+	#else
 	const int len = strlen(procname);
 	memset(procname, 0, len);
 	memcpy(procname, newprocname, min(len, strlen(newprocname)));
+	#ifdef HAVE_PRCTL_SET_PROC_NAME
+	(void) prctl(PR_SET_NAME, newprocname, 0, 0, 0);
+	#endif
 	#endif
 }
 
@@ -197,6 +205,10 @@ pid_t spawn_worker (char * procname)
 			if (signal(SIGQUIT, quit_worker) == SIG_ERR)
 				err("can't handle signal %d", SIGQUIT);
 			
+			#ifdef HAVE_PRCTL_H
+			(void) prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
+			#endif
+			
 			break;
 		}
 		
@@ -220,6 +232,7 @@ pid_t spawn_worker (char * procname)
 	}
 	
 	#else
+	setprocname(procname, PROG_NAME);
 	pid_t pid = getpid();
 	#endif
 	

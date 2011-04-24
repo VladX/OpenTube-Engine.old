@@ -38,7 +38,7 @@ typedef struct
 } conf_elem;
 
 static const char * required_directives[] = {
-"listen", "user", "group", "pid-file", "http-document-root", "cache-prefix", "cache-update", "data", "template"
+"listen", "user", "group", "pid-file", "log-file", "http-document-root", "cache-prefix", "cache-update", "data", "template"
 };
 
 
@@ -109,6 +109,15 @@ static void process_directive (conf_elem * el)
 		if (el->value[0] != '/')
 			eerr(1, "You should specify absolute path name for the \"%s\"", el->key);
 		config.pid = el->value;
+	}
+	else if (strcmp(el->key, "log-file") == 0)
+	{
+		uint loglen = strlen(el->value);
+		if (loglen < 3 || el->value[loglen - 1] == '/')
+			EINVALIDVAL;
+		if (el->value[0] != '/')
+			eerr(1, "You should specify absolute path name for the \"%s\"", el->key);
+		config.log = el->value;
 	}
 	else if (strcmp(el->key, "http-document-root") == 0)
 	{

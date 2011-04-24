@@ -231,6 +231,7 @@ typedef struct
 	const char * user;
 	const char * group;
 	const char * pid;
+	const char * log;
 	u_str_t document_root;
 	u_str_t data;
 	u_str_t template_name;

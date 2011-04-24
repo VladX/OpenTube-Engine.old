@@ -29,9 +29,6 @@
 #include <lm.h>
 #include <ntsecapi.h>
 
-#define WIN32_SERVICE_OUT_LOG SHORT_PROG_NAME "_service.out.log"
-#define WIN32_SERVICE_ERROR_LOG SHORT_PROG_NAME "_service.error.log"
-
 bool win32_service_running = false;
 SERVICE_STATUS ServiceStatus;
 SERVICE_STATUS_HANDLE hStatus;
@@ -87,8 +84,7 @@ void ServiceMain (int argc, char ** argv)
 	
 	userprofile = NULL;
 	
-	freopen(WIN32_SERVICE_OUT_LOG, "a", stdout);
-	freopen(WIN32_SERVICE_ERROR_LOG, "a", stderr);
+	logger_set_file_output();
 	
 	ServiceStatus.dwServiceType = SERVICE_WIN32;
 	ServiceStatus.dwCurrentState = SERVICE_START_PENDING;

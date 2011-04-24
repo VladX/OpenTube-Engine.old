@@ -173,7 +173,7 @@ void event_routine (void)
 	struct linger linger_opt;
 	struct timeval tv;
 	
-	pthread_spin_init(spin, 0);
+	pthread_spin_init(spin, PTHREAD_PROCESS_PRIVATE);
 	
 	linger_opt.l_onoff = 1;
 	linger_opt.l_linger = 0;

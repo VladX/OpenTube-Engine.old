@@ -33,6 +33,8 @@ static void detach_process (void)
 	if (pid != 0)
 		exit(0);
 	(void) setsid();
+	
+	logger_set_file_output();
 }
 #endif
 
@@ -71,6 +73,12 @@ static void parse_args (char ** args, int n)
 		exit(1);
 	}
 	
+	#if DEBUG_LEVEL
+	logger_set_console_output();
+	#else
+	logger_set_both_output();
+	#endif
+	
 	if (detach)
 		detach_process();
 	#endif
@@ -84,6 +92,7 @@ static void parse_args (char ** args, int n)
 int main (int argc, char ** argv)
 {
 	parse_args(argv, argc);
+	logger_init();
 	#if DEBUG_LEVEL
 	#ifdef _WIN
 	win32_service_init();
