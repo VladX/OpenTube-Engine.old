@@ -292,6 +292,7 @@ void event_routine (void)
 				if (r != NULL)
 				{
 					r->keepalive = false;
+					remove_keepalive_socket(r->sock);
 					end_request(r);
 				}
 			}
@@ -304,9 +305,7 @@ void event_routine (void)
 			}
 			else if (FD_ISSET(socklist[i], &wfds))
 			{
-				pthread_mutex_lock(wmutex);
 				events_out_data(fd);
-				pthread_mutex_unlock(wmutex);
 			}
 		}
 	}

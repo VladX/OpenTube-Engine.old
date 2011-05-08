@@ -822,6 +822,10 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		buf = ((web_func_t) r->temp.func)();
 		
+		/* Condition r->sock == -1 means, that client closed connection while handler is executed */
+		if (r->sock == -1)
+			goto _start_from_the_beginning_;
+		
 		if (config.gzip && thread_allow_compression && buf->cur_len > config.gzip_min_page_size)
 		{
 			header_t * hdr;
@@ -913,7 +917,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 			http_append_to_output_buf(r, buf->data, r->out.content_length);
 		
 		pthread_mutex_lock(wmutex);
-		if (http_send(r))
+		if (r->sock != -1 && http_send(r))
 			end_request(r);
 		pthread_mutex_unlock(wmutex);
 	}

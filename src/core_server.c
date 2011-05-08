@@ -587,19 +587,18 @@ static void event_routine (void)
 					end_request(r);
 			}
 			else if (e[i].events == EPOLLOUT)
-			{
-				pthread_mutex_lock(wmutex);
 				events_out_data(e[i].data.fd);
-				pthread_mutex_unlock(wmutex);
-			}
 			else if (e[i].events & EPOLLHUP)
 			{
 				r = event_find_request(e[i].data.fd);
 				
 				if (r != NULL)
 				{
+					pthread_mutex_lock(wmutex);
 					r->keepalive = false;
-					end_request(r);
+					remove_keepalive_socket(r->sock);
+					http_cleanup(r);
+					pthread_mutex_unlock(wmutex);
 				}
 			}
 		}
@@ -821,7 +820,8 @@ static void time_routine (void)
 	pthread_attr_t attr[1];
 	
 	r = pthread_attr_init(attr);
-	assert(r == 0);
+	if (r != 0)
+		eerr(0, "pthread_attr_init(): %d", r);
 	r = pthread_attr_setschedpolicy(attr, policy);
 	assert(r == 0);
 	struct sched_param param;

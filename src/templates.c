@@ -62,7 +62,7 @@ void tpl_init (void)
 		strcat(cur_template_dir, "/templates/");
 		strcat(cur_template_dir, (char *) config.template_name.str);
 		if (!is_directory_exists(cur_template_dir))
-			eerr(0, "Template directory \"%s\" does not exists.", cur_template_dir);
+			eerr(0, "Can't access to template directory \"%s\". Create it or check permissions.", cur_template_dir);
 		debug_print_1("Template directory is \"%s\"", cur_template_dir);
 	}
 	ctpp_init();

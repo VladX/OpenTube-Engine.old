@@ -111,6 +111,8 @@ static bool png_output (uchar * d)
 		zstrm.avail_in = sizeof(png_row_start);
 		r = deflate(&zstrm, Z_NO_FLUSH);
 		assert(r != Z_STREAM_ERROR);
+		if (r == Z_STREAM_ERROR)
+			return true;
 		assert(zstrm.avail_out > 0);
 		assert(zstrm.avail_in == 0);
 		zstrm.next_in = d + i * CAPTCHA_ROWSIZE;
@@ -210,7 +212,6 @@ static void wave (uchar * src, uchar * dst, int width, int height, int bypp, boo
 	int x1_in, y1_in, x2_in, y2_in;
 	
 	double xhsiz, yhsiz;
-	double radius, radius2;
 	double amnt, d;
 	double needx, needy;
 	double dx, dy;
@@ -246,9 +247,6 @@ static void wave (uchar * src, uchar * dst, int width, int height, int bypp, boo
 		xscale = 1.0;
 		yscale = 1.0;
 	}
-	
-	radius  = max(xhsiz, yhsiz);
-	radius2 = radius * radius;
 	
 	dst += y1 * rowsiz + x1 * bypp;
 	

@@ -57,16 +57,16 @@ endforeach (source_file)
 
 set (source_files ${source_files} templates_ctpp.cpp)
 
-if (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN)
+if (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN AND COMPILER_HAVE_OFAST)
  set (CCFLAGS "${CCFLAGS} -fuse-linker-plugin -flto")
-endif (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN)
+endif (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN AND COMPILER_HAVE_OFAST)
 
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
  set (CLANG_COMPILER 1)
 endif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 if (CLANG_COMPILER)
- set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith ${DEBUG_CCFLAGS}")
+ set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")
  set (CMAKE_C_FLAGS "${CCFLAGS} -std=gnu89")
  set (CMAKE_CXX_FLAGS "${CCFLAGS}")
 endif (CLANG_COMPILER)
@@ -76,6 +76,7 @@ if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
  set (CMAKE_C_FLAGS "${CCFLAGS}")
  set (CMAKE_CXX_FLAGS "${CCFLAGS}")
  set_property (SOURCE templates_ctpp.cpp PROPERTY COMPILE_FLAGS "${CCFLAGS} -Wno-undef")
+ set_property (SOURCE web/utils/captcha.c PROPERTY COMPILE_FLAGS "${CCFLAGS} -fno-math-errno -funsafe-math-optimizations -fno-trapping-math")
 endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 
 include_directories (AFTER ${CMAKE_SOURCE_DIR}/libs/ctpp2/include)

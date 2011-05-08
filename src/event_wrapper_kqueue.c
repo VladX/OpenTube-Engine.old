@@ -159,8 +159,11 @@ void event_routine (void)
 					
 					if (r != NULL)
 					{
+						pthread_mutex_lock(wmutex);
 						r->keepalive = false;
-						end_request(r);
+						remove_keepalive_socket(r->sock);
+						http_cleanup(r);
+						pthread_mutex_unlock(wmutex);
 					}
 					
 					continue;
@@ -180,15 +183,14 @@ void event_routine (void)
 					if (r != NULL)
 					{
 						r->keepalive = false;
-						end_request(r);
+						remove_keepalive_socket(r->sock);
+						http_cleanup(r);
 					}
 					
 					continue;
 				}
 				
-				pthread_mutex_lock(wmutex);
 				events_out_data(e[i].ident);
-				pthread_mutex_unlock(wmutex);
 			}
 		}
 	}
