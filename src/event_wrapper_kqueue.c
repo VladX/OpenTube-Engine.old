@@ -75,7 +75,7 @@ inline void end_request(request_t * r)
 {
 	static const int disable = 0;
 	
-	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_NOPUSH, &disable, sizeof(disable)) == -1)
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_NOPUSH, &disable, sizeof(disable)) == -1 && errno != EBADF)
 		perr("setsockopt(%d)", r->sock);
 	
 	http_cleanup(r);

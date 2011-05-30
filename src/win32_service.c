@@ -132,11 +132,13 @@ static void set_failure_actions (SC_HANDLE hService)
 static bool service_try_install (void)
 {
 	char bin_path[MAX_PATH];
+	SC_HANDLE hSCManager, hService;
+	char * lpServiceStartName;
 	
 	if(!GetModuleFileNameA(NULL, bin_path, MAX_PATH))
 		win32_fatal_error("GetModuleFileName()");
 	
-	SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE | SERVICE_START);
+	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE | SERVICE_START);
 	
 	if (hSCManager == NULL)
 	{
@@ -146,12 +148,13 @@ static bool service_try_install (void)
 		win32_fatal_error("OpenSCManager()");
 	}
 	
-	char lpServiceStartName[strlen(config.group) + strlen(config.user) + 2];
-	
+	lpServiceStartName = malloc(strlen(config.group) + strlen(config.user) + 2);
 	strcpy(lpServiceStartName, ".\\");
 	strcat(lpServiceStartName, config.user);
 	
-	SC_HANDLE hService = CreateServiceA(hSCManager, SHORT_PROG_NAME, PROG_NAME, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, bin_path, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD);
+	hService = CreateServiceA(hSCManager, SHORT_PROG_NAME, PROG_NAME, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, bin_path, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD);
+	
+	free(lpServiceStartName);
 	
 	if (hService == NULL)
 		switch (GetLastError())
@@ -170,7 +173,10 @@ static bool service_try_install (void)
 
 static void service_change_conf (void)
 {
-	SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	SC_HANDLE hSCManager, hService;
+	char * lpServiceStartName;
+	
+	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	
 	if (hSCManager == NULL)
 	{
@@ -180,18 +186,20 @@ static void service_change_conf (void)
 		win32_fatal_error("OpenSCManager()");
 	}
 	
-	SC_HANDLE hService = OpenServiceA(hSCManager, SHORT_PROG_NAME, SERVICE_CHANGE_CONFIG | SERVICE_START);
+	hService = OpenServiceA(hSCManager, SHORT_PROG_NAME, SERVICE_CHANGE_CONFIG | SERVICE_START);
 	
 	if (hService == NULL)
 		win32_fatal_error("OpenServiceA()");
 	
-	char lpServiceStartName[strlen(config.group) + strlen(config.user) + 2];
+	lpServiceStartName = malloc(strlen(config.group) + strlen(config.user) + 2);
 	
 	strcpy(lpServiceStartName, ".\\");
 	strcat(lpServiceStartName, config.user);
 	
 	if (!ChangeServiceConfigA(hService, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, NULL, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD, NULL))
 		win32_fatal_error("ChangeServiceConfigA()");
+	
+	free(lpServiceStartName);
 	
 	set_failure_actions(hService);
 }
@@ -247,6 +255,7 @@ static void add_service_user (void)
 	free(ui.usri1_password);
 	free(ui.usri1_home_dir);
 	
+	_BEGIN_LOCAL_SECTION_
 	NTSTATUS ret;
 	LSA_OBJECT_ATTRIBUTES dummystruct;
 	LSA_HANDLE hPolicy;
@@ -283,6 +292,7 @@ static void add_service_user (void)
 		win32_fatal_error("LookupAccountNameA()");
 	}
 	
+	_BEGIN_LOCAL_SECTION_
 	LSA_UNICODE_STRING UserRights[1];
 	
 	WCHAR * se_service_logon_name = L"SeServiceLogonRight";
@@ -299,16 +309,19 @@ static void add_service_user (void)
 	LsaClose(hPolicy);
 	free(sid);
 	free(ReferencedDomainName);
+	
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
 }
 
 void win32_service_init (void)
 {
+	SERVICE_TABLE_ENTRYA ServiceTable[2];
+	
 	add_service_user();
 	
 	if (!service_try_install())
 		service_change_conf();
-	
-	SERVICE_TABLE_ENTRYA ServiceTable[2];
 	
 	ServiceTable[0].lpServiceName = SHORT_PROG_NAME;
 	ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION) ServiceMain;

@@ -19,12 +19,12 @@
  * Boston, MA  02110-1301  USA
  */
 
+#define WINVER 0x0501
 #include "common_functions.h"
 #ifdef _WIN
-#include <win32_utils.h>
+#include "win32_utils.h"
 #include <io.h>
 #include <glob.h>
-#include <dirent.h>
 
 /* Wrapper functions for Windows */
 
@@ -34,6 +34,7 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	pglob->gl_pathc = 0;
 	pglob->gl_pathv = NULL;
 	
+	_BEGIN_LOCAL_SECTION_
 	WIN32_FIND_DATAA data;
 	
 	HANDLE h = FindFirstFileA(pattern, &data);
@@ -43,6 +44,7 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	if (h == INVALID_HANDLE_VALUE)
 		return -1;
 	
+	_BEGIN_LOCAL_SECTION_
 	char * p = (char *) pattern + (strlen(pattern) - 1);
 	char * basedir = NULL;
 	uint basedir_len = 0, len;
@@ -93,6 +95,9 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	
 	FindClose(h);
 	
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
+	
 	return 0;
 }
 
@@ -109,6 +114,7 @@ void win32_globfree (glob_t * pglob)
 	free(pglob->gl_pathv);
 }
 
+#ifndef _MSVC_
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt)
 {
 	if (af == AF_INET)
@@ -157,6 +163,7 @@ int inet_pton (int af, const char * src, void * dst)
 	
 	return 0;
 }
+#endif
 
 ssize_t writev (int fd, const struct iovec * vector, int count)
 {
@@ -177,45 +184,20 @@ ssize_t writev (int fd, const struct iovec * vector, int count)
 	return n;
 }
 
-ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count)
+void win32_transmit_complete_cb (request_t * r, BOOLEAN timeout)
 {
-	char * buf[READ_SIZE];
-	int r, c;
-	ssize_t total = 0;
+	if (timeout || r->temp.WaitHandle == NULL)
+		return;
 	
-	if (offset != NULL)
-		lseek(in_fd, * offset, SEEK_SET);
+	close(r->temp.TransmitFileHandle);
+	r->temp.TransmitFileHandle = -1;
+	CloseHandle(r->temp.EventHandle);
+	r->temp.EventHandle = NULL;
 	
-	for (;;)
-	{
-		c = count - total;
-		c = max(0, c);
-		c = min(READ_SIZE, c);
-		r = read(in_fd, buf, c);
-		if (r == -1)
-		{
-			if (offset != NULL)
-				lseek(in_fd, 0, SEEK_SET);
-			return -1;
-		}
-		r = send(out_fd, (const char *) buf, r, 0);
-		if (r == -1)
-		{
-			if (offset != NULL)
-				lseek(in_fd, 0, SEEK_SET);
-			return -1;
-		}
-		total += r;
-		if (total >= count)
-		{
-			if (offset != NULL)
-				lseek(in_fd, 0, SEEK_SET);
-			* offset += total;
-			return total;
-		}
-	}
+	end_request(r);
 	
-	return 0;
+	UnregisterWait(r->temp.WaitHandle);
+	r->temp.WaitHandle = NULL;
 }
 
 /* The caller must free returned buffer with LocalFree() after dealing with it */

@@ -21,7 +21,9 @@
 
 #include <pthread.h>
 #include <time.h>
-#include <sys/time.h>
+#ifndef _MSC_VER
+ #include <sys/time.h>
+#endif
 #include <glob.h>
 #include <math.h>
 #include <common_functions.h>
@@ -99,6 +101,7 @@ static bool png_output (uchar * d)
 	
 	buf_expand(outputbuffer, sizeof(png_header));
 	
+	_BEGIN_LOCAL_SECTION_
 	uint i, pos, sz;
 	int r;
 	uchar buf[CAPTCHA_ROWSIZE * 4];
@@ -147,6 +150,7 @@ static bool png_output (uchar * d)
 	buf_expand(outputbuffer, sizeof(png_trailer));
 	memcpy((uchar *) outputbuffer->data + pos, png_trailer, sizeof(png_trailer));
 	deflateEnd(&zstrm);
+	_END_LOCAL_SECTION_
 	
 	return false;
 }
@@ -308,6 +312,7 @@ static void image_overlay (uchar * src, uint x, uint y, uint w, uint h, double a
 {
 	angle = angle * (M_PI / 180.0); /* Degrees to radians */
 	
+	_BEGIN_LOCAL_SECTION_
 	double sa = sin(angle);
 	double ca = cos(angle);
 	double cen_x = (double) w / 2.0;
@@ -328,6 +333,7 @@ static void image_overlay (uchar * src, uint x, uint y, uint w, uint h, double a
 			d[1] = s[1];
 			d[2] = s[2];
 		}
+	_END_LOCAL_SECTION_
 }
 
 struct captcha_output * captcha_generate (struct captcha_output * output)
@@ -339,6 +345,7 @@ struct captcha_output * captcha_generate (struct captcha_output * output)
 	memset(blankimg[0], 0xFF, CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
 	
 	srand(current_time_msec);
+	_BEGIN_LOCAL_SECTION_
 	uchar nchars = (rand() % ((CAPTCHA_MAX_CHARS - CAPTCHA_MIN_CHARS) + 1)) + CAPTCHA_MIN_CHARS;
 	uint st = (CAPTCHA_WIDTH - 2 * CAPTCHA_X_PADDING) / nchars;
 	
@@ -360,6 +367,7 @@ struct captcha_output * captcha_generate (struct captcha_output * output)
 	
 	outputkeyword[i] = '\0';
 	
+	_BEGIN_LOCAL_SECTION_
 	uchar * noise_pixel;
 	
 	for (i = 0; i < CAPTCHA_NOISE; i++)
@@ -377,6 +385,8 @@ struct captcha_output * captcha_generate (struct captcha_output * output)
 	output->keyword.len = nchars;
 	output->png_data.str = outputbuffer->data;
 	output->png_data.len = outputbuffer->cur_len;
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
 	
 	return output;
 }
@@ -400,11 +410,11 @@ static void ppm_get_line (FILE * f, uchar * s, uint size)
 static struct ppm_image * ppm_load (struct ppm_image * ppm, FILE * f)
 {
 	uchar buf[1024];
+	uint width = 0, height = 0;
 	ppm_get_line(f, buf, sizeof(buf));
 	if (buf[0] != 'P' || buf[1] != '6')
 		return NULL;
 	ppm_get_line(f, buf, sizeof(buf));
-	uint width = 0, height = 0;
 	sscanf((const char *) buf, "%u %u", &width, &height);
 	if (!(width && height))
 		return NULL;
@@ -414,6 +424,7 @@ static struct ppm_image * ppm_load (struct ppm_image * ppm, FILE * f)
 	if (atoi((const char *) buf) != 255)
 		return NULL;
 	
+	_BEGIN_LOCAL_SECTION_
 	uchar * p = NULL;
 	uint len = 0, r;
 	
@@ -428,6 +439,8 @@ static struct ppm_image * ppm_load (struct ppm_image * ppm, FILE * f)
 		return NULL;
 	
 	ppm->rows = p;
+	
+	_END_LOCAL_SECTION_
 	
 	return ppm;
 }
@@ -445,16 +458,19 @@ void captcha_init (void)
 		goto fn_end;
 	
 	init = true;
+	_BEGIN_LOCAL_SECTION_
 	char * captcha_pat = (char *) malloc(config.data.len + strlen(captcha_patterns) + 1);
 	strcpy(captcha_pat, (char *) config.data.str);
 	strcat(captcha_pat, captcha_patterns);
 	
+	_BEGIN_LOCAL_SECTION_
 	glob_t globbuf;
 	int ret = glob(captcha_pat, 0, NULL, &globbuf);
 	
 	if (ret != 0)
 		peerr(0, "glob(%s)", captcha_pat);
 	
+	_BEGIN_LOCAL_SECTION_
 	uint i, k, len;
 	char * sym;
 	FILE * fp;
@@ -472,6 +488,7 @@ void captcha_init (void)
 				continue;
 		fp = fopen(globbuf.gl_pathv[i], "rb");
 		assert(fp != NULL);
+		_BEGIN_LOCAL_SECTION_
 		struct ppm_image ppm;
 		if (ppm_load(&ppm, fp) == NULL)
 			eerr(0, "Image corrupted: \"%s\"", globbuf.gl_pathv[i]);
@@ -484,18 +501,21 @@ void captcha_init (void)
 		syms[k].width = ppm.width;
 		syms[k].height = ppm.height;
 		syms[k].rows = ppm.rows;
+		_END_LOCAL_SECTION_
 		fclose(fp);
 	}
 	
 	globfree(&globbuf);
 	free(captcha_pat);
 	
+	_BEGIN_LOCAL_SECTION_
 	uint * _crc = (uint *) (((uchar *) png_header) + 29);
 	
 	* _crc = crc32(0, ((uchar *) png_header) + 12, 17);
 	#if __BYTE_ORDER == __LITTLE_ENDIAN
 	* _crc = bswap_32(* _crc);
 	#endif
+	_END_LOCAL_SECTION_
 	
 	fn_end:
 	
@@ -517,4 +537,7 @@ void captcha_init (void)
 	}
 	
 	pthread_mutex_unlock(mutex);
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
 }

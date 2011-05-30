@@ -20,7 +20,7 @@
  */
 
 #include <pthread.h>
-#include <sys/stat.h>
+#include "os_stat.h"
 #include <map>
 #include <string>
 #include <CTPP2OutputCollector.hpp>
@@ -46,7 +46,7 @@ extern "C"
 #include "win32_utils.h"
 
 #ifdef _WIN
-#include <io.h>
+#include <direct.h>
 #endif
 
 typedef struct
@@ -126,7 +126,7 @@ bool ctpp_compile (const char * file)
 	
 	if (cwd != NULL)
 	{
-		r = chdir(cur_template_dir);
+		r = _chdir(cur_template_dir);
 		if (r == -1)
 		{
 			perr("chdir(%s)", cur_template_dir);
@@ -144,7 +144,7 @@ bool ctpp_compile (const char * file)
 	
 	if (cwd != NULL)
 	{
-		r = chdir(cwd);
+		r = _chdir(cwd);
 		if (r == -1)
 			peerr(0, "chdir(%s)", cwd);
 		free(cwd);

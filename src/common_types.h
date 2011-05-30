@@ -45,6 +45,11 @@ typedef unsigned long long uint64;
 typedef uint __uint32_t;
 #endif
 
+#ifdef _MSVC_
+typedef int pid_t;
+typedef long ssize_t;
+#endif
+
 
 typedef struct
 {
@@ -213,6 +218,11 @@ typedef struct
 		z_stream * gzip_stream;
 		__uint32_t gzip_ending[2];
 		void * func;
+		#ifdef _WIN
+		int TransmitFileHandle;
+		HANDLE EventHandle;
+		HANDLE WaitHandle;
+		#endif
 	} temp;
 } request_t;
 

@@ -74,3 +74,6 @@
 #if defined(WIN32) || defined(MINGW)
  #define _WIN
 #endif
+#ifdef _MSC_VER
+ #define _MSVC_
+#endif

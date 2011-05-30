@@ -36,7 +36,9 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
-#include <sys/time.h>
+#ifndef _MSC_VER
+ #include <sys/time.h>
+#endif
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -153,7 +155,7 @@ inline void end_request(request_t * r)
 	#ifndef _WIN
 	static const int disable = 0;
 	
-	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1 && errno != EBADF)
 		perr("setsockopt(%d)", r->sock);
 	#endif
 	

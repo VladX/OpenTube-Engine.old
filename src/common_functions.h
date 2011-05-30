@@ -87,6 +87,16 @@
  #define threadsafe __declspec(thread)
 #endif
 
+#ifdef _MSVC_
+ #define lround(value) ((long) floor((value) + 0.5))
+ #define inline
+ #define _BEGIN_LOCAL_SECTION_ {
+ #define _END_LOCAL_SECTION_ }
+#else
+ #define _BEGIN_LOCAL_SECTION_
+ #define _END_LOCAL_SECTION_
+#endif
+
 /* Platform-specific */
 #ifdef _WIN
  #define socket_close(SOCKET) closesocket(SOCKET)

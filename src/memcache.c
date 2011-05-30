@@ -48,8 +48,8 @@ static const char gzip_header[10] = GZIP_HEADER;
 static void gen_gzipped_value (cache_t * c)
 {
 	register int r;
-	register uchar * ptr;
-	register uint len;
+	register uchar * ptr, * p;
+	register uint len, l;
 	
 	ptr = NULL;
 	len = 0;
@@ -81,9 +81,9 @@ static void gen_gzipped_value (cache_t * c)
 		free(c->gzipped_value.str);
 	
 	len -= gz_strm->avail_out;
-	uint l = len + 18;
+	l = len + 18;
 	
-	uchar * p = malloc(l);
+	p = malloc(l);
 	memcpy(p, gzip_header, 10);
 	c->gzipped_value.str = p;
 	p += 10;
@@ -91,6 +91,7 @@ static void gen_gzipped_value (cache_t * c)
 	p += len;
 	free(ptr);
 	
+	_BEGIN_LOCAL_SECTION_
 	static __uint32_t gzip_ending[2];
 	gzip_ending[0] = crc32(0, c->value.str, c->value.len);
 	gzip_ending[1] = c->value.len;
@@ -99,6 +100,7 @@ static void gen_gzipped_value (cache_t * c)
 	gzip_ending[1] = bswap_32(gzip_ending[1]);
 	#endif
 	memcpy(p, gzip_ending, 8);
+	_END_LOCAL_SECTION_
 	
 	c->gzipped_value.len = l;
 	

@@ -27,7 +27,9 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <sys/time.h>
+#ifndef _MSC_VER
+ #include <sys/time.h>
+#endif
 #include <sys/resource.h> 
 #include <unistd.h>
 #include <signal.h>
@@ -445,6 +447,7 @@ inline void events_out_data (int fd)
 				break;
 			}
 			
+			#ifndef _WIN
 			if (request[it]->temp.sendfile_fd != -1)
 			{
 				#ifdef _BSD
@@ -469,6 +472,7 @@ inline void events_out_data (int fd)
 				else
 					close(request[it]->temp.sendfile_fd);
 			}
+			#endif
 			
 			end_request(request[it]);
 			
@@ -502,7 +506,7 @@ inline void end_request (request_t * r)
 {
 	static const int disable = 0;
 	
-	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1)
+	if (* http_server_tcp_addr.str && setsockopt(r->sock, IPPROTO_TCP, TCP_CORK, &disable, sizeof(disable)) == -1 && errno != EBADF)
 		perr("setsockopt(%d)", r->sock);
 	
 	http_cleanup(r);
@@ -617,13 +621,13 @@ static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 	struct hostent * host;
 	
 	#if IPV6_SUPPORT
-	 #ifdef RES_USE_INET6
+	#ifdef RES_USE_INET6
 	if (type == AF_INET6)
 	{
 		res_init();
 		_res.options |= RES_USE_INET6;
 	}
-	 #endif
+	#endif
 	#endif
 	host = gethostbyname(name);
 	if (!host || type != host->h_addrtype)
@@ -635,6 +639,7 @@ static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 	memcpy(dst, host->h_addr_list[0], len);
 	
 	#if DEBUG_LEVEL > 2
+	_BEGIN_LOCAL_SECTION_
 	struct in_addr addr;
 	#if IPV6_SUPPORT
 	struct in6_addr addr6;
@@ -657,6 +662,7 @@ static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 	}
 	#endif
 	debug_print_3("gethostaddr(): %s -> %s", name, addr_str);
+	_END_LOCAL_SECTION_
 	#endif
 	
 	return true;
@@ -808,10 +814,12 @@ static void * _time_routine (void * ptr)
 static void time_routine (void)
 {
 	#ifdef _WIN
+	HANDLE hThread;
+	
 	current_time_sec = 0;
 	current_time_msec = 0;
 	
-	HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) _time_routine, NULL, 0, NULL);
+	hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) _time_routine, NULL, 0, NULL);
 	SetThreadPriority(hThread, THREAD_PRIORITY_LOWEST);
 	#else
 	const int policy = SCHED_FIFO;
@@ -904,10 +912,12 @@ void quit (int prm)
 	debug_print_1("terminate process: %d", prm);
 	#ifdef _WIN
 	win32_exit_function();
+	_BEGIN_LOCAL_SECTION_
 	extern bool win32_service_running;
 	
 	if (!win32_service_running)
 		exit(prm);
+	_END_LOCAL_SECTION_
 	#else
 	exit(prm);
 	#endif
@@ -937,10 +947,12 @@ void init (char * procname)
 	#endif
 	
 	#ifdef _WIN
+	_BEGIN_LOCAL_SECTION_
 	WSADATA wsaData;
 	
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 		peerr(1, "%s", "WSAStartup() failed");
+	_END_LOCAL_SECTION_
 	#endif
 	
 	sockfd = connect_to_socket();

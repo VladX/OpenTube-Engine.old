@@ -22,9 +22,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/stat.h>
+#include "os_stat.h"
 #include <sys/wait.h>
-#include <dirent.h>
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
@@ -157,11 +156,11 @@ static bool create_pidfile (void)
 
 pid_t spawn_worker (char * procname)
 {
+	pid_t pid = 0;
 	#ifdef HAVE_FORK_SYSCALL
 	unsigned char respawn_fails = 0;
 	int status;
 	time_t start_time;
-	pid_t pid = 0;
 	bool lock = create_pidfile();
 	
 	struct passwd * pwd;
@@ -233,7 +232,7 @@ pid_t spawn_worker (char * procname)
 	
 	#else
 	setprocname(procname, PROG_NAME);
-	pid_t pid = getpid();
+	pid = getpid();
 	#endif
 	
 	return pid;

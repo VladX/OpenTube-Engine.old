@@ -21,10 +21,11 @@
 
 #define _GNU_SOURCE
 #define __USE_GNU
+#define WINVER 0x0501
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <sys/stat.h>
+#include "os_stat.h"
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
@@ -61,12 +62,12 @@ static const char gzip_header[10] = GZIP_HEADER;
 
 static inline void http_buffer_moved (request_t * r, long offset)
 {
+	register header_t * hdr;
+	register uint i;
+	
 	r->in.uri.str += offset;
 	r->in.http_version.str += offset;
 	r->body.data.str += offset;
-	
-	register header_t * hdr;
-	register uint i;
 	
 	for (i = 0; i < r->in.p->cur_len; i++)
 	{
@@ -282,11 +283,11 @@ static inline void http_parse__ (uint * args_num, uchar * raw_str, buf_t * args_
 	
 	buf_resize(vals_buf, estimated_values_buffer_size + estimated_args_buffer_size);
 	
+	_BEGIN_LOCAL_SECTION_
 	url_arg_t * arg;
+	uchar * p = vals_buf->data;
 	
 	c = raw_str;
-	
-	uchar * p = vals_buf->data;
 	
 	for (i = 0; i < estimated_args_buffer_size; c++)
 	{
@@ -320,6 +321,7 @@ static inline void http_parse__ (uint * args_num, uchar * raw_str, buf_t * args_
 		
 		debug_print_3("key: \"%s\", value: \"%s\"", arg->key.str, arg->value.str);
 	}
+	_END_LOCAL_SECTION_
 	
 	* args_num = estimated_args_buffer_size;
 }
@@ -601,7 +603,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	register uint i, it;
 	static bool ret;
 	static struct stat st;
-	static int fd, t;
+	register int fd, t;
 	
 	if (* filepath == '\0')
 		return http_error(r, 403);
@@ -640,12 +642,15 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	http_set_mime_type(r);
 	
-	static ushort code;
-	static ssize_t res;
-	static header_t * hdr;
+	_BEGIN_LOCAL_SECTION_
+	register ushort code;
+	#ifndef _WIN
+	register ssize_t res;
+	#endif
+	register header_t * hdr;
 	static struct tm c_time, m_time;
 	static time_t curtime;
-	static char * rfc822_date_str;
+	register char * rfc822_date_str;
 	
 	code = 200;
 	rfc822_date_str = r->temp.dates;
@@ -738,6 +743,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 		return false;
 	}
 	
+	#ifndef _WIN
 	#ifdef _BSD
 	static off_t sbytes;
 	sbytes = 0;
@@ -766,8 +772,27 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	}
 	
 	close(fd);
+	_END_LOCAL_SECTION_
 	
 	return true;
+	#else
+	_BEGIN_LOCAL_SECTION_
+	static OVERLAPPED ov;
+	memset(&ov, 0, sizeof(ov));
+	ov.Offset = r->temp.sendfile_offset;
+	ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (!TransmitFile(r->sock, (HANDLE) _get_osfhandle(fd), r->out.content_length, 0, &ov, NULL, TF_USE_SYSTEM_THREAD) && io_errno != WSA_IO_PENDING)
+		perr("TransmitFile(%d)", r->sock);
+	
+	r->temp.TransmitFileHandle = fd;
+	r->temp.EventHandle = ov.hEvent;
+	r->temp.WaitHandle = NULL;
+	(void) RegisterWaitForSingleObject(&(r->temp.WaitHandle), ov.hEvent, (WAITORTIMERCALLBACK) win32_transmit_complete_cb, r, INFINITE, WT_EXECUTEINPERSISTENTTHREAD | WT_EXECUTEONLYONCE);
+	_END_LOCAL_SECTION_
+	_END_LOCAL_SECTION_
+	
+	return false;
+	#endif
 }
 
 void run_init_callbacks (void);
@@ -781,17 +806,17 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	bool accept_gzip;
 	struct tm c_time;
 	time_t curtime;
+	ushort code;
+	
+	extern threadsafe jmp_buf web_exceptions_jmpbuf;
+	extern threadsafe request_t * thread_request;
+	extern threadsafe volatile bool thread_allow_compression;
 	
 	pthread_spin_lock(spin_queue_atomic);
 	tpl_init();
 	run_init_callbacks();
 	pthread_spin_unlock(spin_queue_atomic);
 	
-	extern threadsafe jmp_buf web_exceptions_jmpbuf;
-	extern threadsafe request_t * thread_request;
-	extern threadsafe volatile bool thread_allow_compression;
-	
-	ushort code;
 	code = (ushort) setjmp(web_exceptions_jmpbuf);
 	
 	if (code)
@@ -965,6 +990,7 @@ static bool http_response (request_t * r)
 		return false;
 	}
 	
+	_BEGIN_LOCAL_SECTION_
 	register u_str_t * cached_content;
 	register header_t * hdr;
 	register bool accept_gzip;
@@ -995,6 +1021,7 @@ static bool http_response (request_t * r)
 	{
 		http_set_mime_type(r);
 		
+		_BEGIN_LOCAL_SECTION_
 		register ushort code;
 		
 		code = 200;
@@ -1017,6 +1044,7 @@ static bool http_response (request_t * r)
 		if (accept_gzip)
 			http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
 		
+		_BEGIN_LOCAL_SECTION_
 		time_t curtime = current_time_sec;
 		struct tm c_time;
 		(void) gmtime_r(&curtime, &c_time);
@@ -1037,12 +1065,16 @@ static bool http_response (request_t * r)
 		http_append_to_output_buf(r, "Expires: ", 9);
 		http_append_to_output_buf(r, r->out.expires.str, r->out.expires.len);
 		http_append_to_output_buf(r, CLRF CLRF, 4);
+		_END_LOCAL_SECTION_
 		
 		if (code != 304)
 			http_append_to_output_buf(r, cached_content->str, cached_content->len);
 		
+		_END_LOCAL_SECTION_
+		
 		return http_send(r);
 	}
+	_END_LOCAL_SECTION_
 	
 	return http_send_file(r, (const char *) r->in.path.str + 1);
 }
@@ -1050,6 +1082,8 @@ static bool http_response (request_t * r)
 static ushort http_parse_headers (request_t * r)
 {
 	register uchar * p;
+	register header_t * header;
+	register uchar * key, * val;
 	
 	p = (uchar *) r->b->data;
 	
@@ -1098,9 +1132,6 @@ static ushort http_parse_headers (request_t * r)
 	r->in.http_version.str[r->in.http_version.len] = '\0';
 	
 	p += 2;
-	
-	header_t * header;
-	uchar * key, * val;
 	
 	while (* p != 1)
 	{

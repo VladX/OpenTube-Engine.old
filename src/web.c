@@ -32,8 +32,9 @@ threadsafe volatile bool thread_allow_compression;
 
 void web_set_callback (web_func_t func, const char * uri, bool full_match)
 {
+	uri_map_t * m;
 	buf_expand(uri_map, 1);
-	uri_map_t * m = &(((uri_map_t *) uri_map->data)[uri_map->cur_len - 1]);
+	m = &(((uri_map_t *) uri_map->data)[uri_map->cur_len - 1]);
 	m->uri.str = (uchar *) uri;
 	m->uri.len = strlen(uri);
 	m->func = func;

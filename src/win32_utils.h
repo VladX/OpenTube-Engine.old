@@ -41,13 +41,17 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 
 void win32_globfree (glob_t * pglob);
 
+#ifndef _MSVC_
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt);
 
 int inet_pton (int af, const char * src, void * dst);
+#endif
 
 ssize_t writev (int fd, const struct iovec * vector, int count);
 
 ssize_t sendfile (int out_fd, int in_fd, off_t * offset, size_t count);
+
+void win32_transmit_complete_cb (request_t * ptrs, BOOLEAN timeout);
 
 char * win32_strerror (DWORD err);
 

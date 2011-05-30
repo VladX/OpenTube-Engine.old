@@ -156,9 +156,10 @@ static void print_sys_error (FILE * out)
 
 static void _logger_log_console (bool sys_error, enum logger_level level, const char * fmt, va_list ap)
 {
-	pthread_mutex_lock(mutex);
-	FILE * f = (level == L_NOTICE) ? stdout : stderr;
+	FILE * f;
 	
+	pthread_mutex_lock(mutex);
+	f = (level == L_NOTICE) ? stdout : stderr;
 	print_level_str(f, level, true);
 	vfprintf(f, fmt, ap);
 	if (sys_error)
@@ -243,6 +244,7 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 		return;
 	}
 	
+	_BEGIN_LOCAL_SECTION_
 	const time_t curtime = time(NULL);
 	
 	fprintf(log_file, "%.*s ", 24, ctime(&curtime));
@@ -255,6 +257,7 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	if (sys_error)
 		print_sys_error(log_file);
 	fprintf(log_file, "\n");
+	_END_LOCAL_SECTION_
 	pthread_mutex_unlock(mutex);
 }
 

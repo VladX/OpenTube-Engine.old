@@ -2,6 +2,7 @@
 #define SYS_SOCKET_H 1
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <mswsock.h>
 #define MSG_DONTWAIT 0
 #undef EAGAIN
 #define EAGAIN WSAEWOULDBLOCK
