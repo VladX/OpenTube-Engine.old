@@ -1361,7 +1361,7 @@ static void http_prepare_once (void)
 	http_prepare_once_flag = true;
 	
 	if (chdir((char *) config.document_root.str) == -1)
-		peerr(0, "chdir(%s): ", config.document_root.str);
+		peerr(-1, "chdir(%s): ", config.document_root.str);
 }
 
 void http_prepare (request_t * r, bool save_space)
@@ -1396,7 +1396,7 @@ void http_prepare (request_t * r, bool save_space)
 		memset(r->temp.gzip_stream, 0, sizeof(z_stream));
 		res = deflateInit2(r->temp.gzip_stream, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
 		if (res != Z_OK)
-			peerr(1, "deflateInit2(): %d", res);
+			peerr(-1, "deflateInit2(): %d", res);
 	}
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);

@@ -146,7 +146,7 @@ bool ctpp_compile (const char * file)
 	{
 		r = _chdir(cwd);
 		if (r == -1)
-			peerr(0, "chdir(%s)", cwd);
+			peerr(-1, "chdir(%s)", cwd);
 		free(cwd);
 	}
 	

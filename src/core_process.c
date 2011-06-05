@@ -106,7 +106,7 @@ static bool create_pidfile (void)
 			exit(0);
 		}
 		#else
-			peerr(0, "Can't create \"%s\"", config.pid);
+			peerr(-1, "Can't create \"%s\"", config.pid);
 		#endif
 		fprintf(f, "%d\n", (int) pid);
 		fclose(f);
@@ -169,7 +169,7 @@ pid_t spawn_worker (char * procname)
 	setprocname(procname, PROG_NAME " (master)");
 	
 	if (!lock)
-		eerr(1, "Master process is already running (\"%s\").", config.pid);
+		eerr(-1, "Master process is already running (\"%s\").", config.pid);
 	
 	for (;;)
 	{
@@ -177,13 +177,13 @@ pid_t spawn_worker (char * procname)
 		pid = fork();
 		
 		if (pid < 0)
-			peerr(1, "fork(): %d", pid);
+			peerr(-1, "fork(): %d", pid);
 		if (pid == 0)
 		{
 			pid = getpid();
 			pwd = getpwnam(config.user);
 			if (!pwd)
-				eerr(0, "can't find user with name %s", config.user);
+				eerr(-1, "can't find user with name %s", config.user);
 			setuid(pwd->pw_uid);
 			grp = getgrnam(config.group);
 			if (!grp)
@@ -214,8 +214,8 @@ pid_t spawn_worker (char * procname)
 		worker_pid = pid;
 		waitpid(pid, &status, 0);
 		
-		if (status == 0)
-			quit(0);
+		if (status <= 0)
+			quit(status);
 		else
 		{
 			if (time(NULL) - start_time <= 1)
@@ -224,7 +224,7 @@ pid_t spawn_worker (char * procname)
 				respawn_fails = 0;
 			
 			if (respawn_fails > 10)
-				eerr(12, "worker crashed with status %d (%s)", status, statustomsg(status));
+				eerr(-1, "worker crashed with status %d (%s)", status, statustomsg(status));
 		}
 		
 		debug_print_1("worker process terminated with status %d (%s), respawning...", status, statustomsg(status));

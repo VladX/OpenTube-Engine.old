@@ -468,7 +468,7 @@ void captcha_init (void)
 	int ret = glob(captcha_pat, 0, NULL, &globbuf);
 	
 	if (ret != 0)
-		peerr(0, "glob(%s)", captcha_pat);
+		peerr(-1, "glob(%s)", captcha_pat);
 	
 	_BEGIN_LOCAL_SECTION_
 	uint i, k, len;
@@ -491,7 +491,7 @@ void captcha_init (void)
 		_BEGIN_LOCAL_SECTION_
 		struct ppm_image ppm;
 		if (ppm_load(&ppm, fp) == NULL)
-			eerr(0, "Image corrupted: \"%s\"", globbuf.gl_pathv[i]);
+			eerr(-1, "Image corrupted: \"%s\"", globbuf.gl_pathv[i]);
 		k = syms_size;
 		syms_size++;
 		syms = (struct captcha_syms *) realloc(syms, syms_size * sizeof(struct captcha_syms));

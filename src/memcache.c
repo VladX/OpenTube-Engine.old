@@ -197,5 +197,5 @@ void cache_create (void)
 	memset(gz_strm, 0, sizeof(z_stream));
 	res = deflateInit2(gz_strm, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
 	if (res != Z_OK)
-		peerr(1, "deflateInit2(): %d", res);
+		peerr(-1, "deflateInit2(): %d", res);
 }

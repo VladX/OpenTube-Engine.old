@@ -44,7 +44,7 @@ static void parse_args (char ** args, int n)
 	#ifdef _WIN
 	
 	if (n > 1 && (strcmp("-c", args[1]) != 0 || n < 3))
-		eerr(1, "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
+		eerr(-1, "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
 	
 	if (n >= 3)
 		config_path = args[2];

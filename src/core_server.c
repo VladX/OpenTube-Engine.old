@@ -534,13 +534,13 @@ static void event_routine (void)
 	epfd = epoll_create(epollmaxevents);
 	
 	if (epfd < 0)
-		peerr(0, "epoll_create(): %d", epfd);
+		peerr(-1, "epoll_create(): %d", epfd);
 	
 	ev.events = EPOLLIN | EPOLLET;
 	ev.data.fd = srvfd;
 	
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, srvfd, &ev) == -1)
-		peerr(0, "epoll_ctl(): %d", -1);
+		peerr(-1, "epoll_ctl(): %d", -1);
 	
 	for (;;)
 	{
@@ -678,13 +678,13 @@ static int connect_to_socket (void)
 	if (* http_server_unix_addr.str)
 	{
 		#ifdef _WIN
-		eerr(1, "%s", "Unix domains are not supported on Windows.");
+		eerr(-1, "%s", "Unix domains are not supported on Windows.");
 		#else
 		struct sockaddr_un * uname;
 		
 		sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (sockfd < 0)
-			peerr(7, "socket(): %d", sockfd);
+			peerr(-1, "socket(): %d", sockfd);
 		uname = (struct sockaddr_un *) malloc(sizeof(* uname));
 		memset(uname, 0, sizeof(* uname));
 		uname->sun_family = AF_UNIX;
@@ -700,7 +700,7 @@ static int connect_to_socket (void)
 		
 		sockfd = socket(AF_INET6, SOCK_STREAM, 0);
 		if (sockfd < 0)
-			peerr(7, "socket(): %d", sockfd);
+			peerr(-1, "socket(): %d", sockfd);
 		i6name = (struct sockaddr_in6 *) malloc(sizeof(* i6name));
 		memset(i6name, 0, sizeof(* i6name));
 		i6name->sin6_family = AF_INET6;
@@ -708,7 +708,7 @@ static int connect_to_socket (void)
 		if (!gethostaddr(http_server_tcp_addr.str, AF_INET6, (in_addr_t *) &(i6name->sin6_addr.s6_addr)))
 		{
 			if (inet_pton(AF_INET6, http_server_tcp_addr.str, &addr) <= 0)
-				peerr(8, "Invalid address: %s", http_server_tcp_addr.str);
+				peerr(-1, "Invalid address: %s", http_server_tcp_addr.str);
 			memcpy(&(i6name->sin6_addr), &addr, sizeof(addr));
 		}
 		name = (struct sockaddr *) i6name;
@@ -721,7 +721,7 @@ static int connect_to_socket (void)
 		
 		sockfd = socket(AF_INET, SOCK_STREAM, 0);
 		if (sockfd < 0)
-			peerr(7, "socket(): %d", sockfd);
+			peerr(-1, "socket(): %d", sockfd);
 		iname = (struct sockaddr_in *) malloc(sizeof(* iname));
 		memset(iname, 0, sizeof(* iname));
 		iname->sin_family = AF_INET;
@@ -734,32 +734,32 @@ static int connect_to_socket (void)
 			iname->sin_addr.s_addr = inet_addr(http_server_tcp_addr.str);
 			if (iname->sin_addr.s_addr == INADDR_NONE && strcmp(http_server_tcp_addr.str, "255.255.255.255") != 0)
 			#endif
-				eerr(8, "Invalid address: %s", http_server_tcp_addr.str);
+				eerr(-1, "Invalid address: %s", http_server_tcp_addr.str);
 		}
 		name = (struct sockaddr *) iname;
 	}
 	
 	#ifdef _WIN
 	if (ioctlsocket(sockfd, FIONBIO, (void *) &enable) == -1)
-		peerr(7, "ioctlsocket(): %d", -1);
+		peerr(-1, "ioctlsocket(): %d", -1);
 	#else
 	if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1)
-		peerr(7, "fcntl(): %d", -1);
+		peerr(-1, "fcntl(): %d", -1);
 	#endif
 	
 	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (void *) &enable, sizeof(enable))) < 0)
-		peerr(7, "setsockopt(): %d", res);
+		peerr(-1, "setsockopt(): %d", res);
 	
 	#ifndef _WIN
 	if ((res = setsockopt(sockfd, SOL_SOCKET, SO_RCVLOWAT, &enable, sizeof(enable))) < 0)
-		peerr(7, "setsockopt(): %d", res);
+		peerr(-1, "setsockopt(): %d", res);
 	#endif
 	
 	if ((res = bind(sockfd, name, name_len)) < 0)
-		peerr(7, "bind(): %d", res);
+		peerr(-1, "bind(): %d", res);
 	
 	if ((res = listen(sockfd, LISTEN_BACKLOG)) < 0)
-		peerr(7, "listen(): %d", res);
+		peerr(-1, "listen(): %d", res);
 	
 	return sockfd;
 }
@@ -829,7 +829,7 @@ static void time_routine (void)
 	
 	r = pthread_attr_init(attr);
 	if (r != 0)
-		eerr(0, "pthread_attr_init(): %d", r);
+		eerr(-1, "pthread_attr_init(): %d", r);
 	r = pthread_attr_setschedpolicy(attr, policy);
 	assert(r == 0);
 	struct sched_param param;
@@ -856,22 +856,22 @@ static void pr_set_limits (void)
 	struct rlimit lim;
 	
 	if (getrlimit(RLIMIT_NOFILE, &lim) == -1)
-		peerr(0, "getrlimit(): %d", -1);
+		peerr(-1, "getrlimit(): %d", -1);
 	
 	lim.rlim_cur = lim.rlim_max;
 	
 	if (setrlimit(RLIMIT_NOFILE, &lim) == -1)
-		peerr(0, "setrlimit(): %d", -1);
+		peerr(-1, "setrlimit(): %d", -1);
 	
 	maxfds = (uint) lim.rlim_cur;
 	
 	if (getrlimit(RLIMIT_CORE, &lim) == -1)
-		peerr(0, "getrlimit(): %d", -1);
+		peerr(-1, "getrlimit(): %d", -1);
 	
 	lim.rlim_cur = min(lim.rlim_max, CORE_DUMP_MAX_FILESIZE);
 	
 	if (setrlimit(RLIMIT_CORE, &lim) == -1)
-		peerr(0, "setrlimit(): %d", -1);
+		peerr(-1, "setrlimit(): %d", -1);
 	
 	debug_print_2("system limit: maximum core dump size: %u", (uint) lim.rlim_cur);
 	#else
@@ -951,7 +951,7 @@ void init (char * procname)
 	WSADATA wsaData;
 	
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-		peerr(1, "%s", "WSAStartup() failed");
+		peerr(-1, "%s", "WSAStartup() failed");
 	_END_LOCAL_SECTION_
 	#endif
 	

@@ -23,7 +23,7 @@
 #include "win32_utils.h"
 
 #define CONFIG_IS_FLAG_ENABLED(F) (strcmp(F, "on") == 0 || strcmp(F, "enable") == 0 || strcmp(F, "1") == 0)
-#define EINVALIDVAL eerr(1, "Invalid value for \"%s\".", el->key)
+#define EINVALIDVAL eerr(-1, "Invalid value for \"%s\".", el->key)
 
 
 config_t config;
@@ -82,10 +82,10 @@ static void process_directive (conf_elem * el)
 		if (port != addr)
 		{
 			if (!(* addr))
-				eerr(1, "%s", "Address is empty!"); /* ugly, but eerr() requires an at least one parameter to be specified after format string */
+				eerr(-1, "%s", "Address is empty!"); /* ugly, but eerr() requires an at least one parameter to be specified after format string */
 			http_port = atoi(port);
 			if (http_port <= 0 || http_port > 65535)
-				eerr(1, "Invalid port: %s", port);
+				eerr(-1, "Invalid port: %s", port);
 			set_cpy_str(&http_server_tcp_addr, addr);
 			set_cpy_str(&http_server_unix_addr, "");
 		}
@@ -107,7 +107,7 @@ static void process_directive (conf_elem * el)
 		if (pidlen < 3 || el->value[pidlen - 1] == '/')
 			EINVALIDVAL;
 		if (el->value[0] != '/')
-			eerr(1, "You should specify absolute path name for the \"%s\"", el->key);
+			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
 		config.pid = el->value;
 	}
 	else if (strcmp(el->key, "log-file") == 0)
@@ -116,7 +116,7 @@ static void process_directive (conf_elem * el)
 		if (loglen < 3 || el->value[loglen - 1] == '/')
 			EINVALIDVAL;
 		if (el->value[0] != '/')
-			eerr(1, "You should specify absolute path name for the \"%s\"", el->key);
+			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
 		config.log = el->value;
 	}
 	else if (strcmp(el->key, "http-document-root") == 0)
@@ -142,7 +142,7 @@ static void process_directive (conf_elem * el)
 		}
 		
 		if (!is_directory_exists((const char *) config.data.str))
-			eerr(1, "Directory \"%s\" does not exists.", (const char *) config.data.str);
+			eerr(-1, "Directory \"%s\" does not exists.", (const char *) config.data.str);
 	}
 	else if (strcmp(el->key, "template") == 0)
 	{
@@ -194,7 +194,7 @@ static void process_directive (conf_elem * el)
 		
 		gzip_compress_level = (uchar) atoi(el->value);
 		if (gzip_compress_level < 1 || gzip_compress_level > 9)
-			eerr(1, "%s", "The gzip compression level must be between 1 and 9.");
+			eerr(-1, "%s", "The gzip compression level must be between 1 and 9.");
 		config.gzip_level = gzip_compress_level;
 	}
 	else if (strcmp(el->key, "gzip-min-page-size") == 0)
@@ -289,7 +289,7 @@ static void process_directive (conf_elem * el)
 		config.prealloc_request_structures = prealloc_rs;
 	}
 	else
-		eerr(1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
+		eerr(-1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
 }
 
 static conf_elem * parse_line (FILE * c, int * line_num)
@@ -315,7 +315,7 @@ static conf_elem * parse_line (FILE * c, int * line_num)
 			return el;
 		else if (!IS_SYM(* ch))
 		{
-			eerr(1, "Illegal character in configuration file on line %d.", * line_num);
+			eerr(-1, "Illegal character in configuration file on line %d.", * line_num);
 		}
 		else
 		{
@@ -333,7 +333,7 @@ static conf_elem * parse_line (FILE * c, int * line_num)
 			return el;
 		else if (!IS_SYM(* ch))
 		{
-			eerr(1, "Illegal character in configuration file on line %d.", * line_num);
+			eerr(-1, "Illegal character in configuration file on line %d.", * line_num);
 		}
 		else
 		{
@@ -354,7 +354,7 @@ void load_config (const char * path)
 	buf_t * els;
 	
 	if (c == NULL)
-		peerr(1, "Load configuration file \"%s\"", path);
+		peerr(-1, "Load configuration file \"%s\"", path);
 	
 	default_config();
 	
@@ -386,7 +386,7 @@ void load_config (const char * path)
 				break;
 		}
 		if (i == els->cur_len)
-			eerr(1, "Required directive \"%s\" not found in configuration file.", required_directives[it]);
+			eerr(-1, "Required directive \"%s\" not found in configuration file.", required_directives[it]);
 	}
 	
 	for (i = 0; i < els->cur_len; i++)

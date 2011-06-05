@@ -103,7 +103,7 @@ void event_routine (void)
 	kq = kqueue();
 	
 	if (kq == -1)
-		peerr(0, "kqueue(): %d", -1);
+		peerr(-1, "kqueue(): %d", -1);
 	
 	kqueue_change(srvfd, EVFILT_READ);
 	

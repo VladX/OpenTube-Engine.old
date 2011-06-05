@@ -214,7 +214,7 @@ static void add_service_user (void)
 	assert(strlen(config.user) > 0);
 	
 	if (_stricmp(config.user, config.group) == 0)
-		eerr(1, "%s", "The name of the user and group can not be the same on Windows.");
+		eerr(-1, "%s", "The name of the user and group can not be the same on Windows.");
 	
 	gi.lgrpi0_name = win32_utf8_to_utf16(config.group);
 	
@@ -228,7 +228,7 @@ static void add_service_user (void)
 	}
 	
 	if (nStatus != NERR_Success && nStatus != ERROR_ALIAS_EXISTS)
-		eerr(1, "NetLocalGroupAdd(): %d", (int) nStatus);
+		eerr(-1, "NetLocalGroupAdd(): %d", (int) nStatus);
 	
 	ui.usri1_name = win32_utf8_to_utf16(config.user);
 	ui.usri1_password = win32_utf8_to_utf16(WIN32_DEFAULT_USER_PASWORD);
@@ -241,14 +241,14 @@ static void add_service_user (void)
 	nStatus = NetUserAdd(NULL, 1, (LPBYTE) &ui, NULL);
 	
 	if (nStatus != NERR_Success && nStatus != NERR_UserExists && nStatus != NERR_GroupExists)
-		eerr(1, "NetUserAdd(): %d", (int) nStatus);
+		eerr(-1, "NetUserAdd(): %d", (int) nStatus);
 	
 	gmi.lgrmi3_domainandname = ui.usri1_name;
 	
 	nStatus = NetLocalGroupAddMembers(NULL, gi.lgrpi0_name, 3, (LPBYTE) &gmi, 1);
 	
 	if (nStatus != NERR_Success && nStatus != ERROR_MEMBER_IN_ALIAS)
-		eerr(1, "NetLocalGroupAddMembers(): %d", (int) nStatus);
+		eerr(-1, "NetLocalGroupAddMembers(): %d", (int) nStatus);
 	
 	free(gi.lgrpi0_name);
 	free(ui.usri1_name);
@@ -270,7 +270,7 @@ static void add_service_user (void)
 	ret = LsaOpenPolicy(NULL, &dummystruct, POLICY_CREATE_ACCOUNT | POLICY_LOOKUP_NAMES, &hPolicy);
 	
 	if (ret != 0)
-		eerr(1, "LsaOpenPolicy(): %d", (int) LsaNtStatusToWinError(ret));
+		eerr(-1, "LsaOpenPolicy(): %d", (int) LsaNtStatusToWinError(ret));
 	
 	again:
 	
@@ -304,7 +304,7 @@ static void add_service_user (void)
 	ret = LsaAddAccountRights(hPolicy, sid, UserRights, 1);
 	
 	if (ret != 0)
-		eerr(1, "LsaAddAccountRights(): %d", (int) LsaNtStatusToWinError(ret));
+		eerr(-1, "LsaAddAccountRights(): %d", (int) LsaNtStatusToWinError(ret));
 	
 	LsaClose(hPolicy);
 	free(sid);
@@ -338,9 +338,9 @@ void win32_service_init (void)
 				break;
 				#endif
 			case ERROR_INVALID_DATA:
-				eerr(1, "Invalid data passed to function StartServiceCtrlDispatcherA() (%d)", (int) ERROR_INVALID_DATA);
+				eerr(-1, "Invalid data passed to function StartServiceCtrlDispatcherA() (%d)", (int) ERROR_INVALID_DATA);
 			case ERROR_SERVICE_ALREADY_RUNNING:
-				eerr(1, "%s", "Service is already running.");
+				eerr(-1, "%s", "Service is already running.");
 			default:
 				win32_fatal_error("StartServiceCtrlDispatcherA()");
 		}
