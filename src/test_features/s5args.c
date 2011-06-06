@@ -9,8 +9,7 @@ int main(){
 #else
 int main(int ac, char*av[]){
 #endif
-  void * test;
-  CHECK_FUNCTION_EXISTS(0, test, test, test, test);
+  CHECK_FUNCTION_EXISTS(0, 0, 0, 0, 0);
   if(ac > 1000)
     {
     return *av[0];

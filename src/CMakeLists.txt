@@ -3,7 +3,7 @@ set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
 set (CCFLAGS "")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
 
-set (link_libraries_list pthread z m pcre ctpp2-st)
+set (link_libraries_list pthread z pcre ctpp2-st)
 set (link_directories_list)
 set (exec_filename opentube-server)
 
@@ -24,6 +24,12 @@ if (MINGW)
  set (CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "-static")
  set (CCFLAGS "${CCFLAGS} -enable-stdcall-fixup")
 endif (MINGW)
+
+if (MSVC)
+ add_definitions (/DWIN32_LEAN_AND_MEAN /DWIN32)
+else (MSVC)
+ set (link_libraries_list ${link_libraries_list} m)
+endif (MSVC)
 
 if (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
  set (_BSD 1)
