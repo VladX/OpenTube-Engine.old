@@ -61,6 +61,8 @@
 #cmakedefine HAVE_SELECT
 #cmakedefine HAVE_GETRLIMIT
 #cmakedefine HAVE_FORK_SYSCALL
+#cmakedefine HAVE_INET_PTON
+#cmakedefine HAVE_INET_NTOP
 #cmakedefine HAVE_OPENSSL_SHA1
 #cmakedefine HAVE_PRCTL_SET_PROC_NAME
 #cmakedefine HAVE_PRCTL_H
@@ -71,7 +73,7 @@
 #undef WIN32
 #cmakedefine WIN32
 #cmakedefine MINGW
-#if defined(WIN32) || defined(MINGW)
+#if defined(WIN32) || defined(MINGW) || defined(_MSC_VER)
  #define _WIN
 #endif
 #ifdef _MSC_VER

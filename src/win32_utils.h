@@ -33,17 +33,19 @@
 #undef WINVER
 
 struct iovec {
+	ulong iov_len;
 	void * iov_base;
-	size_t iov_len;
 };
 
 int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob);
 
 void win32_globfree (glob_t * pglob);
 
-#ifndef _MSVC_
+#ifndef HAVE_INET_NTOP
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt);
+#endif
 
+#ifndef HAVE_INET_PTON
 int inet_pton (int af, const char * src, void * dst);
 #endif
 

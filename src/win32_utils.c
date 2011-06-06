@@ -114,7 +114,7 @@ void win32_globfree (glob_t * pglob)
 	free(pglob->gl_pathv);
 }
 
-#ifndef _MSVC_
+#ifndef HAVE_INET_NTOP
 char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt)
 {
 	if (af == AF_INET)
@@ -140,7 +140,9 @@ char * inet_ntop (int af, const void * src, char * dst, socklen_t cnt)
 	
 	return NULL;
 }
+#endif
 
+#ifndef HAVE_INET_PTON
 int inet_pton (int af, const char * src, void * dst)
 {
 	struct addrinfo hints, * res, * ressave;
@@ -167,21 +169,11 @@ int inet_pton (int af, const char * src, void * dst)
 
 ssize_t writev (int fd, const struct iovec * vector, int count)
 {
-	unsigned int i;
-	struct iovec * v;
-	ssize_t n = 0;
-	int r;
-	
-	for (i = 0; i < count; i++)
-	{
-		v = (struct iovec *) &(vector[i]);
-		r = send(fd, v->iov_base, v->iov_len, 0);
-		if (r == -1)
-			return -1;
-		n += r;
-	}
-	
-	return n;
+	DWORD NumberOfBytesSent;
+	if (WSASend(fd, (void *) vector, count, &NumberOfBytesSent, 0, NULL, NULL) == 0)
+		return NumberOfBytesSent;
+	else
+		return -1;
 }
 
 void win32_transmit_complete_cb (request_t * r, BOOLEAN timeout)
