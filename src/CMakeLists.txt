@@ -25,6 +25,10 @@ if (MINGW)
  set (CCFLAGS "${CCFLAGS} -enable-stdcall-fixup")
 endif (MINGW)
 
+if (MSVC)
+ add_definitions (/DWIN32_LEAN_AND_MEAN)
+endif (MSVC)
+
 if (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
  set (_BSD 1)
 endif (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
