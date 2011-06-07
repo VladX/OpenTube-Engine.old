@@ -35,6 +35,8 @@ void set_read_mask (int fd);
 
 void set_write_mask (int fd);
 
+void disable_events_for_socket (int fd);
+
 void end_request(request_t * r);
 
 void event_routine (void);

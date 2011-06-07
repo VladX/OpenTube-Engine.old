@@ -126,7 +126,11 @@ bool ctpp_compile (const char * file)
 	
 	if (cwd != NULL)
 	{
+		#ifdef _WIN
 		r = _chdir(cur_template_dir);
+		#else
+		r = chdir(cur_template_dir);
+		#endif
 		if (r == -1)
 		{
 			perr("chdir(%s)", cur_template_dir);
@@ -144,7 +148,11 @@ bool ctpp_compile (const char * file)
 	
 	if (cwd != NULL)
 	{
+		#ifdef _WIN
 		r = _chdir(cwd);
+		#else
+		r = chdir(cwd);
+		#endif
 		if (r == -1)
 			peerr(-1, "chdir(%s)", cwd);
 		free(cwd);

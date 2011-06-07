@@ -502,6 +502,15 @@ void set_epollin_event_mask (int sock)
 	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
 }
 
+void disable_events_for_socket (int sock)
+{
+	static struct epoll_event ev;
+	
+	ev.events = 0;
+	ev.data.fd = sock;
+	epoll_ctl(epfd, EPOLL_CTL_MOD, sock, &ev);
+}
+
 inline void end_request (request_t * r)
 {
 	static const int disable = 0;
@@ -594,6 +603,8 @@ static void event_routine (void)
 				events_out_data(e[i].data.fd);
 			else if (e[i].events & EPOLLHUP)
 			{
+				debug_print_2("client %d reset connection", e[i].data.fd);
+				
 				r = event_find_request(e[i].data.fd);
 				
 				if (r != NULL)

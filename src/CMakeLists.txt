@@ -1,7 +1,15 @@
 set (DEBUG_LEVEL "0" CACHE STRING "Debug level")
 set (DEBUG_CCFLAGS "" CACHE STRING "Debug flags")
+set (CMAKE_C_FLAGS_DEBUG ${DEBUG_CCFLAGS} CACHE STRING "Debug flags")
+set (CMAKE_CXX_FLAGS_DEBUG ${DEBUG_CCFLAGS} CACHE STRING "Debug flags")
 set (CCFLAGS "")
+set (CMAKE_C_FLAGS_RELEASE ${CCFLAGS} CACHE STRING "Release flags")
+set (CMAKE_CXX_FLAGS_RELEASE ${CCFLAGS} CACHE STRING "Release flags")
 option (GENERATE_CALLBACKS "Generate new callbacks.c from web/ tree")
+
+if (NOT CMAKE_BUILD_TYPE)
+ set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
+endif (NOT CMAKE_BUILD_TYPE)
 
 set (link_libraries_list pthread z pcre ctpp2-st)
 set (link_directories_list)

@@ -61,6 +61,20 @@ static inline void kqueue_change (int fd, short filter)
 	kevent(kq, &ev, 1, NULL, 0, NULL);
 }
 
+void disable_events_for_socket (int fd)
+{
+	static struct kevent ev;
+	
+	ev.ident = fd;
+	ev.filter = EVFILT_READ;
+	ev.flags = EV_ADD | EV_DISABLE;
+	ev.fflags = 0;
+	ev.data = 0;
+	ev.udata = NULL;
+	
+	kevent(kq, &ev, 1, NULL, 0, NULL);
+}
+
 inline void set_read_mask (int fd)
 {
 	kqueue_change(fd, EVFILT_READ);

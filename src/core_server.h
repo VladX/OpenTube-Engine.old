@@ -30,6 +30,8 @@ void set_epollout_event_mask (int sock);
 
 void set_epollin_event_mask (int sock);
 
+void disable_events_for_socket (int sock);
+
 void end_request(request_t * r);
 #endif
 bool new_keepalive_socket (int sock);

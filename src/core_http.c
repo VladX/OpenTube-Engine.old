@@ -980,6 +980,8 @@ static bool http_response (request_t * r)
 				continue;
 		}
 		
+		disable_events_for_socket(r->sock);
+		
 		r->temp.func = m[i].func;
 		
 		pthread_spin_lock(spin_queue_atomic);
@@ -1291,7 +1293,7 @@ bool http_serve_client (request_t * request)
 	
 	#if DEBUG_LEVEL
 	if (r == -1)
-		perr("recv(): %d", r);
+		perr("recv(%d)", request->sock);
 	#endif
 	
 	request->keepalive = false;

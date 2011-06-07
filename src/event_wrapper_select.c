@@ -150,6 +150,11 @@ void set_write_mask (int fd)
 	set_select_event_mask(fd, SELECT_WRITE);
 }
 
+void disable_events_for_socket (int fd)
+{
+	set_select_event_mask(fd, 0);
+}
+
 inline void end_request(request_t * r)
 {
 	#ifndef _WIN
@@ -224,7 +229,7 @@ void event_routine (void)
 			FD_SET(socklist[i], &exfds);
 			if (sockmask[i] == SELECT_READ)
 				FD_SET(socklist[i], &rfds);
-			else
+			else if (sockmask[i] == SELECT_WRITE)
 				FD_SET(socklist[i], &wfds);
 		}
 		pthread_spin_unlock(spin);
