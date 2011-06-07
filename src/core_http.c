@@ -612,10 +612,18 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	if (fd == -1)
 	{
-		if (io_errno == ENOENT || errno == ENOTDIR)
+		#ifdef _WIN
+		if (io_errno == ENOENT || io_errno == ESRCH || io_errno == ERROR_INVALID_NAME)
+		#else
+		if (io_errno == ENOENT || io_errno == ENOTDIR)
+		#endif
 			return http_error(r, 404);
 		
+		#ifdef _WIN
+		if (io_errno == EACCES || io_errno == EIO)
+		#else
 		if (io_errno == EACCES)
+		#endif
 			return http_error(r, 403);
 		
 		perr("Access to file \"%s\"", filepath);

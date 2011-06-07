@@ -531,7 +531,7 @@ static void event_routine (void)
 	socklen_t client_name_len;
 	struct epoll_event e[epollmaxevents], ev;
 	struct sockaddr * addr;
-	struct linger linger_opt;
+	static struct linger linger_opt;
 	
 	memset(&ev, 0, sizeof(struct epoll_event));
 	
