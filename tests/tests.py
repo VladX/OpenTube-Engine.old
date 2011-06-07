@@ -28,7 +28,7 @@ class Tests:
 	
 	sock = None
 	host = 'localhost'
-	port = 80
+	port = 8080
 	
 	def __init__(self, h = None, p = None):
 		
@@ -57,9 +57,6 @@ class Tests:
 	def recv(self, count):
 		
 		r = self.sock.recv(count)
-		try:
-			r = r.decode('ascii')
-		except: pass
 		return r
 	
 	def parse(self, buf):
@@ -67,8 +64,12 @@ class Tests:
 		response_line = {'ver': '', 'code': 0, 'code_msg': ''}
 		headers = []
 		body = []
-		buf = buf.split('\r\n')
+		buf = buf.split(b'\r\n')
 		s = buf.pop(0)
+		try:
+			s = str(s, 'ascii')
+		except TypeError:
+			s = str(s)
 		
 		m = re.match('([\w\./0-9]+) (\d{3}) ([\w ]+)', s)
 		if m is not None:
@@ -78,13 +79,17 @@ class Tests:
 		
 		for i in range(len(buf)):
 			s = buf.pop(0)
+			try:
+				s = str(s, 'ascii')
+			except TypeError:
+				s = str(s)
 			if s == '':
 				break
 			m = re.match('([^ :]+): ?(.*)', s)
 			if m is not None:
 				headers.append((m.group(1), m.group(2)))
 		
-		body = ''.join(buf)
+		body = b''.join(buf)
 		return (response_line, headers, body)
 	
 	def do(self, headers, body = '', recv_buf = 65536):
