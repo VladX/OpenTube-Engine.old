@@ -608,6 +608,11 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	if (* filepath == '\0')
 		return http_error(r, 403);
 	
+	#ifdef _WIN
+	if (strchr(filepath, '\\') != NULL) /* Filenames in Windows can not contain a backslash (\), but paths can. For safety, we check it before call to open() */
+		return http_error(r, 404);
+	#endif
+	
 	fd = open(filepath, O_RDONLY);
 	
 	if (fd == -1)
