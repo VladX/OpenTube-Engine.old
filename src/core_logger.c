@@ -70,21 +70,20 @@ void logger_set_both_output (void)
 	output = O_BOTH;
 }
 
-static void v_logger_log_console_error (const char * fmt, va_list ap);
+static void v_logger_syslog (int level, const char * fmt, va_list ap)
+{
+	#ifdef HAVE_SYSLOG_H
+	openlog(PROG_NAME, LOG_PID, LOG_DAEMON);
+	vsyslog(level, fmt, ap);
+	closelog();
+	#endif
+}
 
 static void logger_syslog (int level, const char * fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	#ifdef HAVE_SYSLOG_H
-	va_list sap;
-	va_start(sap, fmt);
-	openlog(PROG_NAME, LOG_PID, LOG_DAEMON);
-	vsyslog(level, fmt, sap);
-	closelog();
-	va_end(sap);
-	#endif
-	v_logger_log_console_error(fmt, ap);
+	v_logger_syslog(level, fmt, ap);
 	va_end(ap);
 }
 
@@ -242,7 +241,8 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	pthread_mutex_lock(mutex);
 	if (log_file == NULL)
 	{
-		logger_syslog(LOG_ERR, fmt, ap);
+		v_logger_syslog(LOG_ERR, fmt, ap);
+		pthread_mutex_unlock(mutex);
 		return;
 	}
 	
