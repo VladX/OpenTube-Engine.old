@@ -20,11 +20,13 @@
  */
 
 #include "common_functions.h"
+#include "core_process.h"
 #include "core_server.h"
 #include "core_config.h"
 #include "win32_service.h"
 
-#define COPYRIGHT "Copyright (C) 2011 VladX (http://vladx.net/); Bugs to <vvladxx@gmail.com>"
+#define PROG_DESCR PROG_NAME " " PROG_VERSION ".\n\n    "
+#define COPYRIGHT "Copyright (C) 2011 VladX (http://vladx.net/); Bugs to <vvladxx@gmail.com>."
 
 #ifndef _WIN
 static void detach_process (void)
@@ -35,22 +37,31 @@ static void detach_process (void)
 	(void) setsid();
 	
 	logger_set_file_output();
+	if (freopen("/dev/null", "w", stdout) == NULL || freopen("/dev/null", "w", stderr) == NULL)
+		eerr(-1, "freopen(%s, %s) failed", "/dev/null", "w");
+	fclose(stdin);
 }
 #endif
 
 static void parse_args (char ** args, int n)
 {
 	char * config_path = NULL;
-	#ifdef _WIN
 	
+	logger_set_console_output();
+	
+	#ifdef _WIN
 	if (n > 1 && (strcmp("-c", args[1]) != 0 || n < 3))
-		eerr(-1, "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
+	{
+		eer_f(stderr, PROG_DESCR "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT "\n", args[0]);
+		exit(-1);
+	}
 	
 	if (n >= 3)
 		config_path = args[2];
 	#else
 	uint i;
 	bool detach = false;
+	bool kill_master = false;
 	
 	for (i = 1; i < n; i++)
 	{
@@ -68,9 +79,14 @@ static void parse_args (char ** args, int n)
 			detach = true;
 			continue;
 		}
+		else if (strcmp(args[i], "--kill") == 0 || strcmp(args[i], "-k") == 0)
+		{
+			kill_master = true;
+			continue;
+		}
 		
-		err_f(stderr, "Usage: %s [--detach] [-c /path/to/configuration/file]\n\n" COPYRIGHT, args[0]);
-		exit(1);
+		err_f(stderr, PROG_DESCR "Usage: %s [--detach] [-c /path/to/configuration/file]\n\n" COPYRIGHT "\n", args[0]);
+		exit(-1);
 	}
 	
 	#if DEBUG_LEVEL
@@ -78,6 +94,9 @@ static void parse_args (char ** args, int n)
 	#else
 	logger_set_both_output();
 	#endif
+	
+	if (kill_master)
+		detach = false;
 	
 	if (detach)
 		detach_process();
@@ -87,6 +106,15 @@ static void parse_args (char ** args, int n)
 		load_config(config_path);
 	else
 		load_config(CONFIG_PATH);
+	
+	#ifndef _WIN
+	if (kill_master)
+	{
+		if (!kill_master_process())
+			eerr(-1, "%s", "Master process is not running");
+		exit(0);
+	}
+	#endif
 }
 
 int main (int argc, char ** argv)

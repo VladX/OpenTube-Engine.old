@@ -76,6 +76,31 @@ static void quit_worker (int prm)
 	exit(0);
 }
 
+bool kill_master_process (void)
+{
+	pid_t pid = 0;
+	FILE * f = fopen(config.pid, "r");
+	
+	if (f == NULL)
+		return false;
+	
+	if (fscanf(f, "%d", &pid) == 0)
+	{
+		fclose(f);
+		remove_pidfile();
+		
+		return false;
+	}
+	
+	if (kill(pid, SIGTERM) == -1)
+	{
+		fclose(f);
+		peerr(-1, "Can't kill master process (%d)", pid);
+	}
+	
+	return true;
+}
+
 void remove_pidfile (void)
 {
 	#ifdef _WIN
