@@ -145,6 +145,8 @@ static void print_sys_error (FILE * out)
 	if (err)
 	{
 		char * errstr = win32_strerror(err);
+		if (out == stdout || out == stderr)
+			(void) CharToOemBuffA(errstr, errstr, strlen(errstr));
 		fprintf(out, ": %s", errstr);
 		LocalFree(errstr);
 	}
