@@ -20,6 +20,7 @@
  */
 
 #ifndef E_COMMON_FUNCTIONS_H
+#define E_COMMON_FUNCTIONS_H 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,16 +34,14 @@
 #include "localization.h"
 #include "core_logger.h"
 
-#define E_COMMON_FUNCTIONS_H 1
-
 
 #define err_f(FILE, FMT, ...) fprintf(FILE, FMT, __VA_ARGS__)
-#define err(FMT, ...) logger_log_error("(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
-#define perr(FMT, ...) logger_log_perror("(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
-#define eerr(EXIT_CODE, FMT, ...) logger_log_critical(EXIT_CODE, "(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
-#define peerr(EXIT_CODE, FMT, ...) logger_log_pcritical(EXIT_CODE, "(File \"%s\", line %d): " FMT, __FILE__, __LINE__, __VA_ARGS__)
+#define err(FMT, ...) logger_log_error("(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
+#define perr(FMT, ...) logger_log_perror("(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
+#define eerr(EXIT_CODE, FMT, ...) logger_log_critical(EXIT_CODE, "(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
+#define peerr(EXIT_CODE, FMT, ...) logger_log_pcritical(EXIT_CODE, "(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
 
-#define _debug_print(LEVEL, FMT, ...) logger_log("(Debug level %d, file \"%s\", line %d): " FMT, LEVEL, __FILE__, __LINE__, __VA_ARGS__)
+#define _debug_print(LEVEL, FMT, ...) logger_log("(Debug level %d, file \"%s\", line %d): " FMT, LEVEL, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
 
 #define debug_print_0(FMT, ...) _debug_print(0, FMT, __VA_ARGS__)
 
@@ -158,5 +157,7 @@ bool is_num (char * str);
 bool is_directory_exists (const char * path);
 
 char * gnu_getcwd (void);
+
+const char * gnu_basename (const char * path);
 
 #endif

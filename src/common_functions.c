@@ -341,6 +341,27 @@ char * gnu_getcwd (void)
 	#endif
 }
 
+const char * gnu_basename (const char * path)
+{
+	register char * p = (char *) path + strlen(path);
+	
+	if (p == path)
+		return p;
+	
+	for (p--; p != path; p--)
+		#ifdef _WIN
+		if (* p == '/' || * p == '\\')
+		#else
+		if (* p == '/')
+		#endif
+		{
+			p++;
+			break;
+		}
+	
+	return p;
+}
+
 #ifdef _WIN
 #include <sys/socket.h>
 
