@@ -37,6 +37,7 @@
 #include "libs/zlib.h"
 #include "common_functions.h"
 #include "core_server.h"
+#include "mapped_memory.h"
 #include "web.h"
 #include "templates.h"
 #include "error_page.h"
@@ -1102,8 +1103,6 @@ static ushort http_parse_headers (request_t * r)
 	
 	p = (uchar *) r->b->data;
 	
-	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
-	
 	if (p[0] == 'G' && p[1] == 'E' && p[2] == 'T' && p[3] == ' ')
 	{
 		r->in.method_get = true;
@@ -1192,21 +1191,36 @@ static ushort http_parse_headers (request_t * r)
 
 bool http_serve_client (request_t * request)
 {
-	static ushort code;
+	register ushort code;
 	register int r;
 	register uint i;
 	register header_t * hdr;
-	static uchar * buf;
-	static long offset;
+	register uchar * buf;
+	register long offset;
 	
-	offset = buf_expand(request->b, HTTP_RECV_BUFFER);
-	if (offset)
-		http_buffer_moved(request, offset);
-	buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
-	
-	while ((r = recv(request->sock, (void *) buf, HTTP_RECV_BUFFER, MSG_DONTWAIT)) > 0)
+	for (;;)
 	{
-		request->b->cur_len -= HTTP_RECV_BUFFER - r;
+		if (request->in.method_post)
+		{
+			buf = request->body.data.str + request->body.data.len;
+			r = recv(request->sock, (void *) buf, request->in.content_length_val - request->body.data.len, MSG_DONTWAIT);
+			
+			if (r <= 0)
+				break;
+		}
+		else
+		{
+			offset = buf_expand(request->b, HTTP_RECV_BUFFER);
+			if (offset)
+				http_buffer_moved(request, offset);
+			buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
+			r = recv(request->sock, (void *) buf, HTTP_RECV_BUFFER, MSG_DONTWAIT);
+			
+			if (r <= 0)
+				break;
+			
+			request->b->cur_len -= HTTP_RECV_BUFFER - r;
+		}
 		
 		if (request->in.uri.len == 0)
 		{
@@ -1255,8 +1269,21 @@ bool http_serve_client (request_t * request)
 							return http_error(request, 415);
 						
 						request->in.content_length_val = (uint) atoi((const char *) request->in.content_length->value.str);
+						
 						if (request->in.content_length_val > HTTP_MAX_REQUEST_BODY_SIZE)
 							return http_error(request, 413);
+						
+						if (request->in.content_length_val > HTTP_REQUEST_BODY_SIZE_STORE_IN_FILE)
+						{
+							request->body.data.str = create_mapped_memory(request, request->in.content_length_val + 1);
+							memcpy(request->body.data.str, buf, request->body.data.len);
+						}
+						else
+						{
+							offset = buf_expand_i(request->b, (request->in.content_length_val - request->body.data.len) + 1);
+							if (offset)
+								http_buffer_moved(request, offset);
+						}
 						
 						goto _post_;
 					}
@@ -1266,7 +1293,10 @@ bool http_serve_client (request_t * request)
 			if (request->b->cur_len > HTTP_MAX_HEADERS_SIZE)
 				return http_error(request, 414);
 			
-			goto _loop_end_;
+			if (r < HTTP_RECV_BUFFER)
+				return false;
+			
+			continue;
 		}
 		
 		if (!(request->in.method_post))
@@ -1278,23 +1308,13 @@ bool http_serve_client (request_t * request)
 		
 		if (request->body.data.len >= request->in.content_length_val)
 		{
-			offset = buf_expand(request->b, 1);
-			if (offset)
-				http_buffer_moved(request, offset);
+			request->body.data.len = request->in.content_length_val;
 			request->body.data.str[request->body.data.len] = '\0';
 			
 			return http_response(request);
 		}
 		
-		_loop_end_:
-		
-		if (r < HTTP_RECV_BUFFER)
-			return false;
-		
-		offset = buf_expand(request->b, HTTP_RECV_BUFFER);
-		if (offset)
-			http_buffer_moved(request, offset);
-		buf = (uchar *) request->b->data + request->b->cur_len - HTTP_RECV_BUFFER;
+		return false;
 	}
 	
 	if (r == -1 && errno == EAGAIN)
@@ -1329,12 +1349,27 @@ void http_cleanup (request_t * r)
 	r->sock = -1;
 	r->keepalive = false;
 	
+	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	r->in.uri.len = 0;
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
 	
 	r->temp.writev_total = 0;
 	r->temp.sendfile_fd = -1;
+	
+	#if defined(HAVE_MMAP)
+	if (r->temp.file != -1)
+	{
+		destroy_mapped_memory(r, r->in.content_length_val + 1, r->body.data.str);
+		r->temp.file = -1;
+	}
+	#elif defined(HAVE_CREATEFILEMAPPING)
+	if (r->temp.hMapFile != INVALID_HANDLE_VALUE)
+	{
+		destroy_mapped_memory(r, r->in.content_length_val + 1, r->body.data.str);
+		r->temp.hMapFile = INVALID_HANDLE_VALUE;
+	}
+	#endif
 	
 	if (config.gzip)
 		buf_free(r->temp.gzip_buf);
@@ -1396,6 +1431,11 @@ void http_prepare (request_t * r, bool save_space)
 	r->in.content_length = NULL;
 	r->temp.writev_total = 0;
 	r->temp.sendfile_fd = -1;
+	#if defined(HAVE_MMAP)
+	r->temp.file = -1;
+	#elif defined(HAVE_CREATEFILEMAPPING)
+	r->temp.hMapFile = INVALID_HANDLE_VALUE;
+	#endif
 	
 	r->out.content_range.str = (char *) malloc(64);
 	r->out.content_range.len = 0;

@@ -34,7 +34,8 @@ def run_test():
 	test_string_buffer = '0' * 16
 	for i in range(16):
 		test = Tests()
-		response_line, headers, body = test.do(request_headers + ['Content-Length: %d' % (len(test_string_buffer))], 'x=' + test_string_buffer)
+		req_body = 'x=' + test_string_buffer
+		response_line, headers, body = test.do(request_headers + ['Content-Length: %d' % (len(req_body))], req_body)
 		
 		gzipped_output = False
 		

@@ -46,6 +46,27 @@ str_t * new_str (char * src)
 	return str;
 }
 
+void set_ustr (u_str_t * str, uchar * src)
+{
+	str->len = strlen((char *) src);
+	str->str = src;
+}
+
+void set_cpy_ustr (u_str_t * str, uchar * src)
+{
+	str->len = strlen((char *) src);
+	str->str = (uchar *) malloc(str->len + 1);
+	memcpy(str->str, src, str->len + 1);
+}
+
+u_str_t * new_ustr (uchar * src)
+{
+	u_str_t * str = (u_str_t *) malloc(sizeof(u_str_t));
+	set_cpy_ustr(str, src);
+	
+	return str;
+}
+
 pool_t * pool_create (uint size, uint start_len)
 {
 	register pool_t * p;
@@ -234,6 +255,23 @@ void buf_destroy (buf_t * b)
 }
 
 long buf_expand (buf_t * b, uint add)
+{
+	register void * old_ptr;
+	
+	b->cur_len += add;
+	
+	if (b->cur_len > b->reserved_len)
+	{
+		old_ptr = b->data;
+		b->data = realloc(b->data, b->node_size * b->cur_len);
+		
+		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+	}
+	
+	return 0;
+}
+
+long buf_expand_i (buf_t * b, int add)
 {
 	register void * old_ptr;
 	

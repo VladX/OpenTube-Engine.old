@@ -15,20 +15,17 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with Opentube; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
-#ifndef LOCALIZATION_H
-#define LOCALIZATION_H 1
+#ifndef _MAPPED_MEMORY_H
+#define _MAPPED_MEMORY_H 1
 
-#undef _l
-#define _l(ID) ((void *) localization_get_string(ID))
-#undef _
-#define _(TEXT) gettext(TEXT)
+uchar * create_mapped_memory (request_t * r, uint length);
 
-const uchar * localization_get_string (uint id);
+void destroy_mapped_memory (request_t * r, uint length, uchar * ptr);
 
-void localization_init (void);
+void mapped_memory_init (void);
 
 #endif

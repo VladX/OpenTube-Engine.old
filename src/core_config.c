@@ -38,7 +38,7 @@ typedef struct
 } conf_elem;
 
 static const char * required_directives[] = {
-"listen", "user", "group", "pid-file", "log-file", "http-document-root", "cache-prefix", "cache-update", "data", "template"
+	"listen", "user", "group", "pid-file", "log-file", "http-document-root", "http-temp", "cache-prefix", "cache-update", "data", "template"
 };
 
 
@@ -121,8 +121,7 @@ static void process_directive (conf_elem * el)
 	}
 	else if (strcmp(el->key, "http-document-root") == 0)
 	{
-		config.document_root.str = (uchar *) el->value;
-		config.document_root.len = strlen(el->value);
+		set_ustr(&(config.document_root), (uchar *) el->value);
 		
 		if (config.document_root.str[config.document_root.len - 1] == '/')
 		{
@@ -130,10 +129,24 @@ static void process_directive (conf_elem * el)
 			config.document_root.str[config.document_root.len] = '\0';
 		}
 	}
+	else if (strcmp(el->key, "http-temp") == 0)
+	{
+		set_ustr(&(config.temp_dir), (uchar *) el->value);
+		
+		if (!is_directory_exists((const char *) config.temp_dir.str))
+			eerr(-1, "Directory \"%s\" does not exists.", (const char *) config.temp_dir.str);
+		
+		if (config.temp_dir.str[config.temp_dir.len - 1] != '/')
+		{
+			config.temp_dir.str[config.temp_dir.len] = '/';
+			config.temp_dir.len++;
+		}
+		
+		config.temp_dir.str = realloc(config.temp_dir.str, config.temp_dir.len + 10);
+	}
 	else if (strcmp(el->key, "data") == 0)
 	{
-		config.data.str = (uchar *) el->value;
-		config.data.len = strlen(el->value);
+		set_ustr(&(config.data), (uchar *) el->value);
 		
 		if (config.data.str[config.data.len - 1] == '/')
 		{
@@ -146,8 +159,7 @@ static void process_directive (conf_elem * el)
 	}
 	else if (strcmp(el->key, "template") == 0)
 	{
-		config.template_name.str = (uchar *) el->value;
-		config.template_name.len = strlen(el->value);
+		set_ustr(&(config.template_name), (uchar *) el->value);
 		
 		if (!(* config.template_name.str))
 			EINVALIDVAL;

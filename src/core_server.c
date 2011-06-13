@@ -46,6 +46,7 @@
 #include "sendfile.h"
 #include "core_process.h"
 #include "core_http.h"
+#include "mapped_memory.h"
 #include "web.h"
 #include "win32_utils.h"
 
@@ -940,6 +941,7 @@ void init (char * procname)
 	worker_pid = 0;
 	
 	localization_init();
+	mapped_memory_init();
 	
 	#if IPV6_SUPPORT
 	if (* (http_server_tcp_addr.str) == '[' && * (http_server_tcp_addr.str + http_server_tcp_addr.len - 1) == ']')

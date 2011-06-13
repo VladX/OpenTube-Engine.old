@@ -22,6 +22,7 @@
 /* This is a simple wrapper for systems, that doesn't support epoll_create() system call, but support select() */
 
 #include "common_functions.h"
+#include "core_server.h"
 
 #ifndef HAVE_EPOLL
 #ifndef HAVE_KQUEUE

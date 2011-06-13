@@ -76,6 +76,7 @@ static void quit_worker (int prm)
 	exit(0);
 }
 
+#ifndef _WIN
 bool kill_master_process (void)
 {
 	pid_t pid = 0;
@@ -100,6 +101,7 @@ bool kill_master_process (void)
 	
 	return true;
 }
+#endif
 
 void remove_pidfile (void)
 {

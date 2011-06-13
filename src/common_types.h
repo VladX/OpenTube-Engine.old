@@ -218,6 +218,12 @@ typedef struct
 		z_stream * gzip_stream;
 		__uint32_t gzip_ending[2];
 		void * func;
+		#if defined(HAVE_MMAP)
+		int file;
+		#elif defined(HAVE_CREATEFILEMAPPING)
+		HANDLE hMap;
+		HANDLE hMapFile;
+		#endif
 		#ifdef _WIN
 		int TransmitFileHandle;
 		HANDLE EventHandle;
@@ -243,6 +249,7 @@ typedef struct
 	const char * pid;
 	const char * log;
 	u_str_t document_root;
+	u_str_t temp_dir;
 	u_str_t data;
 	u_str_t template_name;
 	u_str_t keepalive_timeout;

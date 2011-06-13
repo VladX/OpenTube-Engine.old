@@ -52,7 +52,7 @@ static void parse_args (char ** args, int n)
 	#ifdef _WIN
 	if (n > 1 && (strcmp("-c", args[1]) != 0 || n < 3))
 	{
-		eer_f(stderr, PROG_DESCR "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT "\n", args[0]);
+		err_f(stderr, PROG_DESCR "Usage: %s [-c /path/to/configuration/file]\n\n" COPYRIGHT "\n", args[0]);
 		exit(-1);
 	}
 	
