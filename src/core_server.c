@@ -979,6 +979,8 @@ void init (char * procname)
 	#ifndef _WIN
 	if (signal(SIGQUIT, quit) == SIG_ERR)
 		err("can't handle signal %d", SIGQUIT);
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		err("can't ignore signal %d", SIGPIPE);
 	#else
 	atexit(win32_exit_function);
 	#endif
