@@ -682,9 +682,9 @@ static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 
 static int connect_to_socket (void)
 {
-	int sockfd, res;
+	int sockfd = 0, res = 0;
 	const int enable = 1;
-	struct sockaddr * name;
+	struct sockaddr * name = NULL;
 	socklen_t name_len = sizeof(* name);
 	
 	if (* http_server_unix_addr.str)
@@ -738,7 +738,7 @@ static int connect_to_socket (void)
 		memset(iname, 0, sizeof(* iname));
 		iname->sin_family = AF_INET;
 		iname->sin_port = htons(http_port);
-		if (!gethostaddr(http_server_tcp_addr.str, AF_INET, &(iname->sin_addr.s_addr)))
+		if (!gethostaddr(http_server_tcp_addr.str, AF_INET, (void *) &(iname->sin_addr.s_addr)))
 		{
 			#ifdef __USE_MISC
 			if (inet_aton(http_server_tcp_addr.str, (struct in_addr *) &(iname->sin_addr.s_addr)) == 0)

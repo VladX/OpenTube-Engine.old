@@ -21,6 +21,7 @@
 
 #define WINVER 0x0501
 #include "common_functions.h"
+#include "core_server.h"
 #ifdef _WIN
 #include "win32_utils.h"
 #include <io.h>

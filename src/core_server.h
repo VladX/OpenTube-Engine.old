@@ -19,6 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef CORE_SERVER_H
+#define CORE_SERVER_H 1
+
 #include "event_wrapper_kqueue.h"
 #include "event_wrapper_select.h"
 
@@ -41,3 +44,5 @@ void remove_keepalive_socket(int sock);
 void init (char * procname);
 
 void quit (int prm);
+
+#endif
