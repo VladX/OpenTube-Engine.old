@@ -121,7 +121,7 @@ int main (int argc, char ** argv)
 {
 	parse_args(argv, argc);
 	logger_init();
-	#if DEBUG_LEVEL
+	#if DEBUG_LEVEL <= 0
 	#ifdef _WIN
 	win32_service_init();
 	#endif

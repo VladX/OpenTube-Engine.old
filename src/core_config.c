@@ -29,6 +29,7 @@
 config_t config;
 int http_port;
 str_t http_server_tcp_addr, http_server_unix_addr;
+char * path_to_configuration_file = NULL;
 
 typedef struct
 {
@@ -368,6 +369,7 @@ void load_config (const char * path)
 	if (c == NULL)
 		peerr(-1, "Load configuration file \"%s\"", path);
 	
+	path_to_configuration_file = path;
 	default_config();
 	
 	els = buf_create(sizeof(conf_elem *), 32);
