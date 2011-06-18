@@ -136,6 +136,7 @@ static bool service_try_install (void)
 	char * full_path;
 	SC_HANDLE hSCManager, hService;
 	char * lpServiceStartName;
+	extern const char * path_to_configuration_file;
 	
 	if(!GetModuleFileNameA(NULL, bin_path, MAX_PATH))
 		win32_fatal_error("GetModuleFileName()");
@@ -154,16 +155,15 @@ static bool service_try_install (void)
 	strcpy(lpServiceStartName, ".\\");
 	strcat(lpServiceStartName, config.user);
 	
-	extern path_to_configuration_file;
-	
 	if (GetFullPathNameA(path_to_configuration_file, MAX_PATH, conf_path, NULL) == 0)
 		peerr(-1, "GetFullPathNameA(%s)", path_to_configuration_file);
 	
-	full_path = malloc(strlen(bin_path) + strlen(conf_path) + 7);
+	full_path = malloc(strlen(bin_path) + strlen(conf_path) + 9);
 	strcpy(full_path, "\"");
 	strcat(full_path, bin_path);
-	strcat(full_path, "\" -c ");
+	strcat(full_path, "\" -c \"");
 	strcat(full_path, conf_path);
+	strcat(full_path, "\"");
 	
 	hService = CreateServiceA(hSCManager, SHORT_PROG_NAME, PROG_NAME, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, full_path, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD);
 	

@@ -490,6 +490,7 @@ void captcha_init (void)
 		assert(fp != NULL);
 		_BEGIN_LOCAL_SECTION_
 		struct ppm_image ppm;
+		memset(&ppm, 0, sizeof(struct ppm_image));
 		if (ppm_load(&ppm, fp) == NULL)
 			eerr(-1, "Image corrupted: \"%s\"", globbuf.gl_pathv[i]);
 		k = syms_size;

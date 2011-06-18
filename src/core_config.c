@@ -29,7 +29,7 @@
 config_t config;
 int http_port;
 str_t http_server_tcp_addr, http_server_unix_addr;
-char * path_to_configuration_file = NULL;
+const char * path_to_configuration_file = NULL;
 
 typedef struct
 {

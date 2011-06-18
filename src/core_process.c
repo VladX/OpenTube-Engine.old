@@ -35,7 +35,7 @@
  #include <sys/prctl.h>
 #endif
 
-
+#ifndef _WIN
 static const char * statustomsg (int status)
 {
 	switch (status)
@@ -56,6 +56,7 @@ static const char * statustomsg (int status)
 	
 	return NULL;
 }
+#endif
 
 static void setprocname (char * procname, const char * newprocname)
 {
@@ -71,10 +72,12 @@ static void setprocname (char * procname, const char * newprocname)
 	#endif
 }
 
+#ifndef _WIN
 static void quit_worker (int prm)
 {
 	exit(0);
 }
+#endif
 
 #ifndef _WIN
 bool kill_master_process (void)
@@ -114,6 +117,7 @@ void remove_pidfile (void)
 	#endif
 }
 
+#ifndef _WIN
 static bool create_pidfile (void)
 {
 	FILE * f;
@@ -127,14 +131,7 @@ static bool create_pidfile (void)
 	{
 		f = fopen(config.pid, "w");
 		if (f == NULL)
-		#ifdef _WIN
-		{
-			perror("fopen()");
-			exit(0);
-		}
-		#else
 			peerr(-1, "Can't create \"%s\"", config.pid);
-		#endif
 		fprintf(f, "%d\n", (int) pid);
 		fclose(f);
 	}
@@ -155,31 +152,16 @@ static bool create_pidfile (void)
 		}
 		if (pid != p)
 		{
-			#ifdef _WIN
-			HANDLE tmphdl = OpenProcess(SYNCHRONIZE, FALSE, (DWORD) p);
-			if (tmphdl == NULL)
-				goto from_beginning;
-			else
-			{
-				CloseHandle(tmphdl);
-				
-				return false;
-			}
-			#else
 			if (kill((pid_t) p, 0) == -1)
 				goto from_beginning;
 			else
 				return false;
-			#endif
 		}
 	}
 	
-	#ifdef _WIN
-	Sleep(500);
-	#endif
-	
 	return true;
 }
+#endif
 
 pid_t spawn_worker (char * procname)
 {
