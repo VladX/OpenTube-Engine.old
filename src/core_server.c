@@ -920,7 +920,8 @@ void quit (int prm)
 	if (worker_pid && worker_pid != getpid())
 		(void) kill(worker_pid, SIGTERM);
 	#endif
-	fputc('\n', stdout);
+	if (prm == SIGINT)
+		fputc('\n', stdout);
 	debug_print_1("terminate process: %d", prm);
 	#ifdef _WIN
 	win32_exit_function();

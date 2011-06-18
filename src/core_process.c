@@ -145,11 +145,9 @@ static bool create_pidfile (void)
 			goto from_beginning;
 		}
 		fclose(f);
+		f = NULL;
 		if (p == 0)
-		{
-			f = NULL;
 			goto from_beginning;
-		}
 		if (pid != p)
 		{
 			if (kill((pid_t) p, 0) == -1)
@@ -223,10 +221,12 @@ pid_t spawn_worker (char * procname)
 		worker_pid = pid;
 		waitpid(pid, &status, 0);
 		
-		if (status <= 0)
-			quit(status);
+		if (WIFEXITED(status))
+			quit(WEXITSTATUS(status));
 		else
 		{
+			status = WTERMSIG(status);
+			
 			if (time(NULL) - start_time <= 1)
 				respawn_fails++;
 			else

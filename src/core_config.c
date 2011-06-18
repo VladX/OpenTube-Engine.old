@@ -340,7 +340,7 @@ static conf_elem * parse_line (FILE * c, int * line_num)
 	
 	for (; IS_SPACE(* ch); ch++) {}
 	
-	for (i = 0; !IS_SPACE(* ch); ch++, i++)
+	for (i = 0; !IS_SPACE(* ch) || (* ch) == ' '; ch++, i++)
 	{
 		if (* ch == '#' || * ch == '\0')
 			return el;
