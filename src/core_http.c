@@ -1412,6 +1412,23 @@ static void http_prepare_once (void)
 	
 	if (chdir((char *) config.document_root.str) == -1)
 		peerr(-1, "chdir(%s): ", config.document_root.str);
+	
+	if (is_file_exists("core"))
+	{
+		_BEGIN_LOCAL_SECTION_
+		char new_core_name[20];
+		int64 curtime = current_time_sec * 100;
+		strcpy(new_core_name, "core.");
+		do
+		{
+			int64_to_str(curtime, new_core_name + 5, 32);
+			curtime++;
+		}
+		while (is_node_exists(new_core_name));
+		debug_print_1("core dump file found in \"%s\", trying to rename it into \"%s\"", config.document_root.str, new_core_name);
+		(void) rename("core", new_core_name);
+		_END_LOCAL_SECTION_
+	}
 }
 
 void http_prepare (request_t * r, bool save_space)

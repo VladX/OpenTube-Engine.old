@@ -85,7 +85,7 @@ static void process_directive (conf_elem * el)
 			if (!(* addr))
 				eerr(-1, "%s", "Address is empty!"); /* ugly, but eerr() requires an at least one parameter to be specified after format string */
 			http_port = atoi(port);
-			if (http_port <= 0 || http_port > 65535)
+			if (!is_num(port) || http_port <= 0 || http_port > 65535)
 				eerr(-1, "Invalid port: %s", port);
 			set_cpy_str(&http_server_tcp_addr, addr);
 			set_cpy_str(&http_server_unix_addr, "");

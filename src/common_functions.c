@@ -313,6 +313,8 @@ void buf_free (buf_t * b)
 	b->cur_len = 0;
 }
 
+static const char * x_to_str_chartable = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz";
+
 void int_to_str (int value, char * result, int base)
 {
 	register char * ptr = result, * ptr1 = result, tmp_char;
@@ -322,7 +324,57 @@ void int_to_str (int value, char * result, int base)
 	{
 		tmp_value = value;
 		value /= base;
-		* (ptr++) = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+		* (ptr++) = x_to_str_chartable[35 + (tmp_value - value * base)];
+	} while (value);
+	
+	if (tmp_value < 0)
+		* (ptr++) = '-';
+	
+	* (ptr--) = '\0';
+	
+	while (ptr1 < ptr)
+	{
+			tmp_char = * ptr;
+			* (ptr--) = * ptr1;
+			* (ptr1++) = tmp_char;
+	}
+}
+
+void long_to_str (long value, char * result, int base)
+{
+	register char * ptr = result, * ptr1 = result, tmp_char;
+	register long tmp_value;
+	
+	do
+	{
+		tmp_value = value;
+		value /= base;
+		* (ptr++) = x_to_str_chartable[35 + (tmp_value - value * base)];
+	} while (value);
+
+	if (tmp_value < 0)
+		* (ptr++) = '-';
+	
+	* (ptr--) = '\0';
+	
+	while (ptr1 < ptr)
+	{
+			tmp_char = * ptr;
+			* (ptr--) = * ptr1;
+			* (ptr1++) = tmp_char;
+	}
+}
+
+void int64_to_str (int64 value, char * result, int base)
+{
+	register char * ptr = result, * ptr1 = result, tmp_char;
+	register int64 tmp_value;
+	
+	do
+	{
+		tmp_value = value;
+		value /= base;
+		* (ptr++) = x_to_str_chartable[35 + (tmp_value - value * base)];
 	} while (value);
 	
 	if (tmp_value < 0)
@@ -356,14 +408,32 @@ bool is_num (char * str)
 	return true;
 }
 
+bool is_file_exists (const char * path)
+{
+	struct stat st;
+	if (stat(path, &st) == -1)
+		return false;
+	if (S_ISREG(st.st_mode))
+		return true;
+	return false;
+}
+
 bool is_directory_exists (const char * path)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
 		return false;
-	if (st.st_mode & S_IFDIR)
+	if (S_ISDIR(st.st_mode))
 		return true;
 	return false;
+}
+
+bool is_node_exists (const char * path)
+{
+	struct stat st;
+	if (stat(path, &st) == -1)
+		return false;
+	return true;
 }
 
 #ifdef _WIN

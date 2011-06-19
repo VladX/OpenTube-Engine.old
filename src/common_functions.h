@@ -36,6 +36,7 @@
 
 
 #define err_f(FILE, FMT, ...) fprintf(FILE, FMT, __VA_ARGS__)
+#define log_msg(FMT, ...) logger_log("(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
 #define err(FMT, ...) logger_log_error("(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
 #define perr(FMT, ...) logger_log_perror("(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
 #define eerr(EXIT_CODE, FMT, ...) logger_log_critical(EXIT_CODE, "(File \"%s\", line %d): " FMT, gnu_basename(__FILE__), __LINE__, __VA_ARGS__)
@@ -158,11 +159,19 @@ void buf_free (buf_t * b);
 
 void int_to_str (int value, char * result, int base);
 
+void long_to_str (long value, char * result, int base);
+
+void int64_to_str (int64 value, char * result, int base);
+
 void str_to_lower (char * str);
 
 bool is_num (char * str);
 
+bool is_file_exists (const char * path);
+
 bool is_directory_exists (const char * path);
+
+bool is_node_exists (const char * path);
 
 char * gnu_getcwd (void);
 

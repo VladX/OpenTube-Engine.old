@@ -198,7 +198,6 @@ void logger_log_console_error (const char * fmt, ...)
 static void v_logger_log_console_critical (int exit_code, const char * fmt, va_list ap)
 {
 	_logger_log_console(false, L_CRITICAL, fmt, ap);
-	exit(exit_code);
 }
 
 void logger_log_console_critical (int exit_code, const char * fmt, ...)
@@ -207,6 +206,7 @@ void logger_log_console_critical (int exit_code, const char * fmt, ...)
 	va_start(ap, fmt);
 	v_logger_log_console_critical(exit_code, fmt, ap);
 	va_end(ap);
+	exit(exit_code);
 }
 
 static void v_logger_log_console_perror (const char * fmt, va_list ap)
@@ -225,7 +225,6 @@ void logger_log_console_perror (const char * fmt, ...)
 static void v_logger_log_console_pcritical (int exit_code, const char * fmt, va_list ap)
 {
 	_logger_log_console(true, L_CRITICAL, fmt, ap);
-	exit(exit_code);
 }
 
 void logger_log_console_pcritical (int exit_code, const char * fmt, ...)
@@ -234,6 +233,7 @@ void logger_log_console_pcritical (int exit_code, const char * fmt, ...)
 	va_start(ap, fmt);
 	v_logger_log_console_pcritical(exit_code, fmt, ap);
 	va_end(ap);
+	exit(exit_code);
 }
 
 static void _logger_log_file (bool sys_error, enum logger_level level, const char * fmt, va_list ap)
@@ -292,7 +292,6 @@ void logger_log_file_error (const char * fmt, ...)
 static void v_logger_log_file_critical (int exit_code, const char * fmt, va_list ap)
 {
 	_logger_log_file(false, L_CRITICAL, fmt, ap);
-	exit(exit_code);
 }
 
 void logger_log_file_critical (int exit_code, const char * fmt, ...)
@@ -301,6 +300,7 @@ void logger_log_file_critical (int exit_code, const char * fmt, ...)
 	va_start(ap, fmt);
 	v_logger_log_file_critical(exit_code, fmt, ap);
 	va_end(ap);
+	exit(exit_code);
 }
 
 static void v_logger_log_file_perror (const char * fmt, va_list ap)
@@ -319,7 +319,6 @@ void logger_log_file_perror (const char * fmt, ...)
 static void v_logger_log_file_pcritical (int exit_code, const char * fmt, va_list ap)
 {
 	_logger_log_file(true, L_CRITICAL, fmt, ap);
-	exit(exit_code);
 }
 
 void logger_log_file_pcritical (int exit_code, const char * fmt, ...)
@@ -328,6 +327,7 @@ void logger_log_file_pcritical (int exit_code, const char * fmt, ...)
 	va_start(ap, fmt);
 	v_logger_log_file_pcritical(exit_code, fmt, ap);
 	va_end(ap);
+	exit(exit_code);
 }
 
 void logger_log (const char * fmt, ...)
@@ -436,6 +436,7 @@ void logger_log_critical (int exit_code, const char * fmt, ...)
 	
 	va_end(ap1);
 	va_end(ap2);
+	exit(exit_code);
 }
 
 void logger_log_pcritical (int exit_code, const char * fmt, ...)
@@ -463,6 +464,7 @@ void logger_log_pcritical (int exit_code, const char * fmt, ...)
 	
 	va_end(ap1);
 	va_end(ap2);
+	exit(exit_code);
 }
 
 void logger_init (void)
@@ -473,6 +475,6 @@ void logger_init (void)
 	if (log_file == NULL)
 	{
 		logger_syslog(LOG_EMERG, "Can't open log file \"%s\" for writing.", config.log);
-		exit(1);
+		exit(-1);
 	}
 }

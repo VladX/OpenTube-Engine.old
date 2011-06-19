@@ -236,7 +236,7 @@ pid_t spawn_worker (char * procname)
 				eerr(-1, "worker crashed with status %d (%s)", status, statustomsg(status));
 		}
 		
-		debug_print_1("worker process terminated with status %d (%s), respawning...", status, statustomsg(status));
+		log_msg("worker process terminated with status %d (%s), respawning...", status, statustomsg(status));
 	}
 	
 	#else
