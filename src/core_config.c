@@ -129,13 +129,16 @@ static void process_directive (conf_elem * el)
 			config.document_root.len--;
 			config.document_root.str[config.document_root.len] = '\0';
 		}
+		
+		if (!is_directory_exists((const char *) config.document_root.str, IOAR_R))
+			eerr(-1, "Directory \"%s\" does not have read permissions or does not exist.", (const char *) config.document_root.str);
 	}
 	else if (strcmp(el->key, "http-temp") == 0)
 	{
 		set_ustr(&(config.temp_dir), (uchar *) el->value);
 		
-		if (!is_directory_exists((const char *) config.temp_dir.str))
-			eerr(-1, "Directory \"%s\" does not exists.", (const char *) config.temp_dir.str);
+		if (!is_directory_exists((const char *) config.temp_dir.str, IOAR_RW))
+			eerr(-1, "Directory \"%s\" does not have read/write permissions or does not exist.", (const char *) config.temp_dir.str);
 		
 		if (config.temp_dir.str[config.temp_dir.len - 1] != '/')
 		{
@@ -155,8 +158,8 @@ static void process_directive (conf_elem * el)
 			config.data.str[config.data.len] = '\0';
 		}
 		
-		if (!is_directory_exists((const char *) config.data.str))
-			eerr(-1, "Directory \"%s\" does not exists.", (const char *) config.data.str);
+		if (!is_directory_exists((const char *) config.data.str, IOAR_R))
+			eerr(-1, "Directory \"%s\" does not have read permissions or does not exist.", (const char *) config.data.str);
 	}
 	else if (strcmp(el->key, "template") == 0)
 	{

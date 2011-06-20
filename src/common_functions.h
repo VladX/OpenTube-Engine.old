@@ -169,7 +169,7 @@ bool is_num (char * str);
 
 bool is_file_exists (const char * path);
 
-bool is_directory_exists (const char * path);
+bool is_directory_exists (const char * path, enum io_access_rights ar);
 
 bool is_node_exists (const char * path);
 

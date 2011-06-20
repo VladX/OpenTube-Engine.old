@@ -51,6 +51,15 @@ typedef long ssize_t;
 #endif
 
 
+enum io_access_rights
+{
+	IOAR_FULL,
+	IOAR_RW,
+	IOAR_W,
+	IOAR_R,
+	IOAR_NONE
+};
+
 typedef struct
 {
 	uint len;

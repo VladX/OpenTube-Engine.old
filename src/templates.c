@@ -61,7 +61,7 @@ void tpl_init (void)
 		strcpy(cur_template_dir, (char *) config.data.str);
 		strcat(cur_template_dir, "/templates/");
 		strcat(cur_template_dir, (char *) config.template_name.str);
-		if (!is_directory_exists(cur_template_dir))
+		if (!is_directory_exists(cur_template_dir, IOAR_R))
 			eerr(-1, "Can't access to template directory \"%s\". Create it or check permissions.", cur_template_dir);
 		debug_print_1("Template directory is \"%s\"", cur_template_dir);
 	}

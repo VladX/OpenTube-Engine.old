@@ -418,13 +418,35 @@ bool is_file_exists (const char * path)
 	return false;
 }
 
-bool is_directory_exists (const char * path)
+bool is_directory_exists (const char * path, enum io_access_rights ar)
 {
 	struct stat st;
 	if (stat(path, &st) == -1)
 		return false;
 	if (S_ISDIR(st.st_mode))
-		return true;
+	{
+		switch (ar)
+		{
+			case IOAR_FULL:
+				if ((st.st_mode & (S_IRUSR | S_IWUSR | S_IXUSR)) == (S_IRUSR | S_IWUSR | S_IXUSR))
+					return true;
+				break;
+			case IOAR_RW:
+				if ((st.st_mode & (S_IRUSR | S_IWUSR)) == (S_IRUSR | S_IWUSR))
+					return true;
+				break;
+			case IOAR_W:
+				if ((st.st_mode & S_IWUSR) == S_IWUSR)
+					return true;
+				break;
+			case IOAR_R:
+				if ((st.st_mode & S_IRUSR) == S_IRUSR)
+					return true;
+				break;
+			case IOAR_NONE:
+				return true;
+		}
+	}
 	return false;
 }
 

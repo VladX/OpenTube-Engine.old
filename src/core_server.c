@@ -47,6 +47,7 @@
 #include "core_process.h"
 #include "core_http.h"
 #include "mapped_memory.h"
+#include "file_temporary_storage.h"
 #include "web.h"
 #include "win32_utils.h"
 
@@ -59,9 +60,9 @@ static uint requests_vector_size;
 static request_t ** request;
 static uint maxfds;
 static uint keepalive_max_conn;
-static frag_pool_t * limit_req_clients;
-static frag_pool_t * limit_sim_req_clients;
-static frag_pool_t * keepalive_sockets;
+static frag_pool_t * limit_req_clients = NULL;
+static frag_pool_t * limit_sim_req_clients = NULL;
+static frag_pool_t * keepalive_sockets = NULL;
 extern pthread_mutex_t wmutex[1];
 
 
@@ -351,7 +352,11 @@ void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 	web_init();
 	
 	if (config.limit_req)
-		limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE);
+	{
+		limit_req_clients = frag_pool_load(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE, ".http_limit_requests");
+		if (limit_req_clients == NULL)
+			limit_req_clients = frag_pool_create(sizeof(limit_req_t), HTTP_LIMIT_REQUESTS_POOL_RESERVED_SIZE);
+	}
 	if (config.limit_sim_req)
 		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
 	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
@@ -906,6 +911,8 @@ void quit (int prm)
 {
 	socket_close(sockfd);
 	remove_pidfile();
+	if (limit_req_clients != NULL)
+		(void) frag_pool_save(limit_req_clients, ".http_limit_requests");
 	#ifdef _WIN
 	if (worker_pid && worker_pid != (pid_t) getpid())
 	{
