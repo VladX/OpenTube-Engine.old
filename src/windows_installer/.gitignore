@@ -1,0 +1,4 @@
+setup
+setup.exe
+moc_*.cxx
+qrc_*.cxx
