@@ -21,7 +21,9 @@
 
 #include <QtGui>
 #include <QTranslator>
+#include <QHttpResponseHeader>
 #include "win7_taskbar.h"
+#include "get_from_remote_site.h"
 
 class QFilePathLine : public QLineEdit
 {
@@ -88,6 +90,8 @@ public:
 	~WizPageFinal (void);
 	void setProgress (int);
 	void setProgress (int, int);
+	int getProgress (void);
+	int getProgress (int);
 	bool isComplete (void) const;
 	void installFromLocalArchive (void);
 	void httpError (void);
@@ -96,6 +100,8 @@ public slots:
 	void completed (void);
 	void startOperations (int);
 	void indexDownloaded (bool);
+	void fileDownloaded (bool);
+	void responseHeaderReceived (const QHttpResponseHeader &);
 	
 private:
 	QVBoxLayout * vbox;
@@ -103,14 +109,23 @@ private:
 	QProgressBar * pbar;
 	QBuffer * httpbuf;
 	bool operationsCompleted;
+	bool index_downloaded;
+	int files_count;
+	int files_downloaded;
 };
 
 class QOPSetupWizard : public QWizard
 {
+	Q_OBJECT
+	
 public:
 	explicit QOPSetupWizard (QWidget * parent = 0);
 	void setProgressValue (int value, int max);
 	void setProgressState (TBPFLAG state);
+	void setCancelable (bool);
+	
+public slots:
+	void reject (void);
 
 #ifdef WIN_TASKBAR_STAFF
 protected:
@@ -121,6 +136,9 @@ private:
 	UINT mTaskbarMessageId;
 	ITaskbarList3 * mTaskbar;
 #endif
+	
+private:
+	bool cancelable;
 };
 
-void setup_wizard (QOPSetupWizard & wizard);
+void setup_wizard (QOPSetupWizard &);

@@ -19,15 +19,6 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <QHttp>
-#include <QBuffer>
+#include <QString>
 
-bool get_files_index (QObject *, QBuffer *);
-
-bool parse_files_index (QBuffer *);
-
-int download_all_files (QObject * obj);
-
-void finish_downloading (void);
-
-void remove_temp_dir (void);
+void recursive_remove_dir (const QString & dir);

@@ -20,6 +20,7 @@
  */
 
 #include "wizard.h"
+#include "utils.h"
 #include "win7_taskbar.h"
 #include "install_archive.h"
 #include "../config.h"
@@ -27,12 +28,13 @@
 bool local_installation = false;
 
 #ifdef WIN_TASKBAR_STAFF
-DEFINE_GUID(CLSID_TaskbarList,0x56fdf344,0xfd6d,0x11d0,0x95,0x8a,0x0,0x60,0x97,0xc9,0xa0,0x90);
-DEFINE_GUID(IID_ITaskbarList3,0xea1afb91,0x9e28,0x4b86,0x90,0xE9,0x9e,0x9f,0x8a,0x5e,0xef,0xaf);
+DEFINE_GUID(CLSID_TaskbarList, 0x56fdf344, 0xfd6d, 0x11d0, 0x95, 0x8a, 0x00, 0x60, 0x97, 0xc9, 0xa0, 0x90);
+DEFINE_GUID(IID_ITaskbarList3, 0xea1afb91, 0x9e28, 0x4b86, 0x90, 0xE9, 0x9e, 0x9f, 0x8a, 0x5e, 0xef, 0xaf);
 #endif
 
 QOPSetupWizard::QOPSetupWizard (QWidget * parent) : QWizard(parent)
 {
+	this->setCancelable(true);
 #ifdef WIN_TASKBAR_STAFF
 	this->mWindowId = this->winId();
 	this->mTaskbar = NULL;
@@ -92,8 +94,9 @@ static QString unpack_archive (const QString & prefix, const QString & cur_dir)
 	
 	tempdir.append("_data");
 	QDir temp = QDir::temp();
-	temp.mkdir(tempdir);
 	QString arch_root = temp.absoluteFilePath(tempdir);
+	recursive_remove_dir(arch_root);
+	temp.mkdir(tempdir);
 	QDir arch_root_dir(arch_root);
 	
 	if (!arch_root_dir.exists(arch_root))
@@ -103,39 +106,6 @@ static QString unpack_archive (const QString & prefix, const QString & cur_dir)
 		return NULL;
 	
 	return arch_root;
-}
-
-static void cleanup (QString & dir)
-{
-	QDir d(dir);
-	
-	int i;
-	QFileInfoList l = d.entryInfoList();
-	QFileInfo f;
-	QString path;
-	
-	for (i = 0; i < l.count(); i++)
-	{
-		f = l[i];
-		
-		if (f.fileName() == "." || f.fileName() == "..")
-			continue;
-		
-		if (f.isDir())
-		{
-			path = f.absoluteFilePath();
-			cleanup(path);
-		}
-		else
-		{
-			path = f.fileName();
-			d.remove(path);
-		}
-	}
-	
-	path = d.dirName();
-	d.cdUp();
-	d.rmdir(path);
 }
 
 int main (int argc, char ** argv)
@@ -153,7 +123,9 @@ int main (int argc, char ** argv)
 	int code = app.exec();
 	
 	if (local_installation)
-		cleanup(data_root);
+		recursive_remove_dir(data_root);
+	
+	remove_temp_dir();
 	
 	return code;
 }

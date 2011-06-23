@@ -19,15 +19,41 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <QHttp>
-#include <QBuffer>
+#include <QDir>
+#include <QFile>
 
-bool get_files_index (QObject *, QBuffer *);
-
-bool parse_files_index (QBuffer *);
-
-int download_all_files (QObject * obj);
-
-void finish_downloading (void);
-
-void remove_temp_dir (void);
+void recursive_remove_dir (const QString & dir)
+{
+	QDir d(dir);
+	
+	if (!d.exists())
+		return;
+	
+	int i;
+	QFileInfoList l = d.entryInfoList();
+	QFileInfo f;
+	QString path;
+	
+	for (i = 0; i < l.count(); i++)
+	{
+		f = l[i];
+		
+		if (f.fileName() == "." || f.fileName() == "..")
+			continue;
+		
+		if (f.isDir())
+		{
+			path = f.absoluteFilePath();
+			recursive_remove_dir(path);
+		}
+		else
+		{
+			path = f.fileName();
+			d.remove(path);
+		}
+	}
+	
+	path = d.dirName();
+	d.cdUp();
+	d.rmdir(path);
+}

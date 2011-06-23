@@ -22,7 +22,9 @@
 #ifndef WIN7_TASKBAR_H
 #define WIN7_TASKBAR_H 1
 
-#if defined(_MSC_VER) || defined(__MINGW__) || defined(__MINGW32__) || defined(__MINGW64__)
+#include "detect_os.h"
+
+#ifdef OS_WINDOWS
  #define WIN_TASKBAR_STAFF 1
 #endif
 

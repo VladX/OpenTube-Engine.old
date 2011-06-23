@@ -20,7 +20,6 @@
  */
 
 #include "wizard.h"
-#include "get_from_remote_site.h"
 #include "../config.h"
 
 extern bool local_installation;
@@ -159,6 +158,9 @@ WizPageFinal::WizPageFinal (void) : operationsCompleted(false)
 	this->setSubTitle("Please wait while " PROG_NAME " is being installed.");
 	this->setFinalPage(true);
 	
+	this->index_downloaded = false;
+	this->files_count = 1;
+	this->files_downloaded = 0;
 	this->vbox = new QVBoxLayout;
 	this->label = new QLabel;
 	this->pbar = new QProgressBar;
@@ -204,6 +206,16 @@ void WizPageFinal::setProgress (int val, int max)
 	this->pbar->setValue(val);
 }
 
+int WizPageFinal::getProgress (void)
+{
+	return this->getProgress(100);
+}
+
+int WizPageFinal::getProgress (int max)
+{
+	return (this->pbar->value() * max) / this->pbar->maximum();
+}
+
 void WizPageFinal::startOperations (int id)
 {
 	if (id != finalPageId)
@@ -212,14 +224,29 @@ void WizPageFinal::startOperations (int id)
 	this->pbar->setValue(0);
 	this->label->setText("Starting installation...");
 	wizardIns->setProgressState(TBPF_INDETERMINATE);
+	wizardIns->setCancelable(false);
 	if (wizardPType->isRemote())
 		get_files_index(this, this->httpbuf);
 	else
 		this->installFromLocalArchive();
 }
 
+void QOPSetupWizard::setCancelable (bool cancelable)
+{
+	this->cancelable = cancelable;
+}
+
+void QOPSetupWizard::reject (void)
+{
+	if (this->cancelable || QMessageBox::question(this, "Abort Setup", "Setup of the program is not completed. Do you really want to abort the setup?", QMessageBox::Abort | QMessageBox::Cancel) == QMessageBox::Abort)
+		QWizard::reject();
+}
+
 void WizPageFinal::indexDownloaded (bool error)
 {
+	if (this->index_downloaded)
+		return;
+	
 	if (error || !parse_files_index(this->httpbuf))
 	{
 		this->httpbuf->close();
@@ -227,12 +254,40 @@ void WizPageFinal::indexDownloaded (bool error)
 		if (get_files_index(this, this->httpbuf))
 			return;
 		else
+		{
 			this->httpError();
+			
+			return;
+		}
 	}
 	
 	this->httpbuf->close();
 	this->label->setText("Downloading...");
 	this->setProgress(0);
+	this->index_downloaded = true;
+	this->files_count = download_all_files(this);
+}
+
+void WizPageFinal::fileDownloaded (bool error)
+{
+	if (error)
+	{
+		this->httpError();
+		
+		return;
+	}
+	
+	this->files_downloaded++;
+	this->setProgress(this->files_downloaded * (100 / (this->files_count * 2)));
+	
+	if (this->files_downloaded == this->files_count)
+		finish_downloading();
+}
+
+void WizPageFinal::responseHeaderReceived (const QHttpResponseHeader & response)
+{
+	if (response.statusCode() != 200)
+		this->httpError();
 }
 
 void WizPageFinal::installFromLocalArchive (void)
