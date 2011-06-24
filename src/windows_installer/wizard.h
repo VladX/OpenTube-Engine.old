@@ -88,6 +88,7 @@ class WizPageFinal : public QWizardPage
 public:
 	WizPageFinal (void);
 	~WizPageFinal (void);
+	void copyFiles (const QString &);
 	void setProgress (int);
 	void setProgress (int, int);
 	int getProgress (void);
@@ -100,7 +101,7 @@ public slots:
 	void completed (void);
 	void startOperations (int);
 	void indexDownloaded (bool);
-	void fileDownloaded (bool);
+	void fileDownloaded (int, bool);
 	void responseHeaderReceived (const QHttpResponseHeader &);
 	
 private:

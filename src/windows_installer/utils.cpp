@@ -42,18 +42,48 @@ void recursive_remove_dir (const QString & dir)
 			continue;
 		
 		if (f.isDir())
-		{
-			path = f.absoluteFilePath();
-			recursive_remove_dir(path);
-		}
+			recursive_remove_dir(f.absoluteFilePath());
 		else
-		{
-			path = f.fileName();
-			d.remove(path);
-		}
+			d.remove(f.fileName());
 	}
 	
 	path = d.dirName();
 	d.cdUp();
 	d.rmdir(path);
+}
+
+void recursive_copy_dir (const QString & src_dir, const QString & dst_dir)
+{
+	QDir s(src_dir);
+	QDir d(dst_dir);
+	
+	if (!s.exists())
+		return;
+	
+	recursive_remove_dir(dst_dir);
+	
+	if (!d.exists())
+	{
+		QString dirname = d.dirName();
+		d.cdUp();
+		d.mkpath(dirname);
+		d.cd(dirname);
+	}
+	
+	int i;
+	QFileInfoList l = s.entryInfoList();
+	QFileInfo f;
+	
+	for (i = 0; i < l.count(); i++)
+	{
+		f = l[i];
+		
+		if (f.fileName() == "." || f.fileName() == "..")
+			continue;
+		
+		if (f.isDir())
+			recursive_copy_dir(f.absoluteFilePath(), d.absoluteFilePath(f.fileName()));
+		else
+			QFile(f.absoluteFilePath()).copy(d.absoluteFilePath(f.fileName()));
+	}
 }

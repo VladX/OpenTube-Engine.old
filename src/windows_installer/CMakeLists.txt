@@ -22,8 +22,8 @@ if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 
 if (MINGW)
- set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
- set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static -Wl,-subsystem,windows")
+ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -Wl,-subsystem,windows")
 endif (MINGW)
 
 if (MSVC)

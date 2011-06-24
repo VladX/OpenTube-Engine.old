@@ -22,6 +22,8 @@
 #include <QHttp>
 #include <QBuffer>
 
+QString get_dl_temp_dir (void);
+
 bool get_files_index (QObject *, QBuffer *);
 
 bool parse_files_index (QBuffer *);

@@ -19,6 +19,13 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef _UTILS_H
+#define _UTILS_H 1
+
 #include <QString>
 
-void recursive_remove_dir (const QString & dir);
+void recursive_remove_dir (const QString &);
+
+void recursive_copy_dir (const QString &, const QString &);
+
+#endif

@@ -26,6 +26,7 @@
 #include "../config.h"
 
 bool local_installation = false;
+QString ar_data_root;
 
 #ifdef WIN_TASKBAR_STAFF
 DEFINE_GUID(CLSID_TaskbarList, 0x56fdf344, 0xfd6d, 0x11d0, 0x95, 0x8a, 0x00, 0x60, 0x97, 0xc9, 0xa0, 0x90);
@@ -112,9 +113,9 @@ int main (int argc, char ** argv)
 {
 	QApplication app(argc, argv, true);
 	QOPSetupWizard wizard;
-	QString data_root = unpack_archive(app.applicationName(), app.applicationDirPath());
+	ar_data_root = unpack_archive(app.applicationName(), app.applicationDirPath());
 	
-	local_installation = data_root.length() > 0;
+	local_installation = ar_data_root.length() > 0;
 	
 	wizard.setWindowTitle(PROG_NAME " Setup");
 	setup_wizard(wizard);
@@ -123,7 +124,7 @@ int main (int argc, char ** argv)
 	int code = app.exec();
 	
 	if (local_installation)
-		recursive_remove_dir(data_root);
+		recursive_remove_dir(ar_data_root);
 	
 	remove_temp_dir();
 	

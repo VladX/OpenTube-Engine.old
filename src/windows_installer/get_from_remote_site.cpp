@@ -25,6 +25,10 @@
 #include <QRegExp>
 #include <QDir>
 
+#ifdef OS_WINDOWS
+#include <windows.h>
+#endif
+
 static const char * temp_dir_name = "installer_dl_data";
 
 struct r_host
@@ -83,6 +87,14 @@ static bool is64bit (void)
 		return true;
 }
 
+QString get_dl_temp_dir (void)
+{
+	if (temp_dir == NULL)
+		return NULL;
+	
+	return temp_dir->absolutePath();
+}
+
 bool get_files_index (QObject * obj, QBuffer * buf)
 {
 	unsigned int i = try_num;
@@ -124,7 +136,7 @@ int download_all_files (QObject * obj)
 		return 0;
 	
 	http.disconnect();
-	obj->connect(&http, SIGNAL(done(bool)), SLOT(fileDownloaded(bool)));
+	obj->connect(&http, SIGNAL(requestFinished(int, bool)), SLOT(fileDownloaded(int, bool)));
 	obj->connect(&http, SIGNAL(responseHeaderReceived(const QHttpResponseHeader &)), SLOT(responseHeaderReceived(const QHttpResponseHeader &)));
 	
 	if (temp_dir == NULL)

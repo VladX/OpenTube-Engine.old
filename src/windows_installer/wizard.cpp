@@ -20,9 +20,11 @@
  */
 
 #include "wizard.h"
+#include "utils.h"
 #include "../config.h"
 
 extern bool local_installation;
+static QLineEdit * install_location_line = NULL;
 
 static QString get_program_files_location (void)
 {
@@ -142,6 +144,8 @@ WizPageLocation::WizPageLocation (void)
 	this->hbox->addWidget(this->line);
 	this->hbox->addWidget(open);
 	this->setLayout(this->hbox);
+	
+	install_location_line = this->line;
 }
 
 WizPageLocation::~WizPageLocation (void)
@@ -150,6 +154,8 @@ WizPageLocation::~WizPageLocation (void)
 	delete this->line;
 	delete this->label;
 	delete this->hbox;
+	
+	install_location_line = NULL;
 }
 
 WizPageFinal::WizPageFinal (void) : operationsCompleted(false)
@@ -268,7 +274,7 @@ void WizPageFinal::indexDownloaded (bool error)
 	this->files_count = download_all_files(this);
 }
 
-void WizPageFinal::fileDownloaded (bool error)
+void WizPageFinal::fileDownloaded (int id, bool error)
 {
 	if (error)
 	{
@@ -281,19 +287,16 @@ void WizPageFinal::fileDownloaded (bool error)
 	this->setProgress(this->files_downloaded * (100 / (this->files_count * 2)));
 	
 	if (this->files_downloaded == this->files_count)
+	{
 		finish_downloading();
+		this->copyFiles(get_dl_temp_dir());
+	}
 }
 
 void WizPageFinal::responseHeaderReceived (const QHttpResponseHeader & response)
 {
 	if (response.statusCode() != 200)
 		this->httpError();
-}
-
-void WizPageFinal::installFromLocalArchive (void)
-{
-	this->setProgress(0);
-	
 }
 
 void WizPageFinal::httpError (void)
@@ -310,6 +313,22 @@ void WizPageFinal::httpError (void)
 		QMessageBox::critical(this, "Unable to download the required files", "Unable to download the required files from remote server.");
 	
 	QCoreApplication::exit();
+}
+
+void WizPageFinal::copyFiles (const QString & dir)
+{
+	this->label->setText("Copying...");
+	recursive_copy_dir(dir, install_location_line->text());
+	this->setProgress(100);
+	this->label->setText("Installation is complete.");
+	this->completed();
+}
+
+void WizPageFinal::installFromLocalArchive (void)
+{
+	extern QString ar_data_root;
+	this->setProgress(0);
+	this->copyFiles(ar_data_root);
 }
 
 void setup_wizard (QOPSetupWizard & wizard)
