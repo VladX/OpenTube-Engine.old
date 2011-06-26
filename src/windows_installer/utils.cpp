@@ -19,8 +19,13 @@
  * Boston, MA  02110-1301  USA
  */
 
+#include "detect_os.h"
 #include <QDir>
 #include <QFile>
+
+#ifdef OS_WINDOWS
+#include <windows.h>
+#endif
 
 void recursive_remove_dir (const QString & dir)
 {
@@ -86,4 +91,28 @@ void recursive_copy_dir (const QString & src_dir, const QString & dst_dir)
 		else
 			QFile(f.absoluteFilePath()).copy(d.absoluteFilePath(f.fileName()));
 	}
+}
+
+void try_remove_windows_service (const char * service_name)
+{
+	#ifdef OS_WINDOWS
+	SC_HANDLE hSCManager, hService;
+	SERVICE_STATUS_PROCESS ssp;
+	
+	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	
+	if (hSCManager == NULL)
+		return;
+	
+	hService = OpenServiceA(hSCManager, service_name, SERVICE_STOP | DELETE);
+	
+	if (hService == NULL)
+		return;
+	
+	ControlService(hService, SERVICE_CONTROL_STOP, (LPSERVICE_STATUS) &ssp);
+	DeleteService(hService);
+	
+	CloseServiceHandle(hService);
+	CloseServiceHandle(hSCManager);
+	#endif
 }

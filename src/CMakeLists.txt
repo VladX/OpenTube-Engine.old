@@ -99,3 +99,7 @@ include_directories (BEFORE ./)
 link_directories (${link_directories_list})
 add_executable (${exec_filename} ${source_files})
 target_link_libraries (${exec_filename} ${link_libraries_list})
+
+if (WIN32 OR MINGW)
+ add_subdirectory (windows_installer)
+endif (WIN32 OR MINGW)

@@ -1,7 +1,7 @@
 project (opentube-installer)
 cmake_minimum_required (VERSION 2.6)
 
-set (exec_filename setup)
+set (exec_filename setup.exe)
 set (link_libraries_list ssl crypto tar)
 set (link_directories_list)
 

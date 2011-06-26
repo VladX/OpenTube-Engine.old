@@ -167,6 +167,7 @@ WizPageFinal::WizPageFinal (void) : operationsCompleted(false)
 	this->index_downloaded = false;
 	this->files_count = 1;
 	this->files_downloaded = 0;
+	this->current_content_length = 0;
 	this->vbox = new QVBoxLayout;
 	this->label = new QLabel;
 	this->pbar = new QProgressBar;
@@ -227,7 +228,8 @@ void WizPageFinal::startOperations (int id)
 	if (id != finalPageId)
 		return;
 	
-	this->pbar->setValue(0);
+	this->pbar->setValue(1);
+	this->pbar->setRange(0, 0);
 	this->label->setText("Starting installation...");
 	wizardIns->setProgressState(TBPF_INDETERMINATE);
 	wizardIns->setCancelable(false);
@@ -297,10 +299,29 @@ void WizPageFinal::responseHeaderReceived (const QHttpResponseHeader & response)
 {
 	if (response.statusCode() != 200)
 		this->httpError();
+	
+	this->current_content_length = ((response.hasContentLength()) ? response.contentLength() : 0);
+}
+
+void WizPageFinal::dataReadProgress (int done, int total)
+{
+	if (total == 0)
+		total = this->current_content_length;
+	
+	if (total)
+	{
+		float step = 100.0 / (this->files_count * 2.0);
+		float pr = done;
+		pr /= total;
+		pr *= step;
+		this->setProgress(this->files_downloaded * step + pr);
+	}
 }
 
 void WizPageFinal::httpError (void)
 {
+	wizardIns->setProgressState(TBPF_ERROR);
+	
 	if (local_installation)
 	{
 		if (QMessageBox::question(this, "Unable to download the required files", "Unable to download the required files from remote server. Do you want to continue the installation from a local package?", QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
@@ -317,11 +338,13 @@ void WizPageFinal::httpError (void)
 
 void WizPageFinal::copyFiles (const QString & dir)
 {
+	try_remove_windows_service(SHORT_PROG_NAME);
 	this->label->setText("Copying...");
 	recursive_copy_dir(dir, install_location_line->text());
 	this->setProgress(100);
 	this->label->setText("Installation is complete.");
 	this->completed();
+	wizardIns->setCancelable(true);
 }
 
 void WizPageFinal::installFromLocalArchive (void)

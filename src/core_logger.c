@@ -53,6 +53,7 @@ enum logger_level
 static const char * logger_level_strings[] = {"Error", "Critical"};
 static enum logger_output output = O_UNKNOWN;
 static FILE * log_file = NULL;
+static ulong last_error_code = 0;
 static pthread_mutex_t mutex[1] = {PTHREAD_MUTEX_INITIALIZER};
 
 void logger_set_console_output (void)
@@ -135,29 +136,48 @@ static void print_level_str (FILE * out, enum logger_level level, bool colorize)
 	#endif
 }
 
+static void save_last_error_code (void)
+{
+	#ifdef _WIN
+	last_error_code = (ulong) GetLastError();
+	if (!last_error_code)
+		last_error_code = (ulong) WSAGetLastError();
+	#else
+	last_error_code = (ulong) errno;
+	#endif
+}
+
+static void restore_last_error_code (void)
+{
+	#ifdef _WIN
+	SetLastError(last_error_code);
+	#else
+	errno = last_error_code;
+	#endif
+}
+
 static void print_sys_error (FILE * out)
 {
 	#ifdef _WIN
-	DWORD err = GetLastError();
-	if (!err)
-		err = WSAGetLastError();
-	if (err)
+	if (last_error_code)
 	{
-		char * errstr = win32_strerror(err);
+		char * errstr = win32_strerror(last_error_code);
 		if (out == stdout || out == stderr)
 			(void) CharToOemBuffA(errstr, errstr, strlen(errstr));
 		fprintf(out, ": %s", errstr);
 		LocalFree(errstr);
 	}
 	#else
-	if (errno)
-		fprintf(out, ": %s", strerror(errno));
+	if (last_error_code)
+		fprintf(out, ": %s", strerror(last_error_code));
 	#endif
 }
 
 static void _logger_log_console (bool sys_error, enum logger_level level, const char * fmt, va_list ap)
 {
 	FILE * f;
+	
+	save_last_error_code();
 	
 	pthread_mutex_lock(mutex);
 	f = (level == L_NOTICE) ? stdout : stderr;
@@ -167,6 +187,8 @@ static void _logger_log_console (bool sys_error, enum logger_level level, const 
 		print_sys_error(f);
 	fprintf(f, "\n");
 	pthread_mutex_unlock(mutex);
+	
+	restore_last_error_code();
 }
 
 static void v_logger_log_console (const char * fmt, va_list ap)
@@ -238,6 +260,8 @@ void logger_log_console_pcritical (int exit_code, const char * fmt, ...)
 
 static void _logger_log_file (bool sys_error, enum logger_level level, const char * fmt, va_list ap)
 {
+	save_last_error_code();
+	
 	pthread_mutex_lock(mutex);
 	if (log_file == NULL)
 	{
@@ -261,6 +285,8 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	fprintf(log_file, "\n");
 	_END_LOCAL_SECTION_
 	pthread_mutex_unlock(mutex);
+	
+	restore_last_error_code();
 }
 
 static void v_logger_log_file (const char * fmt, va_list ap)

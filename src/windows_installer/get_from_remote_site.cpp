@@ -105,6 +105,7 @@ bool get_files_index (QObject * obj, QBuffer * buf)
 	if (i == 0)
 		obj->connect(&http, SIGNAL(done(bool)), SLOT(indexDownloaded(bool)));
 	
+	http.connect(&http, SIGNAL(sslErrors(const QList<QSslError> &)), SLOT(ignoreSslErrors()));
 	http.setHost(hosts[i].host, hosts[i].mode);
 	path = hosts[i].start_path;
 	path.append((is64bit()) ? "win64/" : "win32/");
@@ -136,8 +137,10 @@ int download_all_files (QObject * obj)
 		return 0;
 	
 	http.disconnect();
+	http.connect(&http, SIGNAL(sslErrors(const QList<QSslError> &)), SLOT(ignoreSslErrors()));
 	obj->connect(&http, SIGNAL(requestFinished(int, bool)), SLOT(fileDownloaded(int, bool)));
 	obj->connect(&http, SIGNAL(responseHeaderReceived(const QHttpResponseHeader &)), SLOT(responseHeaderReceived(const QHttpResponseHeader &)));
+	obj->connect(&http, SIGNAL(dataReadProgress(int, int)), SLOT(dataReadProgress(int, int)));
 	
 	if (temp_dir == NULL)
 		temp_dir = new QDir;

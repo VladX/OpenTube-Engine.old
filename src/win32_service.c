@@ -129,6 +129,12 @@ static void set_failure_actions (SC_HANDLE hService)
 		win32_fatal_error("ChangeServiceConfig2()");
 }
 
+static void service_try_start (SC_HANDLE hService)
+{
+	if (StartService(hService, 0, NULL) == 0)
+		perr("%s", "starting service");
+}
+
 static bool service_try_install (void)
 {
 	char bin_path[MAX_PATH];
@@ -141,7 +147,7 @@ static bool service_try_install (void)
 	if(!GetModuleFileNameA(NULL, bin_path, MAX_PATH))
 		win32_fatal_error("GetModuleFileName()");
 	
-	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE | SERVICE_START);
+	hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	
 	if (hSCManager == NULL)
 	{
@@ -181,6 +187,10 @@ static bool service_try_install (void)
 		}
 	
 	set_failure_actions(hService);
+	service_try_start(hService);
+	
+	CloseServiceHandle(hService);
+	CloseServiceHandle(hSCManager);
 	
 	return true;
 }
@@ -216,6 +226,10 @@ static void service_change_conf (void)
 	free(lpServiceStartName);
 	
 	set_failure_actions(hService);
+	service_try_start(hService);
+	
+	CloseServiceHandle(hService);
+	CloseServiceHandle(hSCManager);
 }
 
 static void add_service_user (void)

@@ -28,4 +28,6 @@ void recursive_remove_dir (const QString &);
 
 void recursive_copy_dir (const QString &, const QString &);
 
+void try_remove_windows_service (const char * service_name);
+
 #endif

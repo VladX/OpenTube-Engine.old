@@ -458,6 +458,20 @@ bool is_node_exists (const char * path)
 	return true;
 }
 
+bool is_path_absolute (const char * path)
+{
+	size_t len = strlen(path);
+	
+	if (len > 1 && path[0] == '/')
+		return true;
+	#ifdef _WIN
+	if (len > 3 && path[1] == ':' && (path[2] == '/' || path[2] == '\\'))
+		return true;
+	#endif
+	
+	return false;
+}
+
 #ifdef _WIN
 char * _getcwd (char *, int);
 #endif
@@ -491,93 +505,3 @@ const char * gnu_basename (const char * path)
 	
 	return p;
 }
-
-#ifdef _WIN
-#include <sys/socket.h>
-
-static const char * winsock_errors[] = {
-	"Call interrupted", /* 0 */
-	"Bad file", /* 1 */
-	"Bad access", /* 2 */
-	"Bad argument", /* 3 */
-	"Invalid arguments", /* 4 */
-	"Out of file descriptors", /* 5 */
-	"Call would block", /* 6 */
-	"Blocking call in progress", /* 7 */
-	"Descriptor is not a socket", /* 8 */
-	"Need destination address", /* 9 */
-	"Bad message size", /* 10 */
-	"Bad protocol", /* 11 */
-	"Protocol option is unsupported", /* 12 */
-	"Address already in use", /* 13 */
-	"Address not available", /* 14 */
-	"Network down", /* 15 */
-	"Network unreachable", /* 16 */
-	"Socket is already connected", /* 17 */
-	"Socket is not connected", /* 18 */
-	"Timed out", /* 19 */
-	"Connection refused", /* 20 */
-	"Winsock library is not ready", /* 21 */
-	"Winsock library not initalised", /* 22 */
-	"Winsock version not supported", /* 23 */
-	"Unknown"
-};
-
-const char * win32_sock_strerror (int err)
-{
-	switch (err)
-	{
-		case WSAEINTR:
-			return winsock_errors[0];
-		case WSAEBADF:
-			return winsock_errors[1];
-		case WSAEACCES:
-			return winsock_errors[2];
-		case WSAEFAULT:
-			return winsock_errors[3];
-		case WSAEINVAL:
-			return winsock_errors[4];
-		case WSAEMFILE:
-			return winsock_errors[5];
-		case WSAEWOULDBLOCK:
-			return winsock_errors[6];
-		case WSAEINPROGRESS:
-		case WSAEALREADY:
-			return winsock_errors[7];
-		case WSAENOTSOCK:
-			return winsock_errors[8];
-		case WSAEDESTADDRREQ:
-			return winsock_errors[9];
-		case WSAEMSGSIZE:
-			return winsock_errors[10];
-		case WSAEPROTOTYPE:
-			return winsock_errors[11];
-		case WSAENOPROTOOPT:
-			return winsock_errors[12];
-		case WSAEADDRINUSE:
-			return winsock_errors[13];
-		case WSAEADDRNOTAVAIL:
-			return winsock_errors[14];
-		case WSAENETDOWN:
-			return winsock_errors[15];
-		case WSAENETUNREACH:
-			return winsock_errors[16];
-		case WSAEISCONN:
-			return winsock_errors[17];
-		case WSAENOTCONN:
-			return winsock_errors[18];
-		case WSAETIMEDOUT:
-			return winsock_errors[19];
-		case WSAECONNREFUSED:
-			return winsock_errors[20];
-		case WSASYSNOTREADY:
-			return winsock_errors[21];
-		case WSANOTINITIALISED:
-			return winsock_errors[22];
-		case WSAVERNOTSUPPORTED:
-			return winsock_errors[23];
-	}
-	
-	return NULL;
-}
-#endif

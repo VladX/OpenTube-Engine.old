@@ -107,7 +107,7 @@ static void process_directive (conf_elem * el)
 		uint pidlen = strlen(el->value);
 		if (pidlen < 3 || el->value[pidlen - 1] == '/')
 			EINVALIDVAL;
-		if (el->value[0] != '/')
+		if (!is_path_absolute(el->value))
 			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
 		config.pid = el->value;
 	}
@@ -116,7 +116,7 @@ static void process_directive (conf_elem * el)
 		uint loglen = strlen(el->value);
 		if (loglen < 3 || el->value[loglen - 1] == '/')
 			EINVALIDVAL;
-		if (el->value[0] != '/')
+		if (!is_path_absolute(el->value))
 			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
 		config.log = el->value;
 	}

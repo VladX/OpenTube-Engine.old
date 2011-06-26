@@ -103,6 +103,7 @@ public slots:
 	void indexDownloaded (bool);
 	void fileDownloaded (int, bool);
 	void responseHeaderReceived (const QHttpResponseHeader &);
+	void dataReadProgress (int, int);
 	
 private:
 	QVBoxLayout * vbox;
@@ -113,6 +114,7 @@ private:
 	bool index_downloaded;
 	int files_count;
 	int files_downloaded;
+	unsigned int current_content_length;
 };
 
 class QOPSetupWizard : public QWizard
