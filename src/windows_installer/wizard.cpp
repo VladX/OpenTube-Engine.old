@@ -29,8 +29,7 @@ static QLineEdit * install_location_line = NULL;
 static QString get_program_files_location (void)
 {
 	QString programFilesPath;
-	char * var = getenv("PROGRAMFILES");
-	programFilesPath = (var == NULL) ? "C:\\Program Files\\" : var;
+	programFilesPath = QDir(get_programfiles_path()).absolutePath();
 	
 	if (!programFilesPath.endsWith("\\") && !programFilesPath.endsWith("/"))
 		((programFilesPath.contains("/")) ? programFilesPath.append("/") : programFilesPath.append("\\"));

@@ -30,4 +30,8 @@ void recursive_copy_dir (const QString &, const QString &);
 
 void try_remove_windows_service (const char * service_name);
 
+bool os_is64bit (void);
+
+const char * get_programfiles_path (void);
+
 #endif

@@ -116,3 +116,44 @@ void try_remove_windows_service (const char * service_name)
 	CloseServiceHandle(hSCManager);
 	#endif
 }
+
+#ifdef OS_WINDOWS
+typedef BOOL (WINAPI * LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+#endif
+
+bool os_is64bit (void)
+{
+	if (sizeof(void *) == 4)
+	{
+		#ifdef OS_WINDOWS
+		LPFN_ISWOW64PROCESS fnIsWow64Process = (LPFN_ISWOW64PROCESS) GetProcAddress(GetModuleHandleA("kernel32"), "IsWow64Process");
+		
+		if (fnIsWow64Process == NULL)
+			return false;
+		
+		BOOL is64 = 0;
+		
+		if (fnIsWow64Process(GetCurrentProcess(), &is64) == 0)
+			return false;
+		
+		return ((is64) ? true : false);
+		#else
+		return false;
+		#endif
+	}
+	else
+		return true;
+}
+
+const char * get_programfiles_path (void)
+{
+	const char * pf = getenv((os_is64bit()) ? "PROGRAMW6432" : "PROGRAMFILES");
+	
+	if (pf == NULL)
+		pf = getenv("PROGRAMFILES");
+	
+	if (pf == NULL)
+		pf = "C:/Program Files";
+	
+	return pf;
+}

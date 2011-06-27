@@ -27,8 +27,8 @@ if (MINGW)
 endif (MINGW)
 
 if (MSVC)
- set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3 /O1 /UQT_DLL")
- set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O1 /UQT_DLL /EHsc")
+ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3 /O1 /UQT_DLL /SUBSYSTEM:WINDOWS")
+ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /O1 /UQT_DLL /EHsc /SUBSYSTEM:WINDOWS")
 endif (MSVC)
 
 if (WIN32 OR MINGW)
@@ -40,3 +40,10 @@ endif (WIN32 OR MINGW)
 link_directories (${link_directories_list} ${LINK_DIRECTORIES})
 add_executable (${exec_filename} WIN32 ${moc_sources} ${resources} ${source_files})
 target_link_libraries (${exec_filename} ${QT_LIBRARIES} ${QT_QTMAIN_LIBRARY} ${link_libraries_list})
+
+add_custom_command (TARGET ${exec_filename} POST_BUILD COMMAND strip "${CMAKE_CURRENT_BINARY_DIR}/${exec_filename}")
+
+find_program (upx_executable NAMES upx upx-nrv upx-ucl)
+if (upx_executable)
+ add_custom_command (TARGET ${exec_filename} POST_BUILD COMMAND ${upx_executable} -9 "${CMAKE_CURRENT_BINARY_DIR}/${exec_filename}")
+endif (upx_executable)

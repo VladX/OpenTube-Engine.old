@@ -20,14 +20,9 @@
  */
 
 #include "get_from_remote_site.h"
-#include "detect_os.h"
 #include "utils.h"
 #include <QRegExp>
 #include <QDir>
-
-#ifdef OS_WINDOWS
-#include <windows.h>
-#endif
 
 static const char * temp_dir_name = "installer_dl_data";
 
@@ -59,33 +54,6 @@ static QDir * temp_dir = NULL;
 static QFile * files = NULL;
 static unsigned int try_num = 0;
 
-#ifdef OS_WINDOWS
-typedef BOOL (WINAPI * LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
-#endif
-
-static bool is64bit (void)
-{
-	if (sizeof(void *) == 4)
-	{
-		#ifdef OS_WINDOWS
-		LPFN_ISWOW64PROCESS fnIsWow64Process = (LPFN_ISWOW64PROCESS) GetProcAddress(GetModuleHandleA("kernel32"), "IsWow64Process");
-		
-		if (fnIsWow64Process == NULL)
-			return false;
-		
-		BOOL is64 = 0;
-		
-		if (fnIsWow64Process(GetCurrentProcess(), &is64) == 0)
-			return false;
-		
-		return ((is64) ? true : false);
-		#else
-		return false;
-		#endif
-	}
-	else
-		return true;
-}
 
 QString get_dl_temp_dir (void)
 {
@@ -108,7 +76,7 @@ bool get_files_index (QObject * obj, QBuffer * buf)
 	http.connect(&http, SIGNAL(sslErrors(const QList<QSslError> &)), SLOT(ignoreSslErrors()));
 	http.setHost(hosts[i].host, hosts[i].mode);
 	path = hosts[i].start_path;
-	path.append((is64bit()) ? "win64/" : "win32/");
+	path.append((os_is64bit()) ? "win64/" : "win32/");
 	QString str = path;
 	str.append("index.md5");
 	http.get(str, buf);
