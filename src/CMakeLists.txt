@@ -11,7 +11,7 @@ if (NOT CMAKE_BUILD_TYPE)
  set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (link_libraries_list pthread z pcre ctpp2-st)
+set (link_libraries_list pthread z pcre config ctpp2-st)
 set (link_directories_list)
 set (exec_filename opentube-server)
 
@@ -56,12 +56,12 @@ add_subdirectory (test_features test_features)
 
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
-find_program (python_path python)
-
-if (python_path)
-  execute_process (COMMAND ${python_path} callbacks/generate-callbacks.c.py ${CMAKE_CURRENT_SOURCE_DIR}/web/ WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web)
- execute_process (COMMAND ${python_path} update-strings.h.py WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lang)
-endif (python_path)
+if (PYTHON_EXECUTABLE)
+ execute_process (COMMAND ${PYTHON_EXECUTABLE} callbacks/generate-callbacks.c.py ${CMAKE_CURRENT_SOURCE_DIR}/web/ WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/web)
+ message ("Generated callbacks.c.")
+ execute_process (COMMAND ${PYTHON_EXECUTABLE} update-strings.h.py WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lang)
+ message ("Generated strings.h.")
+endif (PYTHON_EXECUTABLE)
 
 file (GLOB source_files *.c)
 file (STRINGS web/compile.list source_files_web)

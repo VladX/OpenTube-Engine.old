@@ -21,25 +21,21 @@
 
 #include "common_functions.h"
 #include "win32_utils.h"
+#include <libconfig.h>
 
-#define CONFIG_IS_FLAG_ENABLED(F) (strcmp(F, "on") == 0 || strcmp(F, "enable") == 0 || strcmp(F, "1") == 0)
-#define EINVALIDVAL eerr(-1, "Invalid value for \"%s\".", el->key)
+#define EUNKNOWNDIRECTIVE eerr(-1, "Unknown directive \"%s\" in configuration file on line %d.", key, line)
+#define EINVALIDVAL eerr(-1, "Invalid value for \"%s\".", key)
 
 
-config_t config;
+struct loaded_config config;
 int http_port;
 str_t http_server_tcp_addr, http_server_unix_addr;
 const char * path_to_configuration_file = NULL;
 
-typedef struct
-{
-	char * key;
-	char * value;
-	int line;
-} conf_elem;
-
 static const char * required_directives[] = {
-	"listen", "user", "group", "pid-file", "log-file", "http-document-root", "http-temp", "cache-prefix", "cache-update", "data", "template"
+	"server.listen", "server.user", "server.group", "server.pid-file", "server.log-file", "server.data",
+	"http.document-root", "http.temp", "http.cache.prefix", "http.cache.update",
+	"template.name"
 };
 
 
@@ -64,13 +60,13 @@ static void default_config (void)
 	config.prealloc_request_structures = 10;
 }
 
-static void process_directive (conf_elem * el)
+static void process_directive_string (const char * const key, char * value, const int line)
 {
-	if (strcmp(el->key, "listen") == 0)
+	if (strcmp(key, "server.listen") == 0)
 	{
 		char * addr, * port;
 		
-		for (addr = el->value, port = el->value + strlen(el->value) - 1; port >= addr; port--)
+		for (addr = value, port = value + strlen(value) - 1; port >= addr; port--)
 			if (* port == ':')
 			{
 				* port = '\0';
@@ -98,31 +94,31 @@ static void process_directive (conf_elem * el)
 		
 		debug_print_1("address \"%s\", port %d", addr, http_port);
 	}
-	else if (strcmp(el->key, "user") == 0)
-		config.user = el->value;
-	else if (strcmp(el->key, "group") == 0)
-		config.group = el->value;
-	else if (strcmp(el->key, "pid-file") == 0)
+	else if (strcmp(key, "server.user") == 0)
+		config.user = value;
+	else if (strcmp(key, "server.group") == 0)
+		config.group = value;
+	else if (strcmp(key, "server.pid-file") == 0)
 	{
-		uint pidlen = strlen(el->value);
-		if (pidlen < 3 || el->value[pidlen - 1] == '/')
+		uint pidlen = strlen(value);
+		if (pidlen < 3 || value[pidlen - 1] == '/')
 			EINVALIDVAL;
-		if (!is_path_absolute(el->value))
-			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
-		config.pid = el->value;
+		if (!is_path_absolute(value))
+			eerr(-1, "You should specify absolute path name for the \"%s\"", key);
+		config.pid = value;
 	}
-	else if (strcmp(el->key, "log-file") == 0)
+	else if (strcmp(key, "server.log-file") == 0)
 	{
-		uint loglen = strlen(el->value);
-		if (loglen < 3 || el->value[loglen - 1] == '/')
+		uint loglen = strlen(value);
+		if (loglen < 3 || value[loglen - 1] == '/')
 			EINVALIDVAL;
-		if (!is_path_absolute(el->value))
-			eerr(-1, "You should specify absolute path name for the \"%s\"", el->key);
-		config.log = el->value;
+		if (!is_path_absolute(value))
+			eerr(-1, "You should specify absolute path name for the \"%s\"", key);
+		config.log = value;
 	}
-	else if (strcmp(el->key, "http-document-root") == 0)
+	else if (strcmp(key, "http.document-root") == 0)
 	{
-		set_ustr(&(config.document_root), (uchar *) el->value);
+		set_ustr(&(config.document_root), (uchar *) value);
 		
 		if (config.document_root.str[config.document_root.len - 1] == '/')
 		{
@@ -133,9 +129,9 @@ static void process_directive (conf_elem * el)
 		if (!is_directory_exists((const char *) config.document_root.str, IOAR_R))
 			eerr(-1, "Directory \"%s\" does not have read permissions or does not exist.", (const char *) config.document_root.str);
 	}
-	else if (strcmp(el->key, "http-temp") == 0)
+	else if (strcmp(key, "http.temp") == 0)
 	{
-		set_ustr(&(config.temp_dir), (uchar *) el->value);
+		set_ustr(&(config.temp_dir), (uchar *) value);
 		
 		if (!is_directory_exists((const char *) config.temp_dir.str, IOAR_RW))
 			eerr(-1, "Directory \"%s\" does not have read/write permissions or does not exist.", (const char *) config.temp_dir.str);
@@ -148,9 +144,9 @@ static void process_directive (conf_elem * el)
 		
 		config.temp_dir.str = realloc(config.temp_dir.str, config.temp_dir.len + 10);
 	}
-	else if (strcmp(el->key, "data") == 0)
+	else if (strcmp(key, "server.data") == 0)
 	{
-		set_ustr(&(config.data), (uchar *) el->value);
+		set_ustr(&(config.data), (uchar *) value);
 		
 		if (config.data.str[config.data.len - 1] == '/')
 		{
@@ -161,259 +157,251 @@ static void process_directive (conf_elem * el)
 		if (!is_directory_exists((const char *) config.data.str, IOAR_R))
 			eerr(-1, "Directory \"%s\" does not have read permissions or does not exist.", (const char *) config.data.str);
 	}
-	else if (strcmp(el->key, "template") == 0)
+	else if (strcmp(key, "template.name") == 0)
 	{
-		set_ustr(&(config.template_name), (uchar *) el->value);
+		set_ustr(&(config.template_name), (uchar *) value);
 		
 		if (!(* config.template_name.str))
 			EINVALIDVAL;
 	}
-	else if (strcmp(el->key, "template-update-bytecode") == 0)
+	else if (strcmp(key, "template.update-bytecode") == 0)
 	{
-		if (strcmp(el->value, "never") == 0)
+		if (strcmp(value, "never") == 0)
 			config.tpl_cache_update = 0;
-		else if (strcmp(el->value, "source-modified") == 0)
+		else if (strcmp(value, "source-modified") == 0)
 			config.tpl_cache_update = 1;
 		else
 			EINVALIDVAL;
 	}
-	else if (strcmp(el->key, "http-keepalive-timeout") == 0)
+	else if (strcmp(key, "http.cache.prefix") == 0)
 	{
-		int timeout;
+		int len = strlen(value);
 		
-		timeout = atoi(el->value);
-		if (timeout <= 0)
+		if (len < 2 || value[0] != '/')
 			EINVALIDVAL;
-		config.keepalive_timeout.str = (uchar *) el->value;
-		config.keepalive_timeout.len = strlen(el->value);
-		config.keepalive_timeout_val = (uint) timeout;
-	}
-	else if (strcmp(el->key, "http-keepalive-max-conn-per-client") == 0)
-	{
-		int maxconn;
-		
-		maxconn = atoi(el->value);
-		if (maxconn <= 0)
+		if (value[len - 1] == '/' && len < 3)
 			EINVALIDVAL;
-		config.keepalive_max_conn_per_client = (uint) maxconn;
-	}
-	else if (strcmp(el->key, "gzip") == 0)
-	{
-		if (CONFIG_IS_FLAG_ENABLED(el->value))
-			config.gzip = true;
-		else
-			config.gzip = false;
-	}
-	else if (strcmp(el->key, "gzip-compression-level") == 0)
-	{
-		uchar gzip_compress_level;
-		
-		gzip_compress_level = (uchar) atoi(el->value);
-		if (gzip_compress_level < 1 || gzip_compress_level > 9)
-			eerr(-1, "%s", "The gzip compression level must be between 1 and 9.");
-		config.gzip_level = gzip_compress_level;
-	}
-	else if (strcmp(el->key, "gzip-min-page-size") == 0)
-	{
-		int gzip_page_size;
-		
-		gzip_page_size = atoi(el->value);
-		if (gzip_page_size < 1)
-			EINVALIDVAL;
-		config.gzip_min_page_size = gzip_page_size;
-	}
-	else if (strcmp(el->key, "limit-requests") == 0)
-	{
-		if (CONFIG_IS_FLAG_ENABLED(el->value))
-			config.limit_req = true;
-		else
-			config.limit_req = false;
-	}
-	else if (strcmp(el->key, "limit-requests-rate") == 0)
-	{
-		int rate;
-		
-		rate = atoi(el->value);
-		if (rate <= 0)
-			EINVALIDVAL;
-		config.limit_rate = rate;
-	}
-	else if (strcmp(el->key, "limit-requests-delay") == 0)
-	{
-		int delay;
-		
-		delay = atoi(el->value);
-		if (delay <= 0)
-			EINVALIDVAL;
-		config.limit_delay = delay;
-	}
-	else if (strcmp(el->key, "limit-simultaneous-requests") == 0)
-	{
-		if (CONFIG_IS_FLAG_ENABLED(el->value))
-			config.limit_sim_req = true;
-		else
-			config.limit_sim_req = false;
-	}
-	else if (strcmp(el->key, "limit-simultaneous-requests-threshold") == 0)
-	{
-		int threshold;
-		
-		threshold = atoi(el->value);
-		if (threshold <= 0)
-			EINVALIDVAL;
-		config.limit_sim_threshold = threshold;
-	}
-	else if (strcmp(el->key, "cache-prefix") == 0)
-	{
-		int len = strlen(el->value);
-		
-		if (len < 2 || el->value[0] != '/')
-			EINVALIDVAL;
-		if (el->value[len - 1] == '/' && len < 3)
-			EINVALIDVAL;
-		if (el->value[len - 1] != '/')
+		if (value[len - 1] != '/')
 		{
 			len++;
-			el->value = realloc(el->value, len + 1);
-			el->value[len - 1] = '/';
-			el->value[len] = '\0';
+			value = realloc(value, len + 1);
+			value[len - 1] = '/';
+			value[len] = '\0';
 		}
-		config.cache_prefix.str = (uchar *) el->value;
+		config.cache_prefix.str = (uchar *) value;
 		config.cache_prefix.len = len;
 	}
-	else if (strcmp(el->key, "cache-update") == 0)
+	else if (strcmp(key, "http.cache.update") == 0)
 	{
-		if (strcmp(el->value, "never") == 0)
+		if (strcmp(value, "never") == 0)
 			config.cache_update = 0;
-		else if (strcmp(el->value, "source-modified") == 0)
+		else if (strcmp(value, "source-modified") == 0)
 			config.cache_update = 1;
 		else
 			EINVALIDVAL;
 	}
-	else if (strcmp(el->key, "worker-threads") == 0)
-	{
-		int threads = atoi(el->value);
-		if (threads < 2)
-			EINVALIDVAL;
-		config.worker_threads = threads;
-	}
-	else if (strcmp(el->key, "pre-allocated-request-structures") == 0)
-	{
-		int prealloc_rs = atoi(el->value);
-		if (prealloc_rs < 2)
-			EINVALIDVAL;
-		config.prealloc_request_structures = prealloc_rs;
-	}
 	else
-		eerr(-1, "Unknown directive \"%s\" in configuration file on line %d.", el->key, el->line);
+		EUNKNOWNDIRECTIVE;
 }
 
-static conf_elem * parse_line (FILE * c, int * line_num)
+static void process_directive_int (const char * const key, const int value, const int line)
 {
-	char line[256], * ch;
-	int i;
-	conf_elem * el;
 	
-	(* line_num)++;
-	
-	if (fgets(line, sizeof(line), c) == NULL)
-		return NULL;
-	
-	for (ch = line; IS_SPACE(* ch); ch++) {}
-	
-	el = (conf_elem *) malloc(sizeof(conf_elem));
-	el->key = NULL;
-	el->value = NULL;
-	
-	for (i = 0; !IS_SPACE(* ch); ch++, i++)
+	if (strcmp(key, "server.worker-threads") == 0)
 	{
-		if (* ch == '#' || * ch == '\0')
-			return el;
-		else if (!IS_SYM(* ch))
+		if (value < 2)
+			EINVALIDVAL;
+		config.worker_threads = value;
+	}
+	else if (strcmp(key, "server.pre-allocated-request-structures") == 0)
+	{
+		if (value < 2)
+			EINVALIDVAL;
+		config.prealloc_request_structures = value;
+	}
+	else if (strcmp(key, "server.limits.requests.rate") == 0)
+	{
+		if (value <= 0)
+			EINVALIDVAL;
+		config.limit_rate = value;
+	}
+	else if (strcmp(key, "server.limits.requests.delay") == 0)
+	{
+		if (value <= 0)
+			EINVALIDVAL;
+		config.limit_delay = value;
+	}
+	else if (strcmp(key, "server.limits.simultaneous-requests.threshold") == 0)
+	{
+		if (value <= 0)
+			EINVALIDVAL;
+		config.limit_sim_threshold = value;
+	}
+	else if (strcmp(key, "http.keepalive.timeout") == 0)
+	{
+		if (value <= 0)
+			EINVALIDVAL;
+		config.keepalive_timeout.len = digits_in_int(value);
+		config.keepalive_timeout.str = (uchar *) malloc(config.keepalive_timeout.len + 1);
+		config.keepalive_timeout_val = (uint) value;
+		int_to_str(value, (char *) config.keepalive_timeout.str, 10);
+	}
+	else if (strcmp(key, "http.keepalive.max-conn-per-client") == 0)
+	{
+		if (value <= 0)
+			EINVALIDVAL;
+		config.keepalive_max_conn_per_client = (uint) value;
+	}
+	else if (strcmp(key, "http.gzip.compression-level") == 0)
+	{
+		if (value < 1 || value > 9)
+			eerr(-1, "%s", "The gzip compression level must be between 1 and 9.");
+		config.gzip_level = value;
+	}
+	else if (strcmp(key, "http.gzip.min-page-size") == 0)
+	{
+		if (value < 1)
+			EINVALIDVAL;
+		config.gzip_min_page_size = value;
+	}
+	else
+		EUNKNOWNDIRECTIVE;
+}
+
+static void process_directive_int64 (const char * const key, const int64 value, const int line)
+{
+	EUNKNOWNDIRECTIVE;
+}
+
+static void process_directive_float (const char * const key, const float value, const int line)
+{
+	EUNKNOWNDIRECTIVE;
+}
+
+static void process_directive_bool (const char * const key, const int value, const int line)
+{
+	if (strcmp(key, "http.gzip.enable") == 0)
+	{
+		if (value)
+			config.gzip = true;
+		else
+			config.gzip = false;
+	}
+	else if (strcmp(key, "server.limits.requests.limit") == 0)
+	{
+		if (value)
+			config.limit_req = true;
+		else
+			config.limit_req = false;
+	}
+	else if (strcmp(key, "server.limits.simultaneous-requests.limit") == 0)
+	{
+		if (value)
+			config.limit_sim_req = true;
+		else
+			config.limit_sim_req = false;
+	}
+	else
+		EUNKNOWNDIRECTIVE;
+}
+
+static char * config_setting_full_path (config_setting_t * setting)
+{
+	const char * name;
+	char * path = NULL;
+	
+	do
+	{
+		name = config_setting_name(setting);
+		setting = config_setting_parent(setting);
+		
+		if (name == NULL)
+			continue;
+		
+		if (path == NULL)
 		{
-			eerr(-1, "Illegal character in configuration file on line %d.", * line_num);
+			path = malloc(strlen(name) + 1);
+			path[0] = '\0';
 		}
 		else
 		{
-			el->key = realloc(el->key, i + 2);
-			el->key[i] = * ch;
-			el->key[i + 1] = '\0';
+			path = realloc(path, ((path == NULL) ? 0 : strlen(path)) + strlen(name) + 2);
+			strcat(path, ".");
 		}
+		
+		strcat(path, name);
+		(void) str_reverse((path + strlen(path)) - strlen(name));
 	}
+	while (setting != NULL);
 	
-	for (; IS_SPACE(* ch); ch++) {}
+	if (path != NULL)
+		(void) str_reverse(path);
 	
-	for (i = 0; !IS_SPACE(* ch) || (* ch) == ' '; ch++, i++)
+	return path;
+}
+
+static bool process_conf (config_setting_t * setting)
+{
+	const char * string;
+	char * value, * name;
+	int type, i;
+	
+	if (setting == NULL)
+		return false;
+	
+	type = config_setting_type(setting);
+	name = config_setting_full_path(setting);
+	
+	if (type == CONFIG_TYPE_STRING)
 	{
-		if (* ch == '#' || * ch == '\0')
-			return el;
-		else if (!IS_SYM(* ch))
-		{
-			eerr(-1, "Illegal character in configuration file on line %d.", * line_num);
-		}
-		else
-		{
-			el->value = realloc(el->value, i + 2);
-			el->value[i] = * ch;
-			el->value[i + 1] = '\0';
-		}
+		string = config_setting_get_string(setting);
+		value = calloc(strlen(string) + 1, sizeof(* value));
+		if (value == NULL)
+			peerr(-1, "%s", "Memory error");
+		strcpy(value, string);
+		process_directive_string(name, value, config_setting_source_line(setting));
+	}
+	else if (type == CONFIG_TYPE_INT)
+		process_directive_int(name, config_setting_get_int(setting), config_setting_source_line(setting));
+	else if (type == CONFIG_TYPE_INT64)
+		process_directive_int64(name, config_setting_get_int64(setting), config_setting_source_line(setting));
+	else if (type == CONFIG_TYPE_FLOAT)
+		process_directive_float(name, config_setting_get_float(setting), config_setting_source_line(setting));
+	else if (type == CONFIG_TYPE_BOOL)
+		process_directive_bool(name, config_setting_get_bool(setting), config_setting_source_line(setting));
+	else if (type == CONFIG_TYPE_GROUP)
+	{
+		for (i = 0; process_conf(config_setting_get_elem(setting, i)); i++);
 	}
 	
-	return el;
+	if (name != NULL)
+		free(name);
+	
+	return true;
 }
 
 void load_config (const char * path)
 {
-	FILE * c = fopen(path, "r");
-	int line_num = 0, i = 0, it = 0;
-	conf_elem * el;
-	buf_t * els;
+	FILE * conf_file = fopen(path, "r");
+	config_t conf[1];
+	uint i;
 	
-	if (c == NULL)
+	if (conf_file == NULL)
 		peerr(-1, "Load configuration file \"%s\"", path);
 	
-	path_to_configuration_file = path;
+	config_init(conf);
+	if (config_read(conf, conf_file) == CONFIG_FALSE)
+		eerr(-1, "Error in configuration file \"%s\" on line %d: %s.", path, config_error_line(conf), config_error_text(conf));
+	
+	for (i = 0; i < ARRAY_LENGTH(required_directives); i++)
+	{
+		if (config_lookup(conf, required_directives[i]) == NULL)
+			eerr(-1, "Required directive \"%s\" not found in configuration file.", required_directives[i]);
+	}
+	
 	default_config();
+	(void) process_conf(config_root_setting(conf));
 	
-	els = buf_create(sizeof(conf_elem *), 32);
-	
-	while ((el = parse_line(c, &line_num)) != NULL)
-	{
-		if (el->key == NULL || el->value == NULL || !(* (el->key)) || !(* (el->value)))
-		{
-			free(el->key);
-			free(el->value);
-			free(el);
-			continue;
-		}
-		
-		buf_expand(els, 1);
-		el->line = line_num;
-		((conf_elem **) els->data)[i] = el;
-		
-		i++;
-	}
-	
-	for (it = 0; it < ARRAY_LENGTH(required_directives); it++)
-	{
-		for (i = 0; i < els->cur_len; i++)
-		{
-			el = ((conf_elem **) els->data)[i];
-			if (strcmp(el->key, required_directives[it]) == 0)
-				break;
-		}
-		if (i == els->cur_len)
-			eerr(-1, "Required directive \"%s\" not found in configuration file.", required_directives[it]);
-	}
-	
-	for (i = 0; i < els->cur_len; i++)
-	{
-		el = ((conf_elem **) els->data)[i];
-		
-		process_directive(el);
-	}
-	
-	buf_destroy(els);
-	
-	fclose(c);
+	config_destroy(conf);
+	fclose(conf_file);
 }

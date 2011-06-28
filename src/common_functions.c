@@ -313,6 +313,34 @@ void buf_free (buf_t * b)
 	b->cur_len = 0;
 }
 
+char * str_reverse (char * str)
+{
+	size_t i, len, half_len;
+	char temp;
+	
+	len = strlen(str);
+	half_len = len / 2;
+	len--;
+	
+	for (i = 0; i < half_len; i++)
+	{
+		temp = str[i];
+		str[i] = str[len - i];
+		str[len - i] = temp;
+	}
+	
+	return str;
+}
+
+int digits_in_int (int n)
+{
+	int i;
+	
+	for (i = 1; (n /= 10); i++);
+	
+	return i;
+}
+
 static const char * x_to_str_chartable = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz";
 
 void int_to_str (int value, char * result, int base)
@@ -334,9 +362,9 @@ void int_to_str (int value, char * result, int base)
 	
 	while (ptr1 < ptr)
 	{
-			tmp_char = * ptr;
-			* (ptr--) = * ptr1;
-			* (ptr1++) = tmp_char;
+		tmp_char = * ptr;
+		* (ptr--) = * ptr1;
+		* (ptr1++) = tmp_char;
 	}
 }
 
@@ -359,9 +387,9 @@ void long_to_str (long value, char * result, int base)
 	
 	while (ptr1 < ptr)
 	{
-			tmp_char = * ptr;
-			* (ptr--) = * ptr1;
-			* (ptr1++) = tmp_char;
+		tmp_char = * ptr;
+		* (ptr--) = * ptr1;
+		* (ptr1++) = tmp_char;
 	}
 }
 
@@ -384,9 +412,9 @@ void int64_to_str (int64 value, char * result, int base)
 	
 	while (ptr1 < ptr)
 	{
-			tmp_char = * ptr;
-			* (ptr--) = * ptr1;
-			* (ptr1++) = tmp_char;
+		tmp_char = * ptr;
+		* (ptr--) = * ptr1;
+		* (ptr1++) = tmp_char;
 	}
 }
 

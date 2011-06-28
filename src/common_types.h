@@ -251,7 +251,7 @@ typedef struct
 	bool full_match;
 } uri_map_t;
 
-typedef struct
+struct loaded_config
 {
 	const char * user;
 	const char * group;
@@ -277,4 +277,4 @@ typedef struct
 	uchar tpl_cache_update;
 	uint worker_threads;
 	uint prealloc_request_structures;
-} config_t;
+};

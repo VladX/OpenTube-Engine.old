@@ -23,7 +23,7 @@ extern int http_port;
 extern str_t http_server_tcp_addr, http_server_unix_addr;
 extern bool ipv6_addr;
 extern pid_t worker_pid;
-extern config_t config;
+extern struct loaded_config config;
 extern buf_t * uri_map;
 extern volatile time_t current_time_sec;
 extern volatile uint64 current_time_msec;

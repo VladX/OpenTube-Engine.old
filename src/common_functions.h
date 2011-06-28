@@ -157,6 +157,10 @@ long buf_resize (buf_t * b, uint new_size);
 
 void buf_free (buf_t * b);
 
+char * str_reverse (char * str);
+
+int digits_in_int (int n);
+
 void int_to_str (int value, char * result, int base);
 
 void long_to_str (long value, char * result, int base);
