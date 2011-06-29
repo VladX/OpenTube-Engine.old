@@ -1546,7 +1546,7 @@ CDT & CDT::operator*=(const INT_64  oValue)
 	switch (eValueType)
 	{
 		case UNDEF:
-			::new (this)CDT((INT_32) 0);
+			::new (this)CDT(static_cast<INT_32> (0));
 			break;
 
 		case INT_VAL:

@@ -365,7 +365,7 @@ static void FmtSci(StringBuffer       & oBuffer,
 	W_FLOAT dData = oCurrentArgument.GetFloat();
 	AllocatedBlock * aBlocks = NULL;
 
-	CHAR_P szBuffer = ctpp_dtoa(&aBlocks, freelist, dData, iMode, iPrecision, (int *) &iExponent, (int *) &iSign, &szEnd);
+	CHAR_P szBuffer = ctpp_dtoa(&aBlocks, freelist, dData, iMode, iPrecision, reinterpret_cast<int *> (&iExponent), reinterpret_cast<int *> (&iSign), &szEnd);
 	bool bIsNegative = iSign < 0;
 	--iExponent;
 
@@ -504,7 +504,7 @@ static void FmtFloat(StringBuffer            & oBuffer,
 
 	W_FLOAT dData = oCurrentArgument.GetFloat();
 	AllocatedBlock * aBlocks = NULL;
-	CHAR_P szBuffer = ctpp_dtoa(&aBlocks, freelist, dData, iMode, iFormatPrecision, (int *) &iExponent, (int *) &iSign, &szEnd);
+	CHAR_P szBuffer = ctpp_dtoa(&aBlocks, freelist, dData, iMode, iFormatPrecision, reinterpret_cast<int *> (&iExponent), reinterpret_cast<int *> (&iSign), &szEnd);
 	bool bIsNegative = iSign > 0;
 	--iExponent;
 

@@ -7,7 +7,7 @@ PROJECT(CTPP)
 
 SET(CTPP_VERSION_MAJOR 2)
 SET(CTPP_VERSION_MINOR 6)
-SET(CTPP_VERSION_PATCH 12)
+SET(CTPP_VERSION_PATCH 14)
 
 SET(CTPP_VERSION         "${CTPP_VERSION_MAJOR}.${CTPP_VERSION_MINOR}.${CTPP_VERSION_PATCH}")
 SET(CTPP_IDENT           "Dzoraget")
@@ -50,8 +50,8 @@ INCLUDE(CheckFunctionExists)
 INCLUDE(CheckSymbolExists)
 INCLUDE(CheckLibraryExists)
 
-CHECK_LIBRARY_EXISTS(m round    " " HAVE_ROUND_FN)
-CHECK_LIBRARY_EXISTS(m roundl   " " HAVE_ROUNDL_FN)
+CHECK_LIBRARY_EXISTS(m round    "" HAVE_ROUND_FN)
+CHECK_LIBRARY_EXISTS(m roundl   "" HAVE_ROUNDL_FN)
 
 CHECK_INCLUDE_FILES(sys/types.h HAVE_SYS_TYPES_H)
 CHECK_INCLUDE_FILES(sys/time.h  HAVE_SYS_TIME_H)
@@ -153,7 +153,7 @@ IF("${CMAKE_SYSTEM_NAME}" MATCHES "FreeBSD")
     MESSAGE(STATUS "#### Building for FreeBSD...")
 ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "FreeBSD")
 
-IF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" AND NOT MINGW)
+IF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 
     SET(SKIP_ICONV_LIRARY   "ON")
     SET(SKIP_LIBINTL_LIRARY "ON")
@@ -179,7 +179,7 @@ IF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" AND NOT MINGW)
         SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     ENDIF("${SKIP_RELINK_RPATH}" MATCHES "ON")
 
-ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux" AND NOT MINGW)
+ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 
 IF("${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
     SET(CMAKE_SKIP_RPATH FALSE)
@@ -195,6 +195,10 @@ ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "SunOS")
 IF("${CMAKE_SYSTEM_NAME}" MATCHES "HP-UX")
     MESSAGE(STATUS "#### Building for HP-UX...")
 ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "HP-UX")
+
+IF(WIN32 OR MINGW)
+    INCLUDE_DIRECTORIES("${CMAKE_SOURCE_DIR}/src/libs/win32/include")
+ENDIF(WIN32 OR MINGW)
 
 #
 # Gettext library support
@@ -467,392 +471,388 @@ SET(LIBSRCS
 # ################################################################################
 # Lib binary
 #
+ADD_LIBRARY(ctpp2-static STATIC ${LIBSRCS})
+SET_TARGET_PROPERTIES(ctpp2-static PROPERTIES OUTPUT_NAME ctpp2-st)
+SET_TARGET_PROPERTIES(ctpp2-static PROPERTIES LINKER_LANGUAGE CXX)
 
-IF((WIN32 OR MINGW) AND NOT FORCE_BUILD_STATIC_LIB)
-ELSE((WIN32 OR MINGW) AND NOT FORCE_BUILD_STATIC_LIB)
- ADD_LIBRARY(ctpp2-static STATIC ${LIBSRCS})
- SET_TARGET_PROPERTIES(ctpp2-static PROPERTIES OUTPUT_NAME ctpp2-st)
- SET_TARGET_PROPERTIES(ctpp2-static PROPERTIES LINKER_LANGUAGE CXX)
-ENDIF((WIN32 OR MINGW) AND NOT FORCE_BUILD_STATIC_LIB)
-
-#ADD_LIBRARY(ctpp2 SHARED ${LIBSRCS})
-#SET_TARGET_PROPERTIES(ctpp2 PROPERTIES OUTPUT_NAME ctpp2)
-#SET_TARGET_PROPERTIES(ctpp2 PROPERTIES LINKER_LANGUAGE CXX)
-#SET_TARGET_PROPERTIES(ctpp2 PROPERTIES VERSION ${CTPP_VERSION} SOVERSION ${CTPP_VERSION_MAJOR})
-
-#TARGET_LINK_LIBRARIES(ctpp2 ${LIBINTL_LIBRARY} ${MD5_LIBRARY} ${ICONV_LIBRARY})
-
-#IF(WIN32 OR MINGW)
-#    SET_TARGET_PROPERTIES(ctpp2 PROPERTIES COMPILE_DEFINITIONS CTPP2_DLL)
-#ENDIF(WIN32 OR MINGW)
-
+# ADD_LIBRARY(ctpp2 SHARED ${LIBSRCS})
+# SET_TARGET_PROPERTIES(ctpp2 PROPERTIES OUTPUT_NAME ctpp2)
+# SET_TARGET_PROPERTIES(ctpp2 PROPERTIES LINKER_LANGUAGE CXX)
+# SET_TARGET_PROPERTIES(ctpp2 PROPERTIES VERSION ${CTPP_VERSION} SOVERSION ${CTPP_VERSION_MAJOR})
+# 
+# TARGET_LINK_LIBRARIES(ctpp2 ${LIBINTL_LIBRARY} ${MD5_LIBRARY} ${ICONV_LIBRARY})
+# 
+# IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+#     SET_TARGET_PROPERTIES(ctpp2 PROPERTIES COMPILE_DEFINITIONS CTPP2_DLL)
+# ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+# 
 
 # ################################################################################
 # Exec binary
 #
 
-## CTPP Compiler
-#ADD_EXECUTABLE(ctpp2c                       tests/CTPP2Compiler.cpp)
-#TARGET_LINK_LIBRARIES(ctpp2c                ctpp2)
-
-## CTPP2 Interpreter
-#ADD_EXECUTABLE(ctpp2i                       tests/CTPP2Interpreter.cpp)
-#TARGET_LINK_LIBRARIES(ctpp2i                ctpp2)
-
-## CTPP2 virtual machine
-#ADD_EXECUTABLE(ctpp2vm                      tests/CTPP2Emulator.cpp)
-#TARGET_LINK_LIBRARIES(ctpp2vm               ctpp2)
-
-## CTPP2 JSON parser
-#ADD_EXECUTABLE(ctpp2json                    tests/CTPP2JSONParser.cpp)
-#TARGET_LINK_LIBRARIES(ctpp2json             ctpp2)
+# CTPP Compiler
+# ADD_EXECUTABLE(ctpp2c                       tests/CTPP2Compiler.cpp)
+# TARGET_LINK_LIBRARIES(ctpp2c                ctpp2)
+# 
+# CTPP2 Interpreter
+# ADD_EXECUTABLE(ctpp2i                       tests/CTPP2Interpreter.cpp)
+# TARGET_LINK_LIBRARIES(ctpp2i                ctpp2)
+# 
+# CTPP2 virtual machine
+# ADD_EXECUTABLE(ctpp2vm                      tests/CTPP2Emulator.cpp)
+# TARGET_LINK_LIBRARIES(ctpp2vm               ctpp2)
+# 
+# CTPP2 JSON parser
+# ADD_EXECUTABLE(ctpp2json                    tests/CTPP2JSONParser.cpp)
+# TARGET_LINK_LIBRARIES(ctpp2json             ctpp2)
 
 # ################################################################################
 # Test suite
 #
-#ENABLE_TESTING()
+# ENABLE_TESTING()
+# 
+# ADD_EXECUTABLE(CDTTest                      tests/CDTTest.cpp)
+# TARGET_LINK_LIBRARIES(CDTTest               ctpp2)
+# 
+# ADD_EXECUTABLE(CDTPerfTest                  tests/CDTPerfTest.cpp)
+# TARGET_LINK_LIBRARIES(CDTPerfTest           ctpp2)
+# 
+# ADD_EXECUTABLE(BitIndexTest                 tests/BitIndexText.cpp)
+# TARGET_LINK_LIBRARIES(BitIndexTest          ctpp2)
+# 
+# ADD_EXECUTABLE(HashTest                     tests/HashTest.cpp)
+# TARGET_LINK_LIBRARIES(HashTest              ctpp2)
+# 
+# ADD_EXECUTABLE(StaticTextTest               tests/StaticTextTest.cpp)
+# TARGET_LINK_LIBRARIES(StaticTextTest        ctpp2)
 
-#ADD_EXECUTABLE(CDTTest                      tests/CDTTest.cpp)
-#TARGET_LINK_LIBRARIES(CDTTest               ctpp2)
+#ADD_EXECUTABLE(StaticDataTest               tests/StaticDataTest.cpp)
+#TARGET_LINK_LIBRARIES(StaticDataTest        ctpp2)
 
-#ADD_EXECUTABLE(CDTPerfTest                  tests/CDTPerfTest.cpp)
-#TARGET_LINK_LIBRARIES(CDTPerfTest           ctpp2)
+# ADD_EXECUTABLE(VMArgStackTest               tests/VMArgStackTest.cpp)
+# TARGET_LINK_LIBRARIES(VMArgStackTest        ctpp2)
+# 
+# ADD_EXECUTABLE(VMCodeStackTest              tests/VMCodeStackTest.cpp)
+# TARGET_LINK_LIBRARIES(VMCodeStackTest       ctpp2)
+# 
+# ADD_EXECUTABLE(CTPP2VMTest                  tests/CTPP2VMTest.cpp)
+# TARGET_LINK_LIBRARIES(CTPP2VMTest           ctpp2)
+# 
+# ADD_EXECUTABLE(CTPP2DTOATest                tests/CTPP2DTOA.cpp)
+# TARGET_LINK_LIBRARIES(CTPP2DTOATest         ctpp2)
+# 
+# ADD_EXECUTABLE(simple-compiler              tests/SimpleCompilerTest.cpp)
+# TARGET_LINK_LIBRARIES(simple-compiler       ctpp2)
+# 
+# ADD_EXECUTABLE(simple-vm                    tests/SimpleVMTest.cpp)
+# TARGET_LINK_LIBRARIES(simple-vm             ctpp2)
+# 
+# ADD_TEST(CDT_performance_test               CDTPerfTest)
+# ADD_TEST(CDT_ops_test                       CDTTest)
+# ADD_TEST(Bit_index_test                     BitIndexTest)
+# ADD_TEST(Hash_test                          HashTest)
+# ADD_TEST(Static_text_test                   StaticTextTest)
+#ADD_TEST(Static_data_test                   StaticDataTest)
+# ADD_TEST(Argument_stack_test                VMArgStackTest)
+# ADD_TEST(Code_stack_test                    VMCodeStackTest)
+# ADD_TEST(Create_executable_file             CTPP2VMTest selftest.ct2)
+# ADD_TEST(VM_self_test                       ctpp2vm selftest.ct2)
+# SET_TESTS_PROPERTIES(VM_self_test PROPERTIES DEPENDS Create_executable_file)
+# 
+# 
+# ADD_TEST(Output_variables_C                 ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/output_variables.tmpl Output_variables.ct2)
+# ADD_TEST(Output_variables_R                 ctpp2vm Output_variables.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Output_variables_R PROPERTIES DEPENDS Output_variables_C)
+# 
+# ADD_TEST(Comparisons_C                      ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/comparisons.tmpl Comparisons.ct2)
+# ADD_TEST(Comparisons_R                      ctpp2vm Comparisons.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Comparisons_R PROPERTIES DEPENDS Comparisons_C)
+# 
+# ADD_TEST(Arith_ops_C                        ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/arith_ops.tmpl Arith_ops.ct2)
+# ADD_TEST(Arith_ops_R                        ctpp2vm Arith_ops.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Arith_ops_R PROPERTIES DEPENDS Arith_ops_C)
+# 
+# ADD_TEST(Formulas_C                         ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/formulas.tmpl Formulas.ct2)
+# ADD_TEST(Formulas_R                         ctpp2vm Formulas.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Formulas_R PROPERTIES DEPENDS Formulas_C)
+# 
+# ADD_TEST(Functions_C                        ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/functions.tmpl Functions.ct2)
+# ADD_TEST(Functions_R                        ctpp2vm Functions.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Functions_R PROPERTIES DEPENDS Functions_C)
+# 
+# IF (${MD5_SUPPORT} MATCHES "ON")
+#     ADD_TEST(Function_md5_C                 ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_md5.tmpl Function_md5.ct2)
+#     ADD_TEST(Function_md5_R                 ctpp2vm Function_md5.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+#     SET_TESTS_PROPERTIES(Function_md5_R PROPERTIES DEPENDS Function_md5_C)
+# ENDIF (${MD5_SUPPORT} MATCHES "ON")
+# 
+# IF (${ICONV_SUPPORT} MATCHES "ON")
+#     ADD_TEST(Function_iconv_C               ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_iconv.tmpl Function_iconv.ct2)
+#     ADD_TEST(Function_iconv_R               ctpp2vm Function_iconv.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+#     SET_TESTS_PROPERTIES(Function_iconv_R PROPERTIES DEPENDS Function_iconv_C)
+# ENDIF (${ICONV_SUPPORT} MATCHES "ON")
+# 
+# IF (${GETTEXT_SUPPORT} MATCHES "ON")
+#     ADD_TEST(Function_gettext_C             ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_gettext.tmpl Function_gettext.ct2)
+#     ADD_TEST(Function_gettext_R             ctpp2vm Function_gettext.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+#     SET_TESTS_PROPERTIES(Function_gettext_R PROPERTIES DEPENDS Function_gettext_C)
+# ENDIF (${GETTEXT_SUPPORT} MATCHES "ON")
+# 
+# ADD_TEST(Loops_C                            ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/loops.tmpl Loops.ct2)
+# ADD_TEST(Loops_R                            ctpp2vm Loops.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
+# SET_TESTS_PROPERTIES(Loops_R PROPERTIES DEPENDS Loops_C)
+# 
+# ADD_TEST(Lebowski_bench_loop_C              ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench-loop.tmpl lebowski-bench-loop.ct2)
+# ADD_TEST(Lebowski_bench_loop_R              ctpp2vm lebowski-bench-loop.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench.json)
+# SET_TESTS_PROPERTIES(Lebowski_bench_loop_R PROPERTIES DEPENDS Lebowski_bench_loop_C)
+# 
+# ADD_TEST(Lebowski_bench_foreach_C           ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench-foreach.tmpl lebowski-bench-foreach.ct2)
+# ADD_TEST(Lebowski_bench_foreach_R           ctpp2vm lebowski-bench-foreach.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench.json)
+# SET_TESTS_PROPERTIES(Lebowski_bench_foreach_R PROPERTIES DEPENDS Lebowski_bench_foreach_C)
+# 
+# ADD_TEST(DTOA                               CTPP2DTOATest)
 
-#ADD_EXECUTABLE(BitIndexTest                 tests/BitIndexText.cpp)
-#TARGET_LINK_LIBRARIES(BitIndexTest          ctpp2)
+# Install Headers
+# INSTALL(FILES include/CDT.hpp
+#               include/CDTSortRoutines.hpp
+#               include/CTPP2BitIndex.hpp
+#               include/CTPP2CharIterator.hpp
+#               include/CTPP2Compiler.hpp
+#               include/CTPP2DTOA.hpp
+#               include/CTPP2Exception.hpp
+#               include/CTPP2Error.hpp
+#               include/CTPP2ErrorCodes.h
+#               include/CTPP2FileLogger.hpp
+#               include/CTPP2FileOutputCollector.hpp
+#               include/CTPP2FileSourceLoader.hpp
+#               include/CTPP2GlobalDefines.h
+#               include/CTPP2HashTable.hpp
+#               include/CTPP2JSONFileParser.hpp
+#               include/CTPP2JSONParser.hpp
+#               include/CTPP2Logger.hpp
+#               include/CTPP2OutputCollector.hpp
+#               include/CTPP2Parser.hpp
+#               include/CTPP2ParserException.hpp
+#               include/CTPP2SimpleCompiler.hpp
+#               include/CTPP2SimpleVM.hpp
+#               include/CTPP2SourceLoader.hpp
+#               include/CTPP2Sprintf.hpp
+#               include/CTPP2StaticData.hpp
+#               include/CTPP2StaticText.hpp
+#               include/CTPP2StreamOutputCollector.hpp
+#               include/CTPP2StringBuffer.hpp
+#               include/CTPP2StringIconvOutputCollector.hpp
+#               include/CTPP2StringOutputCollector.hpp
+#               include/CTPP2SymbolTable.hpp
+#               include/CTPP2Syntax.h
+#               include/CTPP2SysHeaders.h
+#               include/CTPP2SysTypes.h
+#               include/CTPP2SyscallFactory.hpp
+#               include/CTPP2Types.h
+#               include/CTPP2Util.hpp
+#               include/CTPP2VM.hpp
+#               include/CTPP2VMArgStack.hpp
+#               include/CTPP2VMCodeStack.hpp
+#               include/CTPP2VMDebugInfo.hpp
+#               include/CTPP2VMDumper.hpp
+#               include/CTPP2VMException.hpp
+#               include/CTPP2VMExecutable.hpp
+#               include/CTPP2VMFileLoader.hpp
+#               include/CTPP2VMInstruction.hpp
+#               include/CTPP2VMLoader.hpp
+#               include/CTPP2VMMemoryCore.hpp
+#               include/CTPP2VMOpcodeCollector.hpp
+#               include/CTPP2VMOpcodes.h
+#               include/CTPP2VMSTDLib.hpp
+#               include/CTPP2VMStackException.hpp
+#               include/CTPP2VMSyscall.hpp
+#               include/STLException.hpp
+#               include/STLFunctional.hpp
+#               include/STLIosfwd.hpp
+#               include/STLMap.hpp
+#               include/STLOstream.hpp
+#               include/STLPair.hpp
+#               include/STLString.hpp
+#               include/STLVector.hpp
+#         DESTINATION include/ctpp2
+#         PERMISSIONS OWNER_READ OWNER_WRITE
+#                     GROUP_READ
+#                     WORLD_READ)
 
-#ADD_EXECUTABLE(HashTest                     tests/HashTest.cpp)
-#TARGET_LINK_LIBRARIES(HashTest              ctpp2)
+# IF("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
+# 
+# SET(CTPP_COMPILER_HELPER "@echo off
+# rem
+# rem CTPP2 Configurator for ${CMAKE_SYSTEM_NAME}
+# rem
+# 
+# set PREFIX=\"${CMAKE_INSTALL_PREFIX}\"
+# set CXXFLAGS=\"${CMAKE_CXX_FLAGS}\"
+# set MAKE=\"${CMAKE_MAKE_PROGRAM}\"
+# set CC=\"${CMAKE_C_COMPILER}\"
+# set CXX=\"${CMAKE_CXX_COMPILER}\"
+# set INCLUDE=\"${ICONV_INCLUDE} ${LIBINTL_INCLUDE} ${MD5_INCLUDE} ${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
+# set INCLUDE2=\"-I${ICONV_INCLUDE} -I${LIBINTL_INCLUDE} -I${MD5_INCLUDE} -I${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
+# set LIBS=\"${CMAKE_INSTALL_PREFIX}/lib\"
+# set VERSION=\"${CTPP_VERSION}\"
+# 
+# if \"%1\" == \"--version\"   echo %VERSION% & goto end
+# if \"%1\" == \"--flags\"     echo %FLAGS%   & goto end
+# if \"%1\" == \"--cc\"        echo %CC%      & goto end
+# if \"%1\" == \"--cxx\"       echo %CXX%     & goto end
+# if \"%1\" == \"--make\"      echo %MAKE%    & goto end
+# if \"%1\" == \"--libs\"      echo %LIBS%    & goto end
+# if \"%1\" == \"--includes2\" echo %INCLUDE2% & goto end
+# if \"%1\" == \"--includes\"  echo %INCLUDE% & goto end
+# 
+# 
+# echo Usage:
+# echo   ctpp2-config [--flags] [--cc] [--cxx] [--make] [--libs] [--includes] [--version]
+# echo                   ... [see below for complete flag list]
+# echo.
+# echo     --version         displays the ctpp2 version number
+# echo     --flags           displays C++ compiler flags
+# echo     --cc              displays executable name of C compiler
+# echo     --cxx             displays executable name of C++ compiler
+# echo     --make            displays executable name of make
+# echo     --libs            displays list of libraries
+# echo     --includes        displays list of include dirs
+# echo     --includes2       displays list of include dirs with '-I' prefixes
+# echo.
+# 
+# :end
+# ")
 
-#ADD_EXECUTABLE(StaticTextTest               tests/StaticTextTest.cpp)
-#TARGET_LINK_LIBRARIES(StaticTextTest        ctpp2)
+#     INSTALL(TARGETS ctpp2-static DESTINATION lib${LIB_SUFFIX})
+# 
+#     INSTALL(TARGETS ctpp2 DESTINATION .)
 
-##ADD_EXECUTABLE(StaticDataTest               tests/StaticDataTest.cpp)
-##TARGET_LINK_LIBRARIES(StaticDataTest        ctpp2)
+#     FILE(WRITE ctpp2-config.cmd ${CTPP_COMPILER_HELPER})
 
-#ADD_EXECUTABLE(VMArgStackTest               tests/VMArgStackTest.cpp)
-#TARGET_LINK_LIBRARIES(VMArgStackTest        ctpp2)
-
-#ADD_EXECUTABLE(VMCodeStackTest              tests/VMCodeStackTest.cpp)
-#TARGET_LINK_LIBRARIES(VMCodeStackTest       ctpp2)
-
-#ADD_EXECUTABLE(CTPP2VMTest                  tests/CTPP2VMTest.cpp)
-#TARGET_LINK_LIBRARIES(CTPP2VMTest           ctpp2)
-
-#ADD_EXECUTABLE(CTPP2DTOATest                tests/CTPP2DTOA.cpp)
-#TARGET_LINK_LIBRARIES(CTPP2DTOATest         ctpp2)
-
-#ADD_EXECUTABLE(simple-compiler              tests/SimpleCompilerTest.cpp)
-#TARGET_LINK_LIBRARIES(simple-compiler       ctpp2)
-
-#ADD_EXECUTABLE(simple-vm                    tests/SimpleVMTest.cpp)
-#TARGET_LINK_LIBRARIES(simple-vm             ctpp2)
-
-#ADD_TEST(CDT_performance_test               CDTPerfTest)
-#ADD_TEST(CDT_ops_test                       CDTTest)
-#ADD_TEST(Bit_index_test                     BitIndexTest)
-#ADD_TEST(Hash_test                          HashTest)
-#ADD_TEST(Static_text_test                   StaticTextTest)
-##ADD_TEST(Static_data_test                   StaticDataTest)
-#ADD_TEST(Argument_stack_test                VMArgStackTest)
-#ADD_TEST(Code_stack_test                    VMCodeStackTest)
-#ADD_TEST(Create_executable_file             CTPP2VMTest selftest.ct2)
-#ADD_TEST(VM_self_test                       ctpp2vm selftest.ct2)
-#SET_TESTS_PROPERTIES(VM_self_test PROPERTIES DEPENDS Create_executable_file)
-
-
-#ADD_TEST(Output_variables_C                 ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/output_variables.tmpl Output_variables.ct2)
-#ADD_TEST(Output_variables_R                 ctpp2vm Output_variables.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Output_variables_R PROPERTIES DEPENDS Output_variables_C)
-
-#ADD_TEST(Comparisons_C                      ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/comparisons.tmpl Comparisons.ct2)
-#ADD_TEST(Comparisons_R                      ctpp2vm Comparisons.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Comparisons_R PROPERTIES DEPENDS Comparisons_C)
-
-#ADD_TEST(Arith_ops_C                        ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/arith_ops.tmpl Arith_ops.ct2)
-#ADD_TEST(Arith_ops_R                        ctpp2vm Arith_ops.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Arith_ops_R PROPERTIES DEPENDS Arith_ops_C)
-
-#ADD_TEST(Formulas_C                         ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/formulas.tmpl Formulas.ct2)
-#ADD_TEST(Formulas_R                         ctpp2vm Formulas.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Formulas_R PROPERTIES DEPENDS Formulas_C)
-
-#ADD_TEST(Functions_C                        ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/functions.tmpl Functions.ct2)
-#ADD_TEST(Functions_R                        ctpp2vm Functions.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Functions_R PROPERTIES DEPENDS Functions_C)
-
-#IF (${MD5_SUPPORT} MATCHES "ON")
-#    ADD_TEST(Function_md5_C                 ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_md5.tmpl Function_md5.ct2)
-#    ADD_TEST(Function_md5_R                 ctpp2vm Function_md5.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#    SET_TESTS_PROPERTIES(Function_md5_R PROPERTIES DEPENDS Function_md5_C)
-#ENDIF (${MD5_SUPPORT} MATCHES "ON")
-
-#IF (${ICONV_SUPPORT} MATCHES "ON")
-#    ADD_TEST(Function_iconv_C               ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_iconv.tmpl Function_iconv.ct2)
-#    ADD_TEST(Function_iconv_R               ctpp2vm Function_iconv.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#    SET_TESTS_PROPERTIES(Function_iconv_R PROPERTIES DEPENDS Function_iconv_C)
-#ENDIF (${ICONV_SUPPORT} MATCHES "ON")
-
-#IF (${GETTEXT_SUPPORT} MATCHES "ON")
-#    ADD_TEST(Function_gettext_C             ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/function_gettext.tmpl Function_gettext.ct2)
-#    ADD_TEST(Function_gettext_R             ctpp2vm Function_gettext.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#    SET_TESTS_PROPERTIES(Function_gettext_R PROPERTIES DEPENDS Function_gettext_C)
-#ENDIF (${GETTEXT_SUPPORT} MATCHES "ON")
-
-#ADD_TEST(Loops_C                            ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/loops.tmpl Loops.ct2)
-#ADD_TEST(Loops_R                            ctpp2vm Loops.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/testdata.json)
-#SET_TESTS_PROPERTIES(Loops_R PROPERTIES DEPENDS Loops_C)
-
-#ADD_TEST(Lebowski_bench_loop_C              ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench-loop.tmpl lebowski-bench-loop.ct2)
-#ADD_TEST(Lebowski_bench_loop_R              ctpp2vm lebowski-bench-loop.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench.json)
-#SET_TESTS_PROPERTIES(Lebowski_bench_loop_R PROPERTIES DEPENDS Lebowski_bench_loop_C)
-
-#ADD_TEST(Lebowski_bench_foreach_C           ctpp2c ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench-foreach.tmpl lebowski-bench-foreach.ct2)
-#ADD_TEST(Lebowski_bench_foreach_R           ctpp2vm lebowski-bench-foreach.ct2 ${CMAKE_CURRENT_SOURCE_DIR}/examples/lebowski-bench.json)
-#SET_TESTS_PROPERTIES(Lebowski_bench_foreach_R PROPERTIES DEPENDS Lebowski_bench_foreach_C)
-
-#ADD_TEST(DTOA                               CTPP2DTOATest)
-
-## Install Headers
-#INSTALL(FILES include/CDT.hpp
-#              include/CDTSortRoutines.hpp
-#              include/CTPP2BitIndex.hpp
-#              include/CTPP2CharIterator.hpp
-#              include/CTPP2Compiler.hpp
-#              include/CTPP2DTOA.hpp
-#              include/CTPP2Exception.hpp
-#              include/CTPP2Error.hpp
-#              include/CTPP2ErrorCodes.h
-#              include/CTPP2FileLogger.hpp
-#              include/CTPP2FileOutputCollector.hpp
-#              include/CTPP2FileSourceLoader.hpp
-#              include/CTPP2GlobalDefines.h
-#              include/CTPP2HashTable.hpp
-#              include/CTPP2JSONFileParser.hpp
-#              include/CTPP2JSONParser.hpp
-#              include/CTPP2Logger.hpp
-#              include/CTPP2OutputCollector.hpp
-#              include/CTPP2Parser.hpp
-#              include/CTPP2ParserException.hpp
-#              include/CTPP2SimpleCompiler.hpp
-#              include/CTPP2SimpleVM.hpp
-#              include/CTPP2SourceLoader.hpp
-#              include/CTPP2Sprintf.hpp
-#              include/CTPP2StaticData.hpp
-#              include/CTPP2StaticText.hpp
-#              include/CTPP2StreamOutputCollector.hpp
-#              include/CTPP2StringBuffer.hpp
-#              include/CTPP2StringIconvOutputCollector.hpp
-#              include/CTPP2StringOutputCollector.hpp
-#              include/CTPP2SymbolTable.hpp
-#              include/CTPP2Syntax.h
-#              include/CTPP2SysHeaders.h
-#              include/CTPP2SysTypes.h
-#              include/CTPP2SyscallFactory.hpp
-#              include/CTPP2Types.h
-#              include/CTPP2Util.hpp
-#              include/CTPP2VM.hpp
-#              include/CTPP2VMArgStack.hpp
-#              include/CTPP2VMCodeStack.hpp
-#              include/CTPP2VMDebugInfo.hpp
-#              include/CTPP2VMDumper.hpp
-#              include/CTPP2VMException.hpp
-#              include/CTPP2VMExecutable.hpp
-#              include/CTPP2VMFileLoader.hpp
-#              include/CTPP2VMInstruction.hpp
-#              include/CTPP2VMLoader.hpp
-#              include/CTPP2VMMemoryCore.hpp
-#              include/CTPP2VMOpcodeCollector.hpp
-#              include/CTPP2VMOpcodes.h
-#              include/CTPP2VMSTDLib.hpp
-#              include/CTPP2VMStackException.hpp
-#              include/CTPP2VMSyscall.hpp
-#              include/STLException.hpp
-#              include/STLFunctional.hpp
-#              include/STLIosfwd.hpp
-#              include/STLMap.hpp
-#              include/STLOstream.hpp
-#              include/STLPair.hpp
-#              include/STLString.hpp
-#              include/STLVector.hpp
-#        DESTINATION include/ctpp2
-#        PERMISSIONS OWNER_READ OWNER_WRITE
-#                    GROUP_READ
-#                    WORLD_READ)
-
-IF(WIN32 OR MINGW)
-
-SET(CTPP_COMPILER_HELPER "@echo off
-rem
-rem CTPP2 Configurator for ${CMAKE_SYSTEM_NAME}
-rem
-
-set PREFIX=\"${CMAKE_INSTALL_PREFIX}\"
-set CXXFLAGS=\"${CMAKE_CXX_FLAGS}\"
-set MAKE=\"${CMAKE_MAKE_PROGRAM}\"
-set CC=\"${CMAKE_C_COMPILER}\"
-set CXX=\"${CMAKE_CXX_COMPILER}\"
-set INCLUDE=\"${ICONV_INCLUDE} ${LIBINTL_INCLUDE} ${MD5_INCLUDE} ${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
-set INCLUDE2=\"-I${ICONV_INCLUDE} -I${LIBINTL_INCLUDE} -I${MD5_INCLUDE} -I${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
-set LIBS=\"${CMAKE_INSTALL_PREFIX}/lib\"
-set VERSION=\"${CTPP_VERSION}\"
-
-if \"%1\" == \"--version\"   echo %VERSION% & goto end
-if \"%1\" == \"--flags\"     echo %FLAGS%   & goto end
-if \"%1\" == \"--cc\"        echo %CC%      & goto end
-if \"%1\" == \"--cxx\"       echo %CXX%     & goto end
-if \"%1\" == \"--make\"      echo %MAKE%    & goto end
-if \"%1\" == \"--libs\"      echo %LIBS%    & goto end
-if \"%1\" == \"--includes2\" echo %INCLUDE2% & goto end
-if \"%1\" == \"--includes\"  echo %INCLUDE% & goto end
-
-
-echo Usage:
-echo   ctpp2-config [--flags] [--cc] [--cxx] [--make] [--libs] [--includes] [--version]
-echo                   ... [see below for complete flag list]
-echo.
-echo     --version         displays the ctpp2 version number
-echo     --flags           displays C++ compiler flags
-echo     --cc              displays executable name of C compiler
-echo     --cxx             displays executable name of C++ compiler
-echo     --make            displays executable name of make
-echo     --libs            displays list of libraries
-echo     --includes        displays list of include dirs
-echo     --includes2       displays list of include dirs with '-I' prefixes
-echo.
-
-:end
-")
-
-#    INSTALL(TARGETS ctpp2-static DESTINATION lib${LIB_SUFFIX})
-
-#    INSTALL(TARGETS ctpp2 DESTINATION .)
-
-#    FILE(WRITE ctpp2-config.cmd ${CTPP_COMPILER_HELPER})
-
-#    # Install binaries
-#    INSTALL(FILES ctpp2-config.cmd
-#            DESTINATION .)
-
-#    INSTALL(TARGETS ctpp2vm
-#                    ctpp2c
-#                    ctpp2i
-#                    ctpp2json
-#            DESTINATION .)
-
-
-ELSE (WIN32 OR MINGW)
-## Install library
-#INSTALL(TARGETS ctpp2 ctpp2-static DESTINATION lib${LIB_SUFFIX})
-
-## Install Manpages
-#INSTALL(FILES
-#              man/ctpp2-config.1
-#              man/ctpp2c.1
-#              man/ctpp2i.1
-#              man/ctpp2json.1
-#              man/ctpp2vm.1
-#        DESTINATION man/man1
-#        PERMISSIONS OWNER_READ OWNER_WRITE
-#                    GROUP_READ
-#                    WORLD_READ)
-
-ENDIF(WIN32 OR MINGW)
+    # Install binaries
+#     INSTALL(FILES ctpp2-config.cmd
+#             DESTINATION .)
+# 
+#     INSTALL(TARGETS ctpp2vm
+#                     ctpp2c
+#                     ctpp2i
+#                     ctpp2json
+#             DESTINATION .)
 
 
-IF(WIN32 OR MINGW)
+# ELSE ("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
+# Install library
+# INSTALL(TARGETS ctpp2 ctpp2-static DESTINATION lib${LIB_SUFFIX})
+# 
+# Install Manpages
+# INSTALL(FILES
+#               man/ctpp2-config.1
+#               man/ctpp2c.1
+#               man/ctpp2i.1
+#               man/ctpp2json.1
+#               man/ctpp2vm.1
+#         DESTINATION man/man1
+#         PERMISSIONS OWNER_READ OWNER_WRITE
+#                     GROUP_READ
+#                     WORLD_READ)
 
+# ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
 
-ELSE(WIN32 OR MINGW)
-SET(CTPP_COMPILER_HELPER "#!/bin/sh
-#
+# 
+# IF("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
+# 
+# 
+# ELSE("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
+# SET(CTPP_COMPILER_HELPER "#!/bin/sh
+# 
 # CTPP2 Configurator
-#
-PREFIX=${CMAKE_INSTALL_PREFIX}
-CXXFLAGS=\"${CMAKE_CXX_FLAGS}\"
-MAKE=${CMAKE_MAKE_PROGRAM}
-CC=${CMAKE_C_COMPILER}
-CXX=${CMAKE_CXX_COMPILER}
-INCLUDE=\"${ICONV_INCLUDE} ${LIBINTL_INCLUDE} ${MD5_INCLUDE} ${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
-INCLUDE2=\"-I${ICONV_INCLUDE} -I${LIBINTL_INCLUDE} -I${MD5_INCLUDE} -I${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
-LIBS=\"${CMAKE_INSTALL_PREFIX}/lib\"
-VERSION=\"${CTPP_VERSION}\"
-
-if test \"x$1\" = \"x\"\; then
-  echo \"Usage:\"
-  echo \"  ctpp2-config [--flags] [--cc] [--cxx] [--make] [--libs] [--includes] [--version]\"
-  echo \"                  ... [see below for complete flag list]\"
-  echo \"\"
-  echo \"    --version         displays the ctpp2 version number\"
-  echo \"    --flags           displays C++ compiler flags\"
-  echo \"    --cc              displays executable name of C compiler\"
-  echo \"    --cxx             displays executable name of C++ compiler\"
-  echo \"    --make            displays executable name of make\"
-  echo \"    --libs            displays list of libraries\"
-  echo \"    --includes        displays list of include dirs\"
-  echo \"    --includes2       displays list of include dirs with '-I' prefixes\"
-  echo \"\"
-else
-   while test \"x$done\" = \"x\" -a \"x$1\" != \"x\"\; do
-       case $1 in
-           --version*)
-           echo \${VERSION}
-           \;\;
-
-           --flags*)
-           echo \${CXXFLAGS}
-           \;\;
-
-           --cc*)
-           echo \${CC}
-           \;\;
-
-           --cxx*)
-           echo \${CXX}
-           \;\;
-
-           --make*)
-           echo \${MAKE}
-           \;\;
-
-           --libs*)
-           echo \${LIBS}
-           \;\;
-
-           --includes2*)
-           echo \${INCLUDE2}
-           \;\;
-
-           --includes*)
-           echo \${INCLUDE}
-           \;\;
-
-       esac
-       shift
-   done
-fi
-")
-
-    # Write file
-    FILE(WRITE ctpp2-config ${CTPP_COMPILER_HELPER})
-
-#    # Install binaries
-#    INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctpp2vm
-#                  ${CMAKE_CURRENT_BINARY_DIR}/ctpp2c
-#                  ${CMAKE_CURRENT_BINARY_DIR}/ctpp2i
-#                  ${CMAKE_CURRENT_BINARY_DIR}/ctpp2json
-#                  ctpp2-config
-#            DESTINATION bin
-#            PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE
-#                        GROUP_EXECUTE GROUP_READ
-#                        WORLD_EXECUTE WORLD_READ)
-
-#    # Install binaries
-#    INSTALL(FILES po/ru_RU.CP1251/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.CP1251/LC_MESSAGES)
-#    INSTALL(FILES po/ru_RU.CP866/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.CP866/LC_MESSAGES)
-#    INSTALL(FILES po/ru_RU.KOI8-R/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.KOI8-R/LC_MESSAGES)
-#    INSTALL(FILES po/ru_RU.UTF-8/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.UTF-8/LC_MESSAGES)
-
-ENDIF(WIN32 OR MINGW)
+# 
+# PREFIX=${CMAKE_INSTALL_PREFIX}
+# CXXFLAGS=\"${CMAKE_CXX_FLAGS}\"
+# MAKE=${CMAKE_MAKE_PROGRAM}
+# CC=${CMAKE_C_COMPILER}
+# CXX=${CMAKE_CXX_COMPILER}
+# INCLUDE=\"${ICONV_INCLUDE} ${LIBINTL_INCLUDE} ${MD5_INCLUDE} ${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
+# INCLUDE2=\"-I${ICONV_INCLUDE} -I${LIBINTL_INCLUDE} -I${MD5_INCLUDE} -I${CMAKE_INSTALL_PREFIX}/include/ctpp2\"
+# LIBS=\"${CMAKE_INSTALL_PREFIX}/lib\"
+# VERSION=\"${CTPP_VERSION}\"
+# 
+# if test \"x$1\" = \"x\"\; then
+#   echo \"Usage:\"
+#   echo \"  ctpp2-config [--flags] [--cc] [--cxx] [--make] [--libs] [--includes] [--version]\"
+#   echo \"                  ... [see below for complete flag list]\"
+#   echo \"\"
+#   echo \"    --version         displays the ctpp2 version number\"
+#   echo \"    --flags           displays C++ compiler flags\"
+#   echo \"    --cc              displays executable name of C compiler\"
+#   echo \"    --cxx             displays executable name of C++ compiler\"
+#   echo \"    --make            displays executable name of make\"
+#   echo \"    --libs            displays list of libraries\"
+#   echo \"    --includes        displays list of include dirs\"
+#   echo \"    --includes2       displays list of include dirs with '-I' prefixes\"
+#   echo \"\"
+# else
+#    while test \"x$done\" = \"x\" -a \"x$1\" != \"x\"\; do
+#        case $1 in
+#            --version*)
+#            echo \${VERSION}
+#            \;\;
+# 
+#            --flags*)
+#            echo \${CXXFLAGS}
+#            \;\;
+# 
+#            --cc*)
+#            echo \${CC}
+#            \;\;
+# 
+#            --cxx*)
+#            echo \${CXX}
+#            \;\;
+# 
+#            --make*)
+#            echo \${MAKE}
+#            \;\;
+# 
+#            --libs*)
+#            echo \${LIBS}
+#            \;\;
+# 
+#            --includes2*)
+#            echo \${INCLUDE2}
+#            \;\;
+# 
+#            --includes*)
+#            echo \${INCLUDE}
+#            \;\;
+# 
+#        esac
+#        shift
+#    done
+# fi
+# ")
+# 
+#     Write file
+#     FILE(WRITE ctpp2-config ${CTPP_COMPILER_HELPER})
+# 
+#     Install binaries
+#     INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctpp2vm
+#                   ${CMAKE_CURRENT_BINARY_DIR}/ctpp2c
+#                   ${CMAKE_CURRENT_BINARY_DIR}/ctpp2i
+#                   ${CMAKE_CURRENT_BINARY_DIR}/ctpp2json
+#                   ctpp2-config
+#             DESTINATION bin
+#             PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE
+#                         GROUP_EXECUTE GROUP_READ
+#                         WORLD_EXECUTE WORLD_READ)
+# 
+#     Install binaries
+#     INSTALL(FILES po/ru_RU.CP1251/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.CP1251/LC_MESSAGES)
+#     INSTALL(FILES po/ru_RU.CP866/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.CP866/LC_MESSAGES)
+#     INSTALL(FILES po/ru_RU.KOI8-R/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.KOI8-R/LC_MESSAGES)
+#     INSTALL(FILES po/ru_RU.UTF-8/LC_MESSAGES/ctpp2.mo DESTINATION share/locale/ru.UTF-8/LC_MESSAGES)
+# 
+# ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES "Windows")
 
 # End.

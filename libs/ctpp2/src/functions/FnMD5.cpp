@@ -30,6 +30,7 @@
  * $CTPP$
  */
 
+#include <stdio.h>
 #include "CDT.hpp"
 #include "CTPP2Logger.hpp"
 #include "FnMD5.hpp"

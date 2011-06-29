@@ -35,9 +35,9 @@
 #include "FnHostname.hpp"
 
 #ifdef WIN32
- #include <winsock2.h>
+    #include <winsock2.h>
 #else
- #include <unistd.h>
+    #include <unistd.h>
 #endif
 
 #ifndef HOST_NAME_MAX

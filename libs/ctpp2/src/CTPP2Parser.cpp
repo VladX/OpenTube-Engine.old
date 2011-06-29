@@ -2380,7 +2380,7 @@ CCharIterator CTPP2Parser::IncludeOperator(CCharIterator szData, CCharIterator s
 		delete pTMPSourceLoader;
 
 		CHAR_8 szTMPBuffer[2048 + 1];
-		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %d, pos %d: expected \"%s\", but found \"%s\"", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.Expected(), e.Found());
+		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: expected \"%s\", but found \"%s\"", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.Expected(), e.Found());
 
 		throw CTPPParserSyntaxError(szTMPBuffer, sTMP.GetLine(), sTMP.GetLinePos());
 	}
@@ -2389,7 +2389,7 @@ CCharIterator CTPP2Parser::IncludeOperator(CCharIterator szData, CCharIterator s
 		delete pTMPSourceLoader;
 
 		CHAR_8 szTMPBuffer[2048 + 1];
-		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %d, pos %d: %s", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.what());
+		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: %s", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.what());
 
 		throw CTPPParserSyntaxError(szTMPBuffer, sTMP.GetLine(), sTMP.GetLinePos());
 	}

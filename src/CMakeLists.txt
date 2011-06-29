@@ -12,7 +12,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif (NOT CMAKE_BUILD_TYPE)
 
 set (link_libraries_list pthread z pcre config ctpp2-st)
-set (link_directories_list)
+set (link_directories_list ${CMAKE_BINARY_DIR}/libs/ctpp2)
 set (exec_filename opentube-server)
 
 if (WIN32 OR MINGW)
@@ -23,7 +23,6 @@ if (WIN32 OR MINGW)
  set (CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ws2_32)
 else (WIN32 OR MINGW)
  set (link_libraries_list ${link_libraries_list} crypto)
- set (link_directories_list ${link_directories_list} ${CMAKE_BINARY_DIR}/libs/ctpp2)
 endif (WIN32 OR MINGW)
 
 if (MINGW)

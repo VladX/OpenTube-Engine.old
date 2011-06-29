@@ -1,4 +1,4 @@
- CTPP version 2.6.13 change log
+ CTPP version 2.6.14 change log
  ------------------------------
 
  Legend
@@ -9,6 +9,10 @@
    ! = Bug fixed
    = = Unresolved
    # = Other stuff
+
+ Version 2.6.14 (28.04.2011)
+ ---------------------------
+  01. ! Gettext patches
 
  Version 2.6.13 (05.04.2011)
  ---------------------------

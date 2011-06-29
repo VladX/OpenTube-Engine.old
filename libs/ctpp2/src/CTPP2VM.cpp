@@ -447,7 +447,7 @@ HL_RST;
 										// Decrease number of iterations
 										--oLoopReg;
 										// End of cycle?
-										if (oLoopReg <= (INT_32) 0) { ++iIP; }
+										if (oLoopReg <= static_cast<INT_32> (0)) { ++iIP; }
 										// New iteration
 										else
 										{
@@ -559,7 +559,7 @@ HL_RST;
 										// Decrease number of iterations
 										--oLoopReg;
 										// End of cycle?
-										if (oLoopReg <= (INT_32) 0) { ++iIP; }
+										if (oLoopReg <= static_cast<INT_32> (0)) { ++iIP; }
 										// New iteration
 										else
 										{
@@ -1022,7 +1022,7 @@ fprintf(stderr, "0x%08X NEG       %cR (%d)\n", iIP, CHAR_8(iSrcReg + 'A'), INT_3
 HL_RST;
 #endif
 										CDT & oTMP = oRegs[iSrcReg];
-										if (oTMP.GetType() <= CDT::REAL_VAL) { oTMP = (const INT_32) 0 - oTMP; }
+										if (oTMP.GetType() <= CDT::REAL_VAL) { oTMP = (static_cast<INT_32> (0)) - oTMP; }
 									}
 									else if (iSrcReg == ARG_SRC_STACK)
 									{
@@ -1032,7 +1032,7 @@ fprintf(stderr, "0x%08X NEG       STACK[%d](%s)\n", iIP, aCode[iIP].argument, oV
 HL_RST;
 #endif
 										CDT & oTMP = oVMArgStack.GetTopElement(aCode[iIP].argument);
-										if (oTMP.GetType() <= CDT::REAL_VAL) { oTMP = (const INT_32) 0 - oTMP; }
+										if (oTMP.GetType() <= CDT::REAL_VAL) { oTMP = (static_cast<INT_32> (0)) - oTMP; }
 									}
 									else
 									{
@@ -1056,7 +1056,7 @@ HL_RST;
 
 										if (oTMP.Defined()) { oTMP = CDT(CDT::UNDEF); }
 										// Undefined
-										else                { oTMP = (INT_32) 1;               }
+										else                { oTMP = static_cast<INT_32> (1);               }
 									}
 									else if (iSrcReg <= ARG_SRC_LASTREG)
 									{
@@ -1067,7 +1067,7 @@ HL_RST;
 										// Defined
 										if (oRegs[iSrcReg].Defined()) { oRegs[iSrcReg] = CDT(CDT::UNDEF); }
 										// Undefined
-										else                          { oRegs[iSrcReg] = (INT_32) 1;               }
+										else                          { oRegs[iSrcReg] = static_cast<INT_32> (1);               }
 									}
 									else
 									{

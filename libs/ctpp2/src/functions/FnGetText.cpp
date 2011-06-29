@@ -34,9 +34,48 @@
 #include "CTPP2Logger.hpp"
 #include "FnGetText.hpp"
 
+#include <strings.h>
+#include <locale.h>
 #ifdef GETTEXT_SUPPORT
 #include <libintl.h>
 #endif // GETTEXT_SUPPORT
+
+namespace
+{
+
+INT_32 GetCategoryByName(CCHAR_P szName)
+{
+	if (!strcasecmp(szName, "LC_MESSAGES"))
+	{
+		return LC_MESSAGES;
+	}
+	else if (!strcasecmp(szName, "LC_COLLATE"))
+	{
+		return LC_COLLATE;
+	}
+	else if (!strcasecmp(szName, "LC_CTYPE"))
+	{
+		return LC_CTYPE;
+	}
+	else if (!strcasecmp(szName, "LC_MONETARY"))
+	{
+		return LC_MONETARY;
+	}
+	else if (!strcasecmp(szName, "LC_NUMERIC"))
+	{
+		return LC_NUMERIC;
+	}
+	else if (!strcasecmp(szName, "LC_TIME"))
+	{
+		return LC_TIME;
+	}
+	else
+	{
+		return LC_ALL;
+	}
+}
+
+} // namespace
 
 namespace CTPP // C++ Template Engine
 {
@@ -65,12 +104,13 @@ INT_32 FnGetText::Handler(CDT            * aArguments,
 	}
 	else if (iArgNum == 2)
 	{
-		oCDTRetVal = dgettext(aArguments[1].GetString().c_str(), aArguments[0].GetString().c_str());
+		oCDTRetVal = dgettext(aArguments[0].GetString().c_str(), aArguments[1].GetString().c_str());
 		return 0;
 	}
 	else if (iArgNum == 3)
 	{
-		oCDTRetVal = dcgettext(aArguments[2].GetString().c_str(), aArguments[1].GetString().c_str(), INT_32(aArguments[3].GetInt()));
+		INT_32 iCategory = GetCategoryByName(aArguments[0].GetString().c_str());
+		oCDTRetVal = dcgettext(aArguments[1].GetString().c_str(), aArguments[2].GetString().c_str(), iCategory);
 		return 0;
 	}
 

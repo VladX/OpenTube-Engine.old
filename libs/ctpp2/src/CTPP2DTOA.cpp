@@ -1180,7 +1180,7 @@ char * ctpp_dtoa(AllocatedBlock ** aBlocks, Bigint ** freelist, double dd, int m
 	}
 #endif
 
-	b = d2b(aBlocks, freelist, dval(d), (int *) &be, (int *) &bbits);
+	b = d2b(aBlocks, freelist, dval(d), reinterpret_cast<int *> (&be), reinterpret_cast<int *> (&bbits));
 
 	if ((i = (int)(word0(d) >> Exp_shift1 & (Exp_mask>>Exp_shift1))))
 	{

@@ -37,10 +37,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define random()        rand()
-#define INT_64(x)       (INT_64)(x)
-#define srandomdev()    srand( (unsigned)time(NULL) );
-#define srandom(X) srand((unsigned int) X)
+#if defined(_MSC_VER) || defined(__MINGW__) || defined(__MINGW32__) || defined(__MINGW64__)
+	#define random()        rand()
+	#define INT_64(x)       (INT_64)(x)
+	#define srandomdev()    srand( (unsigned)time(NULL) );
+#endif
 
 namespace CTPP // C++ Template Engine
 {
@@ -50,7 +51,7 @@ namespace CTPP // C++ Template Engine
 //
 FnRandom::FnRandom()
 {
-#if defined(__FreeBSD__) || defined(_MSC_VER)
+#if defined(__FreeBSD__) || defined(_MSC_VER) || defined(__MINGW__) || defined(__MINGW32__) || defined(__MINGW64__)
 	srandomdev();
 #else
 	srandom(time(NULL));
@@ -89,7 +90,7 @@ INT_32 FnRandom::Handler(CDT            * aArguments,
 		}
 
 		// Invalid data type, just return 0
-		oCDTRetVal = (INT_32) 0;
+		oCDTRetVal = static_cast<INT_32> (0);
 		return 0;
 	}
 	// RAND(x, y) -> x .. y
@@ -121,7 +122,7 @@ INT_32 FnRandom::Handler(CDT            * aArguments,
 		}
 
 		// Invalid data type, just return 0
-		oCDTRetVal = (INT_32) 0;
+		oCDTRetVal = static_cast<INT_32> (0);
 		return 0;
 	}
 
