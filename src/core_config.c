@@ -399,6 +399,7 @@ void load_config (const char * path)
 			eerr(-1, "Required directive \"%s\" not found in configuration file.", required_directives[i]);
 	}
 	
+	path_to_configuration_file = path;
 	default_config();
 	(void) process_conf(config_root_setting(conf));
 	
