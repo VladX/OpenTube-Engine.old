@@ -77,6 +77,7 @@
     #pragma warning (disable : 4251)   // class 'Class::Name' needs to have dll-interface to be used by clients of class 'Another::Name'
     #define strcasecmp(x,y)      _stricmp((x),(y))
     #define snprintf(x,y,z,...)  _snprintf((x),(y),(z), __VA_ARGS__ )
+    #define strtoll(x,y,z)       _strtoi64((x),(y),(z))
 #endif
 
 #ifdef CTPP2_DLL

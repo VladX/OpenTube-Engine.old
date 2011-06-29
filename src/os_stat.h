@@ -50,3 +50,21 @@
 #ifndef S_ISDIR
  #define S_ISDIR(mode) __S_ISTYPE((mode), S_IFDIR)
 #endif
+
+#ifndef S_IXUSR
+ #ifdef _S_IEXEC
+  #define S_IXUSR _S_IEXEC
+ #endif
+#endif
+
+#ifndef S_IWUSR
+ #ifdef _S_IWRITE
+  #define S_IWUSR _S_IWRITE
+ #endif
+#endif
+
+#ifndef S_IRUSR
+ #ifdef _S_IREAD
+  #define S_IRUSR _S_IREAD
+ #endif
+#endif

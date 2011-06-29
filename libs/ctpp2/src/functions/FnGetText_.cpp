@@ -33,9 +33,14 @@
 #include "CDT.hpp"
 #include "CTPP2Logger.hpp"
 #include "FnGetText_.hpp"
+#include "CTPP2SysHeaders.h"
 
 #include <locale.h>
-#include <strings.h>
+
+#ifdef HAVE_STRINGS_H
+    #include <strings.h>
+#endif
+
 #ifdef GETTEXT_SUPPORT
 #include <libintl.h>
 #endif // GETTEXT_SUPPORT

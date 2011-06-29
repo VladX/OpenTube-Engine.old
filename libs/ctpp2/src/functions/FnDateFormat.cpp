@@ -33,8 +33,12 @@
 #include "CDT.hpp"
 #include "CTPP2Logger.hpp"
 #include "FnDateFormat.hpp"
+#include "CTPP2SysHeaders.h"
 
-#include <sys/time.h>
+#ifdef HAVE_SYS_TIME_H
+    #include <sys/time.h>
+#endif
+
 #include <time.h>
 
 namespace CTPP // C++ Template Engine
