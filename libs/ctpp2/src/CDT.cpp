@@ -3550,7 +3550,7 @@ CDT & CDT::Append(CCHAR_P szData, const INT_32 iDataLength)  { return Concat(szD
 CDT & CDT::Append(const INT_64  oValue)
 {
 	CHAR_8 szBuf[C_MAX_SPRINTF_LENGTH + 1];
-	UINT_32 iLen = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, "%lli", (long long) (oValue));
+	UINT_32 iLen = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, PRINTF_INT64_FORMAT, (long long) (oValue));
 
 	if (eValueType == UNDEF)
 	{
@@ -3695,7 +3695,7 @@ return *this;
 CDT & CDT::Prepend(const INT_64  oValue)
 {
 	CHAR_8 szBuf[C_MAX_SPRINTF_LENGTH + 1];
-	UINT_32 iLen = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, "%lli", (long long) (oValue));
+	UINT_32 iLen = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, PRINTF_INT64_FORMAT, (long long) (oValue));
 
 	if (eValueType == UNDEF)
 	{
@@ -3953,7 +3953,7 @@ STLW::string CDT::GetString(CCHAR_P szFormat) const
 				}
 				else
 				{
-					snprintf(szBuf, C_MAX_SPRINTF_LENGTH, "%lli", (long long) (u.i_data));
+					snprintf(szBuf, C_MAX_SPRINTF_LENGTH, PRINTF_INT64_FORMAT, (long long) (u.i_data));
 				}
 
 			return szBuf;
@@ -4085,7 +4085,7 @@ void CDT::DumpData(UINT_32 iLevel, UINT_32 iOffset, const CDT & oData, STLW::str
 					{
 						sResult.append(iOffset + iLevel * 2, ' ');
 
-						const INT_32 iFmtLen = snprintf(szBuf, 512, "%u", iI);
+						const INT_32 iFmtLen = snprintf(szBuf, 512, "%u", static_cast<unsigned int> (iI));
 						sResult += szBuf;
 						sResult += " : ";
 						DumpData(iLevel, iOffset + iFmtLen + 3, oData.GetCDT(iI), sResult);

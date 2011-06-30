@@ -220,7 +220,7 @@ CCharIterator CTPP2JSONParser::IsNum(CCharIterator szData, CCharIterator szEnd)
 		szDigit[iDigitSize] = '\0';
 
 		long long iLL = 0;
-		sscanf(szDigit, "%lli", &iLL);
+		sscanf(szDigit, PRINTF_INT64_FORMAT, &iLL);
 
 		iIntData = iLL;
 		iParsedNumberType = 0;

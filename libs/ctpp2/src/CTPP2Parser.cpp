@@ -793,7 +793,7 @@ CCharIterator CTPP2Parser::IsNum(CCharIterator szData, CCharIterator szEnd)
 		szDigit[iDigitSize] = '\0';
 
 		long long iLL = 0;
-		sscanf(szDigit, "%lli", &iLL);
+		sscanf(szDigit, PRINTF_INT64_FORMAT, &iLL);
 
 		iIntData = iLL;
 		iParsedNumberType = 0;
@@ -2380,7 +2380,7 @@ CCharIterator CTPP2Parser::IncludeOperator(CCharIterator szData, CCharIterator s
 		delete pTMPSourceLoader;
 
 		CHAR_8 szTMPBuffer[2048 + 1];
-		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: expected \"%s\", but found \"%s\"", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.Expected(), e.Found());
+		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: expected \"%s\", but found \"%s\"", sTMPBuf.c_str(), static_cast<unsigned int> (e.GetLine()), static_cast<unsigned int> (e.GetLinePos()), e.Expected(), e.Found());
 
 		throw CTPPParserSyntaxError(szTMPBuffer, sTMP.GetLine(), sTMP.GetLinePos());
 	}
@@ -2389,7 +2389,7 @@ CCharIterator CTPP2Parser::IncludeOperator(CCharIterator szData, CCharIterator s
 		delete pTMPSourceLoader;
 
 		CHAR_8 szTMPBuffer[2048 + 1];
-		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: %s", sTMPBuf.c_str(), e.GetLine(), e.GetLinePos(), e.what());
+		snprintf(szTMPBuffer, 2048, "In include file '%s' at line %u, pos %u: %s", sTMPBuf.c_str(), static_cast<unsigned int> (e.GetLine()), static_cast<unsigned int> (e.GetLinePos()), e.what());
 
 		throw CTPPParserSyntaxError(szTMPBuffer, sTMP.GetLine(), sTMP.GetLinePos());
 	}
@@ -2848,7 +2848,7 @@ UINT_32 CTPP2Parser::StoreIfComparisonResult(CCharIterator szData, const eCTPP2E
 		// Simple case: comparison result is always true or always false
 		// 0 ?
 		case EXPR_INT_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of INTEGER VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of INTEGER VALUE is always ", static_cast<int> (szData.GetLine()), static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (iIntData != 0) { fprintf(stderr, "true\n"); }
@@ -2863,7 +2863,7 @@ UINT_32 CTPP2Parser::StoreIfComparisonResult(CCharIterator szData, const eCTPP2E
 
 		// 0.0 ?
 		case EXPR_FLOAT_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of FLOAT VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of FLOAT VALUE is always ", static_cast<int> (szData.GetLine()),  static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (dFloatData != 0.0) { fprintf(stderr, "true\n");  }
@@ -2877,7 +2877,7 @@ UINT_32 CTPP2Parser::StoreIfComparisonResult(CCharIterator szData, const eCTPP2E
 
 		// Empty string?
 		case EXPR_STRING_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of STRING VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of STRING VALUE is always ", static_cast<int> (szData.GetLine()),  static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (sTMPBuf.size() != 0) { fprintf(stderr, "true\n");  }
@@ -2917,7 +2917,7 @@ UINT_32 CTPP2Parser::StoreUnlessComparisonResult(CCharIterator szData, const eCT
 		// Simple case: comparison result is always true or always false
 		// 0 ?
 		case EXPR_INT_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of INTEGER VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of INTEGER VALUE is always ", static_cast<int> (szData.GetLine()), static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (iIntData == 0) { fprintf(stderr, "true\n"); }
@@ -2931,7 +2931,7 @@ UINT_32 CTPP2Parser::StoreUnlessComparisonResult(CCharIterator szData, const eCT
 
 		// 0.0 ?
 		case EXPR_FLOAT_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of FLOAT VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of FLOAT VALUE is always ", static_cast<int> (szData.GetLine()), static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (dFloatData == 0.0) { fprintf(stderr, "true\n");  }
@@ -2945,7 +2945,7 @@ UINT_32 CTPP2Parser::StoreUnlessComparisonResult(CCharIterator szData, const eCT
 
 		// Empty string?
 		case EXPR_STRING_VALUE:
-			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of STRING VALUE is always ", szData.GetLine(),  szData.GetLinePos());
+			fprintf(stderr, "WARNING: near line %d, pos. %d: comparison result of STRING VALUE is always ", static_cast<int> (szData.GetLine()), static_cast<int> (szData.GetLinePos()));
 			pCTPP2Compiler -> RemoveInstruction();
 
 			if (sTMPBuf.size() == 0) { fprintf(stderr, "true\n");  }

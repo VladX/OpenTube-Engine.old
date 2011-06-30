@@ -79,7 +79,7 @@ INT_32 FnNumFormat::Handler(CDT            * aArguments,
 		INT_32 iNegative = 0;
 		if (iData < 0) { iData = -iData; iNegative = 1; }
 
-		INT_32 iCharacters = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, "%lld", (long long)iData);
+		INT_32 iCharacters = snprintf(szBuf, C_MAX_SPRINTF_LENGTH, PRINTF_INT64_FORMAT, (long long)iData);
 		INT_32 iResPos = C_MAX_SPRINTF_LENGTH - 1;
 
 		INT_32 iPos      = 0;

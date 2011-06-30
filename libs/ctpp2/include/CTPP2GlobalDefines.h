@@ -80,6 +80,18 @@
     #define strtoll(x,y,z)       _strtoi64((x),(y),(z))
 #endif
 
+#if defined(_MSC_VER) || defined(__MINGW__) || defined(__MINGW32__) || defined(__MINGW64__)
+    #define PRINTF_INT64_FORMAT "%I64d"
+    #define PRINTF_UINT64_FORMAT "%I64u"
+    #define PRINTF_UINT64_OCTAL_FORMAT "%I64o"
+    #define PRINTF_UINT64_HEX_FORMAT "%I64x"
+#else
+    #define PRINTF_INT64_FORMAT "%lld"
+    #define PRINTF_UINT64_FORMAT "%llu"
+    #define PRINTF_UINT64_OCTAL_FORMAT "%llo"
+    #define PRINTF_UINT64_HEX_FORMAT "%llx"
+#endif
+
 #ifdef CTPP2_DLL
     #ifdef ctpp2_EXPORTS
         #define CTPP2DECL   __declspec(dllexport)

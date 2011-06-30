@@ -64,7 +64,7 @@ FnHMACMD5::FnHMACMD5()
 	}
 	else
 	{
-		if (GetLastError() == NTE_BAD_KEYSET)
+		if (GetLastError() == static_cast<DWORD> (NTE_BAD_KEYSET))
 		{
 			// No default container was found. Attempt to create it.
 			if(CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET))

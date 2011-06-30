@@ -86,7 +86,7 @@ INT_32 FnCast::Handler(CDT            * aArguments,
 			else if (oTMP.GetType() == CDT::STRING_VAL)
 			{
 				unsigned long long iLL = 0;
-				sscanf(oTMP.GetString().c_str(), "%llo", &iLL);
+				sscanf(oTMP.GetString().c_str(), PRINTF_UINT64_OCTAL_FORMAT, &iLL);
 				oCDTRetVal = INT_64(iLL);
 				return 0;
 			}
@@ -100,7 +100,7 @@ INT_32 FnCast::Handler(CDT            * aArguments,
 			else if (oTMP.GetType() == CDT::STRING_VAL)
 			{
 				long long iLL = 0;
-				sscanf(oTMP.GetString().c_str(), "%lld", &iLL);
+				sscanf(oTMP.GetString().c_str(), PRINTF_INT64_FORMAT, &iLL);
 				oCDTRetVal = INT_64(iLL);
 				return 0;
 			}
@@ -114,7 +114,7 @@ INT_32 FnCast::Handler(CDT            * aArguments,
 			else if (oTMP.GetType() == CDT::STRING_VAL)
 			{
 				long long iLL = 0;
-				sscanf(oTMP.GetString().c_str(), "%lli", &iLL);
+				sscanf(oTMP.GetString().c_str(), PRINTF_INT64_FORMAT, &iLL);
 				oCDTRetVal = INT_64(iLL);
 				return 0;
 			}
@@ -128,7 +128,7 @@ INT_32 FnCast::Handler(CDT            * aArguments,
 			else if (oTMP.GetType() == CDT::STRING_VAL)
 			{
 				unsigned long long iLL = 0;
-				sscanf(oTMP.GetString().c_str(), "%llx", &iLL);
+				sscanf(oTMP.GetString().c_str(), PRINTF_UINT64_HEX_FORMAT, &iLL);
 				oCDTRetVal = INT_64(iLL);
 				return 0;
 			}

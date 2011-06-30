@@ -121,12 +121,14 @@ int main (int argc, char ** argv)
 {
 	parse_args(argv, argc);
 	logger_init();
-	#if DEBUG_LEVEL <= 0
-	#ifdef _WIN
+	#if DEBUG_LEVEL <= 0 && defined(_WIN)
 	win32_service_init();
 	#endif
-	#endif
+	#ifdef _WIN
+	init(NULL); // we can't change process name on Windows by modifying argv[0]
+	#else
 	init(* argv);
+	#endif
 	
 	return 0;
 }

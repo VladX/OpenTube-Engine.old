@@ -66,7 +66,7 @@ FnMD5::FnMD5()
 	}
 	else
 	{
-		if (GetLastError() == NTE_BAD_KEYSET)
+		if (GetLastError() == static_cast<DWORD> (NTE_BAD_KEYSET))
 		{
 			// No default container was found. Attempt to create it.
 			if(CryptAcquireContext(&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET))
@@ -155,7 +155,7 @@ INT_32 FnMD5::Handler(CDT            * aArguments,
 	HCRYPTHASH hHash;
 
 	// >0 arguments need
-	if (iArgNum == 0 || hCryptProv == 0) { fprintf(stderr, "FnMD5 iArgNum = %d hCryptProv = %d\n", iArgNum, hCryptProv); return -1; }
+	if (iArgNum == 0 || hCryptProv == 0) { fprintf(stderr, "FnMD5 iArgNum = %lu hCryptProv = %lu\n", iArgNum, hCryptProv); return -1; }
 
 	if (::CryptCreateHash(hCryptProv, CALG_MD5, 0, 0, &hHash) == 0) { fprintf(stderr, "CryptCreateHash\n"); return -1; }
 
