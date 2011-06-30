@@ -811,7 +811,7 @@ static void * _time_routine (void * ptr)
 			#ifdef _WIN
 			GetSystemTime(&tm);
 			current_time_sec = time(NULL);
-			current_time_msec = tm.wMilliseconds;
+			current_time_msec = (current_time_sec * 1000ULL) + tm.wMilliseconds;
 			#else
 			(void) gettimeofday(&ctv, NULL);
 			current_time_sec = ctv.tv_sec;
