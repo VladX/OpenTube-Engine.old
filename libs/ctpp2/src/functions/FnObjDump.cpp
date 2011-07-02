@@ -84,7 +84,7 @@ INT_32 FnObjDump::Handler(CDT            * aArguments,
 		INT_32 iI = iArgNum - 1;
 		for (; iI >= 0; --iI)
 		{
-			snprintf(szBuffer, CTPP_ESCAPE_BUFFER_LEN, "Argument %lu:\n", iArgNum - iI);
+			snprintf(szBuffer, CTPP_ESCAPE_BUFFER_LEN, "Argument %lu:\n", static_cast<unsigned long> (iArgNum - iI));
 			oCDTRetVal.Append(szBuffer);
 			oCDTRetVal.Append(aArguments[iI].Dump());
 		}

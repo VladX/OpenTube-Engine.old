@@ -70,6 +70,12 @@
 #cmakedefine HAVE_PRCTL_SET_PROC_NAME
 #cmakedefine HAVE_PRCTL_H
 #cmakedefine HAVE_SYSLOG_H
+#cmakedefine HAVE_STRTOLL
+#cmakedefine HAVE_STRTOI64
+#cmakedefine HAVE_STRCASECMP
+#cmakedefine HAVE_STRICMP
+#cmakedefine HAVE_STRNCASECMP
+#cmakedefine HAVE_STRNICMP
 
 #cmakedefine _LINUX
 #cmakedefine _BSD

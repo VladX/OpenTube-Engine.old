@@ -461,15 +461,10 @@ void http_parse_post (request_t * r)
 					buf_resize(r->body.files.b, r->body.files.num + 1);
 					r->body.files.files = (post_file_t *) r->body.files.b->data;
 					file = &(r->body.files.files[r->body.files.num]);
-					file->key.str = name.str;
-					file->key.len = name.len;
-					file->name.str = filename.str;
-					file->name.len = filename.len;
+					file->key = name;
+					file->name = filename;
 					if (content_type.str)
-					{
-						file->type.str = content_type.str;
-						file->type.len = content_type.len;
-					}
+						file->type = content_type;
 					else
 					{
 						file->type.str = (uchar *) "application/octet-stream";
@@ -495,8 +490,7 @@ void http_parse_post (request_t * r)
 					buf_resize(r->body.post.b, r->body.post.num + 1);
 					r->body.post.args = (post_arg_t *) r->body.post.b->data;
 					arg = &(r->body.post.args[r->body.post.num]);
-					arg->key.str = name.str;
-					arg->key.len = name.len;
+					arg->key = name;
 					arg->value.str = c;
 					for (i = c - r->body.data.str + 4;; c++, i++)
 					{

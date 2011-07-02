@@ -20,8 +20,8 @@
  */
 
 #include "common_functions.h"
+#include "config_parser.h"
 #include "win32_utils.h"
-#include <libconfig.h>
 
 #define EUNKNOWNDIRECTIVE eerr(-1, "Unknown directive \"%s\" in configuration file on line %d.", key, line)
 #define EINVALIDVAL eerr(-1, "Invalid value for \"%s\".", key)
@@ -305,52 +305,18 @@ static void process_directive_bool (const char * const key, const int value, con
 		EUNKNOWNDIRECTIVE;
 }
 
-static char * config_setting_full_path (config_setting_t * setting)
-{
-	const char * name;
-	char * path = NULL;
-	
-	do
-	{
-		name = config_setting_name(setting);
-		setting = config_setting_parent(setting);
-		
-		if (name == NULL)
-			continue;
-		
-		if (path == NULL)
-		{
-			path = malloc(strlen(name) + 1);
-			path[0] = '\0';
-		}
-		else
-		{
-			path = realloc(path, ((path == NULL) ? 0 : strlen(path)) + strlen(name) + 2);
-			strcat(path, ".");
-		}
-		
-		strcat(path, name);
-		(void) str_reverse((path + strlen(path)) - strlen(name));
-	}
-	while (setting != NULL);
-	
-	if (path != NULL)
-		(void) str_reverse(path);
-	
-	return path;
-}
-
 static bool process_conf (config_setting_t * setting)
 {
 	const char * string;
-	char * value, * name;
+	char * value;
+	char name[256];
 	int type, i;
 	
 	if (setting == NULL)
 		return false;
 	
 	type = config_setting_type(setting);
-	name = config_setting_full_path(setting);
+	(void) config_setting_path(setting, name, sizeof(name));
 	
 	if (type == CONFIG_TYPE_STRING)
 	{
@@ -374,9 +340,6 @@ static bool process_conf (config_setting_t * setting)
 		for (i = 0; process_conf(config_setting_get_elem(setting, i)); i++);
 	}
 	
-	if (name != NULL)
-		free(name);
-	
 	return true;
 }
 
@@ -390,8 +353,9 @@ void load_config (const char * path)
 		peerr(-1, "Load configuration file \"%s\"", path);
 	
 	config_init(conf);
-	if (config_read(conf, conf_file) == CONFIG_FALSE)
-		eerr(-1, "Error in configuration file \"%s\" on line %d: %s.", path, config_error_line(conf), config_error_text(conf));
+	
+	if (!config_read(conf, path, conf_file))
+		eerr(-1, "Error in configuration file \"%s\" on line %d: %s.", config_error_file(conf), config_error_line(conf), config_error_text(conf));
 	
 	for (i = 0; i < ARRAY_LENGTH(required_directives); i++)
 	{
