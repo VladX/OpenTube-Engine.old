@@ -249,6 +249,7 @@ static char * config_parse_childs (config_setting_t * s);
 static char * config_parse_command (config_setting_t * s, char * ptr)
 {
 	FILE * include_file;
+	config_setting_t * parent = s;
 	
 	if (strncasecmp(ptr, "include", 7) != 0)
 	{
@@ -280,6 +281,17 @@ static char * config_parse_command (config_setting_t * s, char * ptr)
 	s->file = s->strval.str;
 	s->file_content = "";
 	ptr = s->content + s->strval.len + 1;
+	
+	while ((parent = parent->parent))
+		if (strcmp(s->file, parent->file) == 0)
+		{
+			config_set_error_line(s, ptr);
+			config_set_error_text(s, "inclusion of this file will lead to an infinite loop");
+			
+			return NULL;
+		}
+	
+	config_jump_to_nonspace(&ptr);
 	
 	if (* ptr == ';')
 		ptr++;
@@ -514,6 +526,8 @@ static config_setting_t * config_lookup_relative (config_setting_t * s, const ch
 {
 	str_t name;
 	const char * pos = path;
+	config_setting_t * include = NULL, * locals = s;
+	size_t i;
 	
 	for (;;)
 	{
@@ -524,15 +538,25 @@ static config_setting_t * config_lookup_relative (config_setting_t * s, const ch
 		if (!name.len)
 			return NULL;
 		
-		s = config_find_child_by_name(s, &name);
+		s = locals;
+		locals = config_find_child_by_name(locals, &name);
 		
-		if (!s || pos == NULL)
+		if (!locals)
+		{
+			for (i = 0; i < s->childs.num; i++)
+				if (s->childs.elems[i].name.len == 0 && (include = config_lookup_relative(&(s->childs.elems[i]), name.str)))
+					break;
+			
+			locals = include;
+		}
+		
+		if (!locals || pos == NULL)
 			break;
 		
 		pos++;
 	}
 	
-	return s;
+	return locals;
 }
 
 config_setting_t * config_lookup (config_t * c, const char * path)
