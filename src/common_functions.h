@@ -111,22 +111,16 @@
  #define io_errno errno
 #endif
 
-#ifdef HAVE_STRTOI64
- #ifndef HAVE_STRTOLL
-  #define strtoll(X, Y, Z) _strtoi64(X, Y, Z)
- #endif
+#if defined(HAVE_STRTOI64) && !defined(HAVE_STRTOLL) && !defined(strtoll)
+ #define strtoll(X, Y, Z) _strtoi64(X, Y, Z)
 #endif
 
-#ifdef HAVE_STRICMP
- #ifndef HAVE_STRCASECMP
-  #define strcasecmp(X, Y) _stricmp(X, Y)
- #endif
+#if defined(HAVE_STRICMP) && !defined(HAVE_STRCASECMP) && !defined(strcasecmp)
+ #define strcasecmp(X, Y) _stricmp(X, Y)
 #endif
 
-#ifdef HAVE_STRNICMP
- #ifndef HAVE_STRNCASECMP
-  #define strncasecmp(X, Y, Z) _strnicmp(X, Y, Z)
- #endif
+#if defined(HAVE_STRNICMP) && !defined(HAVE_STRNCASECMP) && !defined(strncasecmp)
+ #define strncasecmp(X, Y, Z) _strnicmp(X, Y, Z)
 #endif
 
 void set_str (str_t * str, char * src);

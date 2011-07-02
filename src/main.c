@@ -124,11 +124,7 @@ int main (int argc, char ** argv)
 	#if DEBUG_LEVEL <= 0 && defined(_WIN)
 	win32_service_init();
 	#endif
-	#ifdef _WIN
-	init(NULL); // we can't change process name on Windows by modifying argv[0]
-	#else
 	init(* argv);
-	#endif
 	
 	return 0;
 }
