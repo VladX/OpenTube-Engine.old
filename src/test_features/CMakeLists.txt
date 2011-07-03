@@ -13,6 +13,7 @@ macro (required_lib variable fileinclude libname)
 endmacro (required_lib)
 
 test_big_endian (IS_HOST_BIG_ENDIAN)
+check_type_size ("struct timespec" STRUCT_TIMESPEC)
 check_function_exists (accept4 CheckFunctionExists.c HAVE_ACCEPT4)
 check_function_exists (epoll_create CheckFunctionExists.c HAVE_EPOLL)
 check_function_exists (kqueue CheckFunctionExists.c HAVE_KQUEUE)

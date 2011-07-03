@@ -155,7 +155,7 @@ INT_32 FnMD5::Handler(CDT            * aArguments,
 	HCRYPTHASH hHash;
 
 	// >0 arguments need
-	if (iArgNum == 0 || hCryptProv == 0) { fprintf(stderr, "FnMD5 iArgNum = %lu hCryptProv = %lu\n", iArgNum, hCryptProv); return -1; }
+	if (iArgNum == 0 || hCryptProv == 0) { fprintf(stderr, "FnMD5 iArgNum = %lu hCryptProv = %lu\n", static_cast<long unsigned int> (iArgNum), static_cast<long unsigned int> (hCryptProv)); return -1; }
 
 	if (::CryptCreateHash(hCryptProv, CALG_MD5, 0, 0, &hHash) == 0) { fprintf(stderr, "CryptCreateHash\n"); return -1; }
 

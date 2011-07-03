@@ -33,6 +33,8 @@
 #if !defined( PTHREAD_H )
 #define PTHREAD_H
 
+#include "../../../config.h"
+
 #define HAVE_CONFIG_H 0
 #define HAVE_SIGNAL_H 1
 #define PTW32_LEVEL 2

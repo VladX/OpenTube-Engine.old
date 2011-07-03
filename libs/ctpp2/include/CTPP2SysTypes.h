@@ -227,7 +227,7 @@ typedef CCHAR_8                   * CCHAR_P;
 typedef UCCHAR_8                  * UCCHAR_P;
 
 
-#elif WIN32 /* FreeBSD End, start of Win32 declarations */
+#elif defined(WIN32) /* FreeBSD End, start of Win32 declarations */
 
 /**
   @var typedef __int16           INT_16

@@ -19,6 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifndef _INT_CONFIG_H
+#define _INT_CONFIG_H 1
+
 #define PROG_NAME "Opentube"
 #define SHORT_PROG_NAME "opentube"
 #define PROG_VERSION "0.1alpha"
@@ -76,6 +79,7 @@
 #cmakedefine HAVE_STRICMP
 #cmakedefine HAVE_STRNCASECMP
 #cmakedefine HAVE_STRNICMP
+#cmakedefine HAVE_STRUCT_TIMESPEC
 
 #cmakedefine _LINUX
 #cmakedefine _BSD
@@ -88,3 +92,5 @@
 #ifdef _MSC_VER
  #define _MSVC_
 #endif
+
+#endif /* #ifndef _INT_CONFIG_H */
