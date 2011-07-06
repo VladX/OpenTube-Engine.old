@@ -107,12 +107,15 @@ static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
 			_BEGIN_LOCAL_SECTION_
 			uint bufsize = strlen(fmt_localized) + 1;
 			wchar_t * wide_fmt_localized = alloca(sizeof(wchar_t) * bufsize);
-			if (MultiByteToWideChar(CP_UTF8, 0, fmt_localized, -1, wide_fmt_localized, bufsize) != 0 && CharToOemW(wide_fmt_localized, fmt_localized))
-				fmt = fmt_localized;
+			if (MultiByteToWideChar(CP_UTF8, 0, fmt_localized, -1, wide_fmt_localized, bufsize) != 0)
+			{
+				vfwprintf(f, wide_fmt_localized, ap);
+				
+				return;
+			}
 			_END_LOCAL_SECTION_
-			#else
-			fmt = fmt_localized;
 			#endif
+			fmt = fmt_localized;
 		}
 	}
 	
