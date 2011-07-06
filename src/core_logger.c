@@ -101,7 +101,8 @@ static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
 		if (msg_localized != msg)
 		{
 			fmt_localized = alloca((msg - fmt) + strlen(msg_localized) + 1);
-			strncpy(fmt_localized, fmt, msg - fmt);
+			memcpy(fmt_localized, fmt, msg - fmt);
+			fmt_localized[msg - fmt] = '\0';
 			strcat(fmt_localized, msg_localized);
 			fmt = fmt_localized;
 		}
