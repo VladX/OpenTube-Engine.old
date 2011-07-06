@@ -103,8 +103,16 @@ static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
 			fmt_localized = alloca((msg - fmt) + strlen(msg_localized) + 1);
 			strncpy(fmt_localized, fmt, msg - fmt);
 			strcat(fmt_localized, msg_localized);
-			(void) CharToOemBuffA(fmt_localized, fmt_localized, strlen(fmt_localized));
+			#ifdef _WIN
+			_BEGIN_LOCAL_SECTION_
+			uint bufsize = strlen(fmt_localized) + 1;
+			wchar_t * wide_fmt_localized = alloca(sizeof(wchar_t) * bufsize);
+			if (MultiByteToWideChar(CP_UTF8, 0, fmt_localized, -1, wide_fmt_localized, bufsize) != 0 && CharToOemW(wide_fmt_localized, fmt_localized))
+				fmt = fmt_localized;
+			_END_LOCAL_SECTION_
+			#else
 			fmt = fmt_localized;
+			#endif
 		}
 	}
 	
