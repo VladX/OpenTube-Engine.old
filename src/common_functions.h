@@ -21,14 +21,21 @@
 
 #ifndef E_COMMON_FUNCTIONS_H
 #define E_COMMON_FUNCTIONS_H 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include "config.h"
+
 #ifdef _WIN
  #include <windows.h>
 #endif
+
+#ifdef HAVE_MALLOC_H
+ #include <malloc.h>
+#endif
+
 #include "common_types.h"
 #include "global.h"
 #include "localization.h"

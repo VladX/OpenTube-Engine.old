@@ -81,6 +81,7 @@
 #cmakedefine HAVE_STRNICMP
 #cmakedefine HAVE_STRUCT_TIMESPEC
 #cmakedefine COMPILER_HAVE_BUILTIN_EXPECT
+#cmakedefine HAVE_MALLOC_H
 
 #cmakedefine _LINUX
 #cmakedefine _BSD
