@@ -465,7 +465,7 @@ inline void events_out_data (int fd)
 				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
 				#endif
 				
-				if (res == -1 && errno != EAGAIN)
+				if (unlikely(res == -1 && errno != EAGAIN))
 				{
 					perr("sendfile(): %d", (int) res);
 					close(request[it]->temp.sendfile_fd);
@@ -806,7 +806,7 @@ static void * _time_routine (void * ptr)
 		(void) nanosleep(&tv, NULL);
 		#endif
 		
-		if (i % 50 == 0)
+		if (unlikely(i % 50 == 0))
 		{
 			#ifdef _WIN
 			GetSystemTime(&tm);

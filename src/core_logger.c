@@ -53,7 +53,7 @@ enum logger_level
 static const char * logger_level_strings[] = {"Error", "Critical"};
 static enum logger_output output = O_UNKNOWN;
 static FILE * log_file = NULL;
-static ulong last_error_code = 0;
+static uint last_error_code = 0;
 static pthread_mutex_t mutex[1] = {PTHREAD_MUTEX_INITIALIZER};
 
 void logger_set_console_output (void)
@@ -139,11 +139,11 @@ static void print_level_str (FILE * out, enum logger_level level, bool colorize)
 static void save_last_error_code (void)
 {
 	#ifdef _WIN
-	last_error_code = (ulong) GetLastError();
+	last_error_code = (uint) GetLastError();
 	if (!last_error_code)
-		last_error_code = (ulong) WSAGetLastError();
+		last_error_code = (uint) WSAGetLastError();
 	#else
-	last_error_code = (ulong) errno;
+	last_error_code = (uint) errno;
 	#endif
 }
 

@@ -81,6 +81,9 @@
 #define IS_VALID_URL_KEY_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '-' || (X) == '_')
 #define IS_VALID_URL_VALUE_CHARACTER(X) (IS_VALID_URL_KEY_CHARACTER(X) || (X) == '+' || (X) == '%')
 
+#define _BEGIN_LOCAL_SECTION_ {
+#define _END_LOCAL_SECTION_ }
+
 #ifdef __GNUC__
  #define threadsafe __thread
 #else
@@ -89,12 +92,15 @@
 
 #ifdef _MSVC_
  #define lround(value) ((long) floor((value) + 0.5))
- #define inline
- #define _BEGIN_LOCAL_SECTION_ {
- #define _END_LOCAL_SECTION_ }
+ #define inline __inline
+#endif
+
+#ifdef COMPILER_HAVE_BUILTIN_EXPECT
+ #define likely(X) __builtin_expect((X), 1)
+ #define unlikely(X) __builtin_expect((X), 0)
 #else
- #define _BEGIN_LOCAL_SECTION_
- #define _END_LOCAL_SECTION_
+ #define likely(X) (X)
+ #define unlikely(X) (X)
 #endif
 
 /* Platform-specific */

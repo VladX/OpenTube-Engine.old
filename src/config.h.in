@@ -80,6 +80,7 @@
 #cmakedefine HAVE_STRNCASECMP
 #cmakedefine HAVE_STRNICMP
 #cmakedefine HAVE_STRUCT_TIMESPEC
+#cmakedefine COMPILER_HAVE_BUILTIN_EXPECT
 
 #cmakedefine _LINUX
 #cmakedefine _BSD

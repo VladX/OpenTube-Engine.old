@@ -89,13 +89,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MAT
 endif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "clang" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 
 if (CLANG_COMPILER)
- set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")
+ set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -Wtype-limits -O2 ${DEBUG_CCFLAGS}")
  set (CMAKE_C_FLAGS "${CCFLAGS} -std=gnu89")
  set (CMAKE_CXX_FLAGS "${CCFLAGS}")
 endif (CLANG_COMPILER)
 
 if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
- set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -O2 ${DEBUG_CCFLAGS}")
+ set (CCFLAGS "${CCFLAGS} -Wall -Wunused -Wundef -Wpointer-arith -Wtype-limits -O2 ${DEBUG_CCFLAGS}")
  set (CMAKE_C_FLAGS "${CCFLAGS}")
  set (CMAKE_CXX_FLAGS "${CCFLAGS}")
  set_property (SOURCE templates_ctpp.cpp PROPERTY COMPILE_FLAGS "${CCFLAGS} -Wno-undef")
