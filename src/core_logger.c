@@ -103,18 +103,6 @@ static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
 			fmt_localized = alloca((msg - fmt) + strlen(msg_localized) + 1);
 			strncpy(fmt_localized, fmt, msg - fmt);
 			strcat(fmt_localized, msg_localized);
-			#ifdef _WIN
-			_BEGIN_LOCAL_SECTION_
-			uint bufsize = strlen(fmt_localized) + 1;
-			wchar_t * wide_fmt_localized = alloca(sizeof(wchar_t) * bufsize);
-			if (MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, fmt_localized, -1, wide_fmt_localized, bufsize) != 0)
-			{
-				vfwprintf(f, wide_fmt_localized, ap);
-				
-				return;
-			}
-			_END_LOCAL_SECTION_
-			#endif
 			fmt = fmt_localized;
 		}
 	}
@@ -214,6 +202,10 @@ static void _logger_log_console (bool sys_error, enum logger_level level, const 
 	save_last_error_code();
 	
 	pthread_mutex_lock(mutex);
+	#ifdef _WIN
+	SetConsoleCP(65001);
+	SetConsoleOutputCP(65001);
+	#endif
 	f = (level == L_NOTICE) ? stdout : stderr;
 	print_level_str(f, level, true);
 	v_print_formatted_message(f, fmt, ap);
