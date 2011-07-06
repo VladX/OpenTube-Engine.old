@@ -29,7 +29,7 @@
 #define set_epollin_event_mask set_read_mask
 #define socket_del_from_event_list(SOCKET) _select_socket_del_from_event_list(SOCKET)
 
-void _select_socket_del_from_event_list (int fd);
+extern inline void _select_socket_del_from_event_list (int fd);
 
 void set_read_mask (int fd);
 

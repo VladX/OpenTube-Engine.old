@@ -46,6 +46,7 @@
 #include "sendfile.h"
 #include "core_process.h"
 #include "core_http.h"
+#include "event_wrapper.h"
 #include "mapped_memory.h"
 #include "file_temporary_storage.h"
 #include "web.h"

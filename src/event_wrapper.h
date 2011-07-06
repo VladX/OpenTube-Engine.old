@@ -19,16 +19,21 @@
  * Boston, MA  02110-1301  USA
  */
 
-request_t * event_find_request (int sock);
+#ifndef EVENT_WRAPPER_H
+#define EVENT_WRAPPER_H
 
-request_t * event_fetch_request (int sock);
+extern inline request_t * event_find_request (int sock);
+
+extern inline request_t * event_fetch_request (int sock);
 
 void event_startup (struct sockaddr ** addr, socklen_t * client_name_len);
 
-inline void event_iter (void);
+extern inline void event_iter (void);
 
-inline bool limit_requests (struct sockaddr * addr);
+extern inline bool limit_requests (struct sockaddr * addr);
 
-inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock);
+extern inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock);
 
-inline void events_out_data (int fd);
+extern inline void events_out_data (int fd);
+
+#endif
