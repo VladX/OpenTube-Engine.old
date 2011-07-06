@@ -46,7 +46,9 @@ static void localization_load_strings (void)
 
 void localization_init (void)
 {
+	#ifndef _WIN
 	setlocale(LC_ALL, "");
+	#endif
 	bindtextdomain(GETTEXT_DOMAIN, LOCALE_DIR);
 	textdomain(GETTEXT_DOMAIN);
 	lstrings = malloc(sizeof(strings));

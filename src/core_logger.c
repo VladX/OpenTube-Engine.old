@@ -203,8 +203,8 @@ static void _logger_log_console (bool sys_error, enum logger_level level, const 
 	
 	pthread_mutex_lock(mutex);
 	#ifdef _WIN
-	SetConsoleCP(65001);
-	SetConsoleOutputCP(65001);
+	SetConsoleCP(CP_UTF8);
+	SetConsoleOutputCP(CP_UTF8);
 	#endif
 	f = (level == L_NOTICE) ? stdout : stderr;
 	print_level_str(f, level, true);
