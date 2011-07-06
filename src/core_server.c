@@ -949,7 +949,6 @@ void init (char * procname)
 	debug_print_3("%s...", "init");
 	worker_pid = 0;
 	
-	localization_init();
 	mapped_memory_init();
 	
 	#if IPV6_SUPPORT

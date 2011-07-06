@@ -22,6 +22,8 @@
 #ifndef LOCALIZATION_H
 #define LOCALIZATION_H 1
 
+#include <libintl.h>
+
 #undef _l
 #define _l(ID) ((void *) localization_get_string(ID))
 #undef _

@@ -88,6 +88,28 @@ static void logger_syslog (int level, const char * fmt, ...)
 	va_end(ap);
 }
 
+static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
+{
+	char * fmt_localized;
+	const char * msg_localized;
+	const char * msg = strstr(fmt, "): ");
+	
+	if (msg != NULL)
+	{
+		msg += 3;
+		msg_localized = _(msg);
+		if (msg_localized != msg)
+		{
+			fmt_localized = alloca((msg - fmt) + strlen(msg_localized) + 1);
+			strncpy(fmt_localized, fmt, msg - fmt);
+			strcat(fmt_localized, msg_localized);
+			fmt = fmt_localized;
+		}
+	}
+	
+	vfprintf(f, fmt, ap);
+}
+
 static void print_level_str (FILE * out, enum logger_level level, bool colorize)
 {
 	const char * level_str;
@@ -106,7 +128,7 @@ static void print_level_str (FILE * out, enum logger_level level, bool colorize)
 				fprintf(out, "\x1b[0;37;41m");
 				#endif
 			}
-			level_str = logger_level_strings[0];
+			level_str = _(logger_level_strings[0]);
 			break;
 		case L_CRITICAL:
 			if (colorize)
@@ -117,7 +139,7 @@ static void print_level_str (FILE * out, enum logger_level level, bool colorize)
 				fprintf(out, "\x1b[1;37;41m");
 				#endif
 			}
-			level_str = logger_level_strings[1];
+			level_str = _(logger_level_strings[1]);
 			break;
 		default:
 			return;
@@ -182,7 +204,7 @@ static void _logger_log_console (bool sys_error, enum logger_level level, const 
 	pthread_mutex_lock(mutex);
 	f = (level == L_NOTICE) ? stdout : stderr;
 	print_level_str(f, level, true);
-	vfprintf(f, fmt, ap);
+	v_print_formatted_message(f, fmt, ap);
 	if (sys_error)
 		print_sys_error(f);
 	fprintf(f, "\n");
@@ -279,7 +301,7 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	else if (* http_server_tcp_addr.str)
 		fprintf(log_file, "%s:%d ", http_server_tcp_addr.str, http_port);
 	print_level_str(log_file, level, false);
-	vfprintf(log_file, fmt, ap);
+	v_print_formatted_message(log_file, fmt, ap);
 	if (sys_error)
 		print_sys_error(log_file);
 	fprintf(log_file, "\n");

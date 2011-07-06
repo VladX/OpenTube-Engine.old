@@ -119,6 +119,7 @@ static void parse_args (char ** args, int n)
 
 int main (int argc, char ** argv)
 {
+	localization_init();
 	parse_args(argv, argc);
 	logger_init();
 	#if DEBUG_LEVEL <= 0 && defined(_WIN)

@@ -1,0 +1,29 @@
+# This file is part of Opentube - Open video hosting engine
+# Copyright (C) 2011 - VladX; http://vladx.net/
+# This file is distributed under the same license as the Opentube package.
+# Vladislav Samsonov <vvladxx@gmail.com>, 2011.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Opentube 1.0\n"
+"Report-Msgid-Bugs-To: <vvladxx@gmail.com>\n"
+"POT-Creation-Date: 2011-07-06 13:36+0400\n"
+"PO-Revision-Date: 2011-07-06 13:36+0400\n"
+"Last-Translator: Vladislav Samsonov <vvladxx@gmail.com>\n"
+"Language-Team: English <en@li.org>\n"
+"Language: English\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Can't open log file \"%s\" for writing."
+msgstr ""
+
+msgid "Critical"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Directory \"%s\" does not have read permissions or does not exist."
+msgstr ""
