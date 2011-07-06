@@ -103,6 +103,7 @@ static void v_print_formatted_message (FILE * f, const char * fmt, va_list ap)
 			fmt_localized = alloca((msg - fmt) + strlen(msg_localized) + 1);
 			strncpy(fmt_localized, fmt, msg - fmt);
 			strcat(fmt_localized, msg_localized);
+			(void) CharToOemBuffA(fmt_localized, fmt_localized, strlen(fmt_localized));
 			fmt = fmt_localized;
 		}
 	}
