@@ -377,7 +377,7 @@ inline void event_iter (void)
 {
 	register time_t curtime;
 	register uint i, it;
-	register int dlt;
+	register int64 dlt;
 	register keepalive_sock_t * k;
 	
 	curtime = current_time_sec;

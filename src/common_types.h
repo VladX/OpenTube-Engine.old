@@ -24,6 +24,7 @@
  #define _SYS_TYPES_H 1
 #endif
 
+#include <stdint.h>
 #include "libs/zlib.h"
 
 #ifndef  __cplusplus
@@ -34,20 +35,30 @@
 
 #define CLRF "\r\n"
 
+#ifdef _WIN
+ #define INT64_FORMAT_STRING "%I64d"
+ #define UINT64_FORMAT_STRING "%I64u"
+ #define UINT64_OCTAL_FORMAT_STRING "%I64o"
+ #define UINT64_HEX_FORMAT_STRING "%I64x"
+#else
+ #define INT64_FORMAT_STRING "%lld"
+ #define UINT64_FORMAT_STRING "%llu"
+ #define UINT64_OCTAL_FORMAT_STRING "%llo"
+ #define UINT64_HEX_FORMAT_STRING "%llx"
+#endif
+
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef unsigned long ulong;
+typedef intptr_t mlong;
+typedef uintptr_t umlong;
 typedef long long int64;
 typedef unsigned long long uint64;
 
-#ifdef _WIN
-typedef uint __uint32_t;
-#endif
-
 #ifdef _MSVC_
 typedef int pid_t;
-typedef long ssize_t;
+typedef mlong ssize_t;
 #endif
 
 
@@ -180,7 +191,7 @@ typedef struct
 typedef struct
 {
 	u_str_t http_version;
-	ulong content_length;
+	uint64 content_length;
 	u_str_t content_type;
 	str_t content_range;
 	str_t expires;
@@ -215,17 +226,17 @@ typedef struct
 	time_t keepalive_time;
 	struct
 	{
-		char content_length[16];
+		char content_length[24];
 		long writev_total;
 		struct iovec * out_vec;
 		uint out_vec_len;
 		int sendfile_fd;
-		uint sendfile_last;
+		off_t sendfile_last;
 		off_t sendfile_offset;
 		char dates[60];
 		buf_t * gzip_buf;
 		z_stream * gzip_stream;
-		__uint32_t gzip_ending[2];
+		uint32_t gzip_ending[2];
 		void * func;
 		#if defined(HAVE_MMAP)
 		int file;

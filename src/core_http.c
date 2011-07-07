@@ -111,7 +111,7 @@ static inline void http_append_headers (request_t * r, ushort code)
 	http_append_to_output_buf(r, r->out.content_type.str, r->out.content_type.len);
 	http_append_to_output_buf(r, CLRF, 2);
 	http_append_to_output_buf(r, "Content-Length: ", 16);
-	int_to_str(r->out.content_length, r->temp.content_length, 10);
+	int64_to_str(r->out.content_length, r->temp.content_length, 10);
 	http_append_str(r, r->temp.content_length);
 	http_append_to_output_buf(r, CLRF, 2);
 	if (r->keepalive)
@@ -583,14 +583,14 @@ static inline void http_set_mime_type (request_t * r)
 			break;
 		}
 	
-	for (i = 0; * (http_mime_types[i]); i += 3)
+	for (i = 0; * (http_mime_types[i].file_ext); i++)
 	{
-		if (strcmp((const char *) http_mime_types[i], (const char *) fileext) == 0)
+		if (strcmp(http_mime_types[i].file_ext, (const char *) fileext) == 0)
 			break;
 	}
 	
-	r->out.content_type.str = (uchar *) http_mime_types[i + 1];
-	r->out.content_type.len = * (http_mime_types[i + 2]);
+	r->out.content_type.str = (uchar *) http_mime_types[i].str;
+	r->out.content_type.len = http_mime_types[i].len;
 }
 
 static inline bool http_send_file (request_t * r, const char * filepath)
@@ -730,7 +730,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	
 	if (code == 206)
 	{
-		sprintf(r->out.content_range.str, "Content-Range: bytes %u-%u/%u" CLRF, (uint) r->temp.sendfile_offset, r->temp.sendfile_last - 1, (uint) st.st_size);
+		sprintf(r->out.content_range.str, "Content-Range: bytes " UINT64_FORMAT_STRING "-" UINT64_FORMAT_STRING "/" UINT64_FORMAT_STRING CLRF, (uint64) r->temp.sendfile_offset, (uint64) r->temp.sendfile_last - 1, (uint64) st.st_size);
 		http_append_str(r, r->out.content_range.str);
 	}
 	
