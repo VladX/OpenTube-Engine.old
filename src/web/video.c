@@ -19,7 +19,7 @@
  * Boston, MA  02110-1301  USA
  */
 
-WEB_CALLBACK(video, "/video/", false)
+WEB_CALLBACK(video, "/v/", false)
 {
 	u_str_t * s;
 	tpl_set_var("title", _l(1));

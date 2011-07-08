@@ -11,6 +11,7 @@ set (CMAKE_C_FLAGS "" CACHE STRING "Flags used by the C compiler during all buil
 set (CMAKE_CXX_FLAGS "" CACHE STRING "Flags used by the CXX compiler during all build types." FORCE)
 set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 option (BUILD_INSTALLER "Build installer for windows." OFF)
+set (IPv6_SUPPORT "1" CACHE STRING "Support for IPv6 (1 or 0)")
 
 if (NOT CMAKE_BUILD_TYPE)
  set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)

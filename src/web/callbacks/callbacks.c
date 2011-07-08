@@ -41,7 +41,7 @@ void set_callbacks (void)
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(echo), "/echo", true);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(form), "/form", true);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(hello), "/hello", true);
-	web_set_callback(WEB_CALLBACK_TO_C_FUNC(video), "/video/", false);
+	web_set_callback(WEB_CALLBACK_TO_C_FUNC(video), "/v/", false);
 	web_set_callback(WEB_CALLBACK_TO_C_FUNC(captcha_test), "/captcha_test", true);
 }
 
