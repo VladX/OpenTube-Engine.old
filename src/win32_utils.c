@@ -197,10 +197,26 @@ void win32_transmit_complete_cb (request_t * r, BOOLEAN timeout)
 char * win32_strerror (DWORD err)
 {
 	void * lpvMessageBuffer;
+	char * utf8_str;
+	int bufsize;
 	
-	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (void *) &lpvMessageBuffer, 0, NULL);
+	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),  (void *) &lpvMessageBuffer, 0, NULL);
+	bufsize = WideCharToMultiByte(CP_UTF8, 0, lpvMessageBuffer, -1, NULL, 0, NULL, NULL);
 	
-	return lpvMessageBuffer;
+	if (bufsize == 0)
+		return NULL;
+	
+	utf8_str = LocalAlloc(LMEM_FIXED, bufsize);
+	
+	if (WideCharToMultiByte(CP_UTF8, 0, lpvMessageBuffer, -1, utf8_str, bufsize, NULL, NULL) == 0)
+	{
+		LocalFree(lpvMessageBuffer);
+		LocalFree(utf8_str);
+	}
+	
+	LocalFree(lpvMessageBuffer);
+	
+	return utf8_str;
 }
 
 void win32_fatal_error (const char * msg)
