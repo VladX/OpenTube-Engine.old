@@ -25,8 +25,8 @@
 #include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
-threadsafe buf_t * thread_global_buffer;
-threadsafe request_t * thread_request;
+threadsafe buf_t * thread_global_buffer = NULL;
+threadsafe request_t * thread_request = NULL;
 threadsafe jmp_buf web_exceptions_jmpbuf;
 threadsafe volatile bool thread_allow_compression;
 

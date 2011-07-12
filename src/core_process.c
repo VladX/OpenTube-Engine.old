@@ -161,6 +161,20 @@ static bool create_pidfile (void)
 }
 #endif
 
+void setup_signals (void * quit_function)
+{
+	if (signal(SIGINT, quit_function) == SIG_ERR)
+		err("can't handle signal %d", SIGINT);
+	if (signal(SIGTERM, quit_function) == SIG_ERR)
+		err("can't handle signal %d", SIGTERM);
+	#ifndef _WIN
+	if (signal(SIGQUIT, quit_function) == SIG_ERR)
+		err("can't handle signal %d", SIGQUIT);
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		err("can't ignore signal %d", SIGPIPE);
+	#endif
+}
+
 pid_t spawn_worker (char * procname)
 {
 	pid_t pid = 0;
@@ -201,15 +215,7 @@ pid_t spawn_worker (char * procname)
 				setgid(grp->gr_gid);
 			
 			setprocname(procname, PROG_NAME " (worker)");
-			
-			if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-				err("can't ignore signal %d", SIGPIPE);
-			if (signal(SIGINT, quit_worker) == SIG_ERR)
-				err("can't handle signal %d", SIGINT);
-			if (signal(SIGTERM, quit_worker) == SIG_ERR)
-				err("can't handle signal %d", SIGTERM);
-			if (signal(SIGQUIT, quit_worker) == SIG_ERR)
-				err("can't handle signal %d", SIGQUIT);
+			setup_signals(quit_worker);
 			
 			#ifdef HAVE_PRCTL_H
 			(void) prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);

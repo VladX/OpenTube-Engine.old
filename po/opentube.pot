@@ -27,3 +27,6 @@ msgstr ""
 
 msgid "Directory \"%s\" does not have read permissions or does not exist."
 msgstr ""
+
+msgid "Unknown directive \"%s\" in configuration file on line %d."
+msgstr ""

@@ -20,12 +20,11 @@
  */
 
 #ifndef E_WEB_HANDLER_H
+#define E_WEB_HANDLER_H 1
 
 #include "common_functions.h"
 #include "templates.h"
 #include "localization.h"
-
-#define E_WEB_HANDLER_H
 
 #define WEB_CALLBACK_TO_C_FUNC(NAME) web_cb__##NAME
 #define WEB_INIT_CALLBACK_TO_C_FUNC(NAME) web_init_cb__##NAME
