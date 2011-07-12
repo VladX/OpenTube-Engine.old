@@ -29,3 +29,6 @@ msgstr "Директория \"%s\" не доступна для чтения и
 
 msgid "Error"
 msgstr "Ошибка"
+
+msgid "Unknown directive \"%s\" in configuration file on line %d."
+msgstr "Неизвестная директива \"%s\" в конфигурационном файле на линии %d."

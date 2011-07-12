@@ -185,8 +185,6 @@ static void print_sys_error (FILE * out)
 	if (last_error_code)
 	{
 		char * errstr = win32_strerror(last_error_code);
-		if (out == stdout || out == stderr)
-			(void) CharToOemBuffA(errstr, errstr, strlen(errstr));
 		fprintf(out, ": %s", errstr);
 		LocalFree(errstr);
 	}

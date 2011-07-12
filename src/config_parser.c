@@ -43,7 +43,7 @@ static int config_get_line_by_ptr (config_setting_t * s, const char * ptr)
 	const char * p = s->file_content;
 	int line = 1;
 	
-	for (; p != ptr && * p != '\0'; p++)
+	for (; p != ptr && !(p[0] == '\0' && p[1] == '\0'); p++)
 		if (* p == '\n')
 			line++;
 	
@@ -82,7 +82,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 	
 	while ((ret = fread(buf, 1, sizeof(buf), f)))
 	{
-		content = realloc(content, cur_size + ret + 1);
+		content = realloc(content, cur_size + ret + 2);
 		if (content == NULL)
 			peerr(-1, "%s", "memory error");
 		memcpy(content + cur_size, buf, ret);
@@ -103,6 +103,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 		content = malloc(sizeof(* content));
 	
 	content[cur_size] = '\0';
+	content[cur_size + 1] = '\0';
 	s->file_content = (s->content = content);
 	
 	if (!config_quick_validate(s, cur_size))

@@ -901,13 +901,6 @@ static void pr_set_limits (void)
 	keepalive_max_conn = max((maxfds - config.prealloc_request_structures) - 2, 2);
 }
 
-#ifdef _WIN
-static void win32_exit_function (void)
-{
-	WSACleanup();
-}
-#endif
-
 void quit (int prm)
 {
 	socket_close(sockfd);
@@ -915,6 +908,7 @@ void quit (int prm)
 	if (limit_req_clients != NULL)
 		(void) frag_pool_save(limit_req_clients, ".http_limit_requests");
 	#ifdef _WIN
+	WSACleanup();
 	if (worker_pid && worker_pid != (pid_t) getpid())
 	{
 		HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, worker_pid);
@@ -932,7 +926,6 @@ void quit (int prm)
 		fputc('\n', stdout);
 	debug_print_1("terminate process: %d", prm);
 	#ifdef _WIN
-	win32_exit_function();
 	_BEGIN_LOCAL_SECTION_
 	extern bool win32_service_running;
 	
@@ -980,18 +973,7 @@ void init (char * procname)
 	
 	debug_print_2("connection established: %d", sockfd);
 	
-	if (signal(SIGINT, quit) == SIG_ERR)
-		err("can't handle signal %d", SIGINT);
-	if (signal(SIGTERM, quit) == SIG_ERR)
-		err("can't handle signal %d", SIGTERM);
-	#ifndef _WIN
-	if (signal(SIGQUIT, quit) == SIG_ERR)
-		err("can't handle signal %d", SIGQUIT);
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-		err("can't ignore signal %d", SIGPIPE);
-	#else
-	atexit(win32_exit_function);
-	#endif
+	setup_signals(quit);
 	
 	#if DEBUG_LEVEL
 	worker_pid = getpid();

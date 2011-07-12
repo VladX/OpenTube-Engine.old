@@ -92,7 +92,7 @@ static void gen_gzipped_value (cache_t * c)
 	free(ptr);
 	
 	_BEGIN_LOCAL_SECTION_
-	static __uint32_t gzip_ending[2];
+	static uint32_t gzip_ending[2];
 	gzip_ending[0] = crc32(0, c->value.str, c->value.len);
 	gzip_ending[1] = c->value.len;
 	#if __BYTE_ORDER == __BIG_ENDIAN

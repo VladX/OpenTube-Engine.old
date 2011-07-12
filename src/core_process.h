@@ -26,3 +26,5 @@ pid_t spawn_worker (char * procname);
 bool kill_master_process (void);
 
 void remove_pidfile (void);
+
+void setup_signals (void * quit_function);

@@ -41,7 +41,7 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	HANDLE h = FindFirstFileA(pattern, &data);
 	
 	if (h == INVALID_HANDLE_VALUE && io_errno == ERROR_FILE_NOT_FOUND)
-		return 0;
+		return GLOB_NOMATCH;
 	if (h == INVALID_HANDLE_VALUE)
 		return -1;
 	
