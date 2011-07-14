@@ -30,6 +30,10 @@
 #include "web.h"
 #include "web_handler.h"
 
+#ifndef JS_THREADSAFE
+ #error "SpiderMonkey must be built with threadsafe option enabled in order to work correctly."
+#endif
+
 struct js_compiled_script
 {
 	JSObject * script;
@@ -53,7 +57,7 @@ static JSClass global_class = {
 
 static JSBool js_function_map_uri (JSContext *, uintN, jsval *);
 static JSBool js_function_print (JSContext *, uintN, jsval *);
-static JSObject * js_compile (const char *);
+static JSObject * js_compile (const char *, JSObject *, time_t *);
 
 static JSFunctionSpec js_global_functions[] = {
 	JS_FS("map_uri", js_function_map_uri, 3, 0),
@@ -67,9 +71,7 @@ static void js_update_bytecode (struct js_compiled_script * cs)
 	if (config.script_update == 0)
 		return;
 	
-	JS_RemoveObjectRoot(jsctx, &(cs->script));
-	cs->script = js_compile(cs->filename);
-	JS_AddObjectRoot(jsctx, &(cs->script));
+	cs->script = js_compile(cs->filename, cs->script, &(cs->mtime));
 }
 
 static buf_t * js_web_callback (void)
@@ -188,10 +190,10 @@ static JSBool js_function_map_uri (JSContext * ctx, uintN n, jsval * args)
 	JSString * unicode_str;
 	str_t filename;
 	uint i;
+	time_t mtime = 0;
 	JSBool matching = JS_TRUE;
 	JSObject * script;
 	struct js_compiled_script * cs;
-	struct stat st;
 	
 	if (!JS_ConvertArguments(ctx, n, JS_ARGV(ctx, args), "Sb*", &unicode_str, &matching))
 		return JS_FALSE;
@@ -199,16 +201,13 @@ static JSBool js_function_map_uri (JSContext * ctx, uintN n, jsval * args)
 	if (!js_string_to_cstring(ctx, unicode_str, &filename))
 		return JS_FALSE;
 	
-	script = js_compile(filename.str);
+	script = js_compile(filename.str, NULL, &mtime);
 	
 	if (config.script_update == 0)
 	{
 		JS_free(ctx, filename.str);
 		filename.str = NULL;
-		st.st_mtime = 0;
 	}
-	else if (stat(filename.str, &st) == -1)
-		return JS_FALSE;
 	
 	if (script == NULL)
 		return JS_FALSE;
@@ -233,7 +232,7 @@ static JSBool js_function_map_uri (JSContext * ctx, uintN n, jsval * args)
 		}
 		cs->full_match = (matching == JS_TRUE) ? true : false;
 		cs->filename = filename.str;
-		cs->mtime = st.st_mtime;
+		cs->mtime = mtime;
 		web_set_callback(js_web_callback, cs->uri.str, cs->full_match);
 	}
 	
@@ -248,13 +247,26 @@ static void js_report_error (JSContext * ctx, const char * message, JSErrorRepor
 	err("%s:%u: %s: %s", report->filename, (uint) report->lineno, (report->flags == JSREPORT_WARNING) ? "warning" : "error", message);
 }
 
-static JSObject * js_compile (const char * filename)
+static JSObject * js_compile (const char * filename, JSObject * orig_script, time_t * mtime)
 {
+	struct stat st;
 	JSObject * script;
 	char * full_path = (char *) alloca(config.data.len + strlen(filename) + 2);
 	strcpy(full_path, (const char *) config.data.str);
 	strcat(full_path, scripts_dir);
 	strcat(full_path, filename);
+	
+	if (mtime && stat(full_path, &st) != -1)
+	{
+		if (likely(* mtime == st.st_mtime))
+		{
+			* mtime = st.st_mtime;
+			
+			return orig_script;
+		}
+		else
+			* mtime = st.st_mtime;
+	}
 	
 	script = (JSObject *) JS_CompileFile(jsctx, jsglobal, full_path);
 	
@@ -273,9 +285,10 @@ void scripts_sm_init (void)
 	compiled_scripts = buf_create(sizeof(struct js_compiled_script), 1);
 	
 	if (jsrt == NULL)
+	{
+		JS_SetCStringsAreUTF8();
 		jsrt = JS_NewRuntime(jsmaxbytes);
-	
-	JS_SetCStringsAreUTF8();
+	}
 	
 	if (jsrt == NULL)
 		eerr(-1, "JS_NewRuntime(%d) failed.", jsmaxbytes);
@@ -301,7 +314,7 @@ void scripts_sm_init (void)
 	if (!JS_DefineFunctions(jsctx, jsglobal, js_global_functions))
 		eerr(-1, "%s", "JS_DefineFunctions() failed.");
 	
-	initscript = js_compile(config.script_init);
+	initscript = js_compile(config.script_init, NULL, NULL);
 	
 	if (initscript == NULL)
 		peerr(-1, "Can not run initial script \"%s\"", config.script_init);

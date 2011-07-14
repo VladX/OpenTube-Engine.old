@@ -85,10 +85,8 @@ void ctpp_run (const char * file, u_str_t ** out)
 	pthread_spin_lock(spin_access);
 	
 	static ct_map::iterator it;
-	static std::string mkey;
 	
-	mkey = file;
-	it = compiled_templates.find(mkey);
+	it = compiled_templates.find(file);
 	
 	if (it == compiled_templates.end())
 	{
@@ -169,11 +167,11 @@ bool ctpp_compile (const char * file)
 			pthread_spin_unlock(spin_access);
 			return true;
 		}
-		((* it).second)->data.clear();
-		delete ((* it).second)->vmmemcore;
-		free((void *) ((* it).second)->exec);
-		delete ((* it).second)->out;
-		delete (* it).second;
+		it->second->data.clear();
+		delete it->second->vmmemcore;
+		free((void *) it->second->exec);
+		delete it->second->out;
+		delete it->second;
 	}
 	
 	VMOpcodeCollector oVMOpcodeCollector;
@@ -244,7 +242,7 @@ void ctpp_init (void)
 {
 	pthread_spin_init(spin_access, PTHREAD_PROCESS_PRIVATE);
 	oSyscallFactory = new SyscallFactory(config.worker_threads + 1);
-	STDLibInitializer::InitLibrary(* (oSyscallFactory));
+	STDLibInitializer::InitLibrary(* oSyscallFactory);
 	oVM = new VM(oSyscallFactory);
 	oLogger = new FileLogger(stderr);
 	oHash = new CDT();
@@ -252,10 +250,23 @@ void ctpp_init (void)
 
 void ctpp_destroy (void)
 {
+	ct_map::iterator it;
+	
+	for (it = compiled_templates.begin(); it != compiled_templates.end(); it++)
+	{
+		it->second->data.clear();
+		delete it->second->vmmemcore;
+		free((void *) it->second->exec);
+		delete it->second->out;
+		delete it->second;
+	}
+	
+	compiled_templates.clear();
+	
 	delete oHash;
 	delete oLogger;
 	delete oVM;
-	STDLibInitializer::DestroyLibrary(* (oSyscallFactory));
+	STDLibInitializer::DestroyLibrary(* oSyscallFactory);
 	delete oSyscallFactory;
 }
 

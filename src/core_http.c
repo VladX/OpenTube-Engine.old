@@ -960,9 +960,11 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		pthread_mutex_unlock(wmutex);
 	}
 	
+	pthread_spin_lock(spin_queue_atomic);
 	tpl_destroy();
+	pthread_spin_unlock(spin_queue_atomic);
 	
-	debug_print_3("thread %ld terminated", pthread_self());
+	debug_print_3("thread %lx terminated", pthread_self());
 	
 	return NULL;
 }
