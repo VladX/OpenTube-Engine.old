@@ -308,6 +308,7 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	if (sys_error)
 		print_sys_error(log_file);
 	fprintf(log_file, "\n");
+	fflush(log_file);
 	_END_LOCAL_SECTION_
 	pthread_mutex_unlock(mutex);
 	
