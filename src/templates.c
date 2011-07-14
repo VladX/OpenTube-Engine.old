@@ -67,3 +67,8 @@ void tpl_init (void)
 	}
 	ctpp_init();
 }
+
+void tpl_destroy (void)
+{
+	ctpp_destroy();
+}

@@ -250,4 +250,13 @@ void ctpp_init (void)
 	oHash = new CDT();
 }
 
+void ctpp_destroy (void)
+{
+	delete oHash;
+	delete oLogger;
+	delete oVM;
+	STDLibInitializer::DestroyLibrary(* (oSyscallFactory));
+	delete oSyscallFactory;
+}
+
 }

@@ -26,3 +26,5 @@ void ctpp_run (const char * file, u_str_t ** out);
 bool ctpp_compile (const char * file);
 
 void ctpp_init (void);
+
+void ctpp_destroy (void);

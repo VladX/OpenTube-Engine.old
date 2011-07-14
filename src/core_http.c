@@ -960,6 +960,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		pthread_mutex_unlock(wmutex);
 	}
 	
+	tpl_destroy();
+	
 	debug_print_3("thread %ld terminated", pthread_self());
 	
 	return NULL;
