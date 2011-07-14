@@ -903,6 +903,14 @@ static void pr_set_limits (void)
 
 void quit (int prm)
 {
+	static bool already_in_quit = false;
+	
+	if (already_in_quit)
+		return;
+	
+	already_in_quit = true;
+	
+	http_terminate();
 	socket_close(sockfd);
 	remove_pidfile();
 	if (limit_req_clients != NULL)
@@ -918,23 +926,25 @@ void quit (int prm)
 			CloseHandle(hProcess);
 		}
 	}
-	#else
-	if (worker_pid && worker_pid != getpid())
-		(void) kill(worker_pid, SIGTERM);
 	#endif
+	
 	if (prm == SIGINT)
 		fputc('\n', stdout);
+	
 	debug_print_1("terminate process: %d", prm);
+	
 	#ifdef _WIN
 	_BEGIN_LOCAL_SECTION_
 	extern bool win32_service_running;
 	
 	if (!win32_service_running)
-		exit(prm);
+		exit(0);
 	_END_LOCAL_SECTION_
 	#else
-	exit(prm);
+	exit(0);
 	#endif
+	
+	already_in_quit = false;
 }
 
 void init (char * procname)
@@ -973,13 +983,13 @@ void init (char * procname)
 	
 	debug_print_2("connection established: %d", sockfd);
 	
-	setup_signals(quit);
-	
 	#if DEBUG_LEVEL
 	worker_pid = getpid();
 	#else
 	worker_pid = spawn_worker(procname);
 	#endif
+	
+	setup_signals(quit);
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
 	

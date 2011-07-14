@@ -21,6 +21,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include "os_stat.h"
 #include "common_functions.h"
 
@@ -432,6 +433,47 @@ bool is_num (char * str)
 	for (; * str != '\0'; str++)
 		if (!IS_DIGIT(* str))
 			return false;
+	
+	return true;
+}
+
+bool load_file_contents (const char * path, str_big_t * out)
+{
+	char * content;
+	int64 size;
+	int fd = open(path, O_RDONLY);
+	
+	if (fd == -1)
+		return false;
+	
+	#ifdef HAVE_LSEEKI64
+	size = _lseeki64(fd, 0L, SEEK_END);
+	(void) _lseeki64(fd, 0L, SEEK_SET);
+	#else
+	size = lseek(fd, 0, SEEK_END);
+	(void) lseek(fd, 0, SEEK_SET);
+	#endif
+	
+	if (size == (int64) -1)
+	{
+		close(fd);
+		return false;
+	}
+	
+	content = (char *) malloc(size + 1);
+	
+	if (read(fd, content, size) == -1)
+	{
+		free(content);
+		close(fd);
+		return false;
+	}
+	
+	close(fd);
+	content[size] = '\0';
+	
+	out->str = content;
+	out->len = size;
 	
 	return true;
 }

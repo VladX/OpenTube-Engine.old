@@ -19,14 +19,9 @@
  * Boston, MA  02110-1301  USA
  */
 
-void http_append_to_output_buf (request_t * r, void * pointer, uint len);
+#ifndef SCRIPTING_ENGINE_SPIDERMONKEY_H
+#define SCRIPTING_ENGINE_SPIDERMONKEY_H 1
 
-bool http_serve_client (request_t * request);
+void scripts_sm_init (void);
 
-bool http_temp_file (request_t * r);
-
-void http_cleanup (request_t * r);
-
-void http_prepare (request_t * r, bool save_space);
-
-void http_terminate (void);
+#endif

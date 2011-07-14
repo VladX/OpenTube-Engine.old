@@ -40,6 +40,7 @@
 #include "mapped_memory.h"
 #include "web.h"
 #include "templates.h"
+#include "scripting_engine.h"
 #include "error_page.h"
 #include "mime.h"
 #include "memcache.h"
@@ -822,6 +823,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	
 	pthread_spin_lock(spin_queue_atomic);
 	tpl_init();
+	scripts_init();
 	run_init_callbacks();
 	pthread_spin_unlock(spin_queue_atomic);
 	
@@ -847,6 +849,9 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		pthread_spin_lock(spin_queue_atomic);
 		r = pqueue_fetch(wr_queue);
 		pthread_spin_unlock(spin_queue_atomic);
+		
+		if (r == NULL)
+			break;
 		
 		r->out.content_type.str = (uchar *) "text/html";
 		r->out.content_type.len = 9;
@@ -955,6 +960,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		pthread_mutex_unlock(wmutex);
 	}
 	
+	debug_print_3("thread %ld terminated", pthread_self());
+	
 	return NULL;
 }
 
@@ -984,7 +991,7 @@ static bool http_response (request_t * r)
 		}
 		else
 		{
-			if (strncmp((char *) r->in.path.str, (char *) m[i].uri.str, m[i].uri.len) != 0)
+			if (m[i].uri.len > r->in.path.len || memcmp(r->in.path.str, m[i].uri.str, m[i].uri.len) != 0)
 				continue;
 		}
 		
@@ -1496,6 +1503,42 @@ void http_prepare (request_t * r, bool save_space)
 		r->body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
 	
 	r->body.files.b = buf_create(sizeof(post_file_t), HTTP_POST_FILES_BUFFER_RESERVED_SIZE);
+}
+
+void http_terminate (void)
+{
+	/* Terminate worker threads */
+	
+	uint i;
+	#ifdef HAVE_PTHREAD_TIMEDJOIN_NP
+	struct timespec tv;
+	#endif
+	
+	for (i = 0; i < config.worker_threads; i++)
+	{
+		pthread_spin_lock(spin_queue_atomic);
+		pqueue_push(wr_queue, NULL);
+		pthread_spin_unlock(spin_queue_atomic);
+		sem_post(wsem);
+	}
+	
+	/* Wait until all threads are terminated */
+	
+	for (i = 0; i < config.worker_threads; i++)
+	{
+		#ifdef HAVE_PTHREAD_TIMEDJOIN_NP
+		/* 
+		 * Let's give some time for the proper termination of the thread.
+		 * If thread is not terminated during this time, it's probably a zombie-thread.
+		 * 
+		 */
+		tv.tv_sec = time(NULL) + 2;
+		tv.tv_nsec = 0;
+		pthread_timedjoin_np(wthreads[i], NULL, &tv);
+		#else
+		pthread_join(wthreads[i], NULL);
+		#endif
+	}
 }
 
 static void http_init_constants (void)

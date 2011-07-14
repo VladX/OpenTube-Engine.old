@@ -53,8 +53,10 @@ typedef unsigned int uint;
 typedef unsigned long ulong;
 typedef intptr_t mlong;
 typedef uintptr_t umlong;
+#ifndef DO_NOT_DEFINE_64BIT_TYPES
 typedef long long int64;
 typedef unsigned long long uint64;
+#endif
 
 #ifdef _MSVC_
 typedef int pid_t;
@@ -82,6 +84,18 @@ typedef struct
 	uint len;
 	uchar * str;
 } u_str_t;
+
+typedef struct
+{
+	uint64 len;
+	char * str;
+} str_big_t;
+
+typedef struct
+{
+	uint64 len;
+	uchar * str;
+} u_str_big_t;
 
 typedef struct
 {
@@ -268,6 +282,7 @@ struct loaded_config
 	const char * group;
 	const char * pid;
 	const char * log;
+	const char * script_init;
 	u_str_t document_root;
 	u_str_t temp_dir;
 	u_str_t data;
@@ -275,17 +290,18 @@ struct loaded_config
 	u_str_t keepalive_timeout;
 	uint keepalive_timeout_val;
 	uint keepalive_max_conn_per_client;
-	bool gzip;
-	uchar gzip_level;
 	uint gzip_min_page_size;
-	bool limit_req;
 	uint limit_rate;
 	uint limit_delay;
-	bool limit_sim_req;
 	uint limit_sim_threshold;
-	uchar cache_update;
 	u_str_t cache_prefix;
-	uchar tpl_cache_update;
 	uint worker_threads;
 	uint prealloc_request_structures;
+	bool gzip;
+	bool limit_req;
+	bool limit_sim_req;
+	uchar gzip_level;
+	uchar cache_update;
+	uchar script_update;
+	uchar tpl_cache_update;
 };

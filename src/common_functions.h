@@ -196,6 +196,8 @@ void str_to_lower (char * str);
 
 bool is_num (char * str);
 
+bool load_file_contents (const char * path, str_big_t * out);
+
 bool is_file_exists (const char * path);
 
 bool is_directory_exists (const char * path, enum io_access_rights ar);

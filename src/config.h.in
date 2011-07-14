@@ -67,6 +67,7 @@
 #cmakedefine HAVE_FORK_SYSCALL
 #cmakedefine HAVE_INET_PTON
 #cmakedefine HAVE_INET_NTOP
+#cmakedefine HAVE_PTHREAD_TIMEDJOIN_NP
 #cmakedefine HAVE_MMAP
 #cmakedefine HAVE_CREATEFILEMAPPING
 #cmakedefine HAVE_OPENSSL_SHA1
@@ -79,9 +80,11 @@
 #cmakedefine HAVE_STRICMP
 #cmakedefine HAVE_STRNCASECMP
 #cmakedefine HAVE_STRNICMP
+#cmakedefine HAVE_LSEEKI64
 #cmakedefine HAVE_STRUCT_TIMESPEC
 #cmakedefine COMPILER_HAVE_BUILTIN_EXPECT
 #cmakedefine HAVE_MALLOC_H
+#cmakedefine HAVE_SPIDERMONKEY_ENGINE
 
 #cmakedefine _LINUX
 #cmakedefine _BSD

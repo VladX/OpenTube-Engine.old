@@ -19,14 +19,10 @@
  * Boston, MA  02110-1301  USA
  */
 
-void http_append_to_output_buf (request_t * r, void * pointer, uint len);
+#include "common_functions.h"
+#include "scripting_engine_spidermonkey.h"
 
-bool http_serve_client (request_t * request);
-
-bool http_temp_file (request_t * r);
-
-void http_cleanup (request_t * r);
-
-void http_prepare (request_t * r, bool save_space);
-
-void http_terminate (void);
+void scripts_init (void)
+{
+	scripts_sm_init();
+}

@@ -10,8 +10,14 @@ set (CMAKE_CXX_FLAGS_RELEASE ${CCFLAGS} CACHE STRING "Release flags." FORCE)
 set (CMAKE_C_FLAGS "" CACHE STRING "Flags used by the C compiler during all build types." FORCE)
 set (CMAKE_CXX_FLAGS "" CACHE STRING "Flags used by the CXX compiler during all build types." FORCE)
 set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+
+#### Optional features ####
+
 option (BUILD_INSTALLER "Build installer for windows." OFF)
-set (IPv6_SUPPORT "1" CACHE STRING "Support for IPv6 (1 or 0)")
+option (ENABLE_SUPPORT_SPIDERMONKEY "Support for SpiderMonkey Javascript engine." OFF)
+set (IPv6_SUPPORT "1" CACHE STRING "Support for IPv6 (1 or 0).")
+
+###########################
 
 if (NOT CMAKE_BUILD_TYPE)
  set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
@@ -72,14 +78,17 @@ if (PYTHON_EXECUTABLE)
  message (STATUS "Generated strings.h.")
 endif (PYTHON_EXECUTABLE)
 
-file (GLOB source_files *.c)
+if (HAVE_SPIDERMONKEY_ENGINE AND SPIDERMONKEY_ENGINE_LIBRARY)
+ include_directories (AFTER ${HAVE_SPIDERMONKEY_ENGINE})
+ set (link_libraries_list ${link_libraries_list} ${SPIDERMONKEY_ENGINE_LIBRARY})
+endif (HAVE_SPIDERMONKEY_ENGINE AND SPIDERMONKEY_ENGINE_LIBRARY)
+
+file (GLOB source_files *.c*)
 file (STRINGS web/compile.list source_files_web)
 
 foreach (source_file ${source_files_web})
  set (source_files ${source_files} web/${source_file})
 endforeach (source_file)
-
-set (source_files ${source_files} templates_ctpp.cpp)
 
 if (COMPILER_HAVE_LTO AND COMPILER_HAVE_USE_LINKER_PLUGIN AND COMPILER_HAVE_OFAST)
  set (CCFLAGS "${CCFLAGS} -fuse-linker-plugin -flto")

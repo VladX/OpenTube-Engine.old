@@ -58,6 +58,8 @@ static void default_config (void)
 	config.tpl_cache_update = 0;
 	config.worker_threads = 5;
 	config.prealloc_request_structures = 10;
+	config.script_init = "init.js";
+	config.script_update = 0;
 }
 
 static void process_directive_string (const char * const key, char * value, const int line)
@@ -197,6 +199,19 @@ static void process_directive_string (const char * const key, char * value, cons
 			config.cache_update = 0;
 		else if (strcmp(value, "source-modified") == 0)
 			config.cache_update = 1;
+		else
+			EINVALIDVAL;
+	}
+	else if (strcmp(key, "script.init") == 0)
+	{
+		config.script_init = value;
+	}
+	else if (strcmp(key, "script.update-bytecode") == 0)
+	{
+		if (strcmp(value, "never") == 0)
+			config.script_update = 0;
+		else if (strcmp(value, "source-modified") == 0)
+			config.script_update = 1;
 		else
 			EINVALIDVAL;
 	}

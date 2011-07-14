@@ -73,8 +73,13 @@ static void setprocname (char * procname, const char * newprocname)
 }
 
 #ifndef _WIN
-static void quit_worker (int prm)
+static void quit_master (int prm)
 {
+	if (worker_pid && worker_pid != getpid())
+		(void) kill(worker_pid, prm);
+	
+	waitpid(worker_pid, NULL, 0);
+	
 	exit(0);
 }
 #endif
@@ -188,6 +193,7 @@ pid_t spawn_worker (char * procname)
 	struct group * grp;
 	
 	setprocname(procname, PROG_NAME " (master)");
+	setup_signals(quit_master);
 	
 	if (!lock)
 		eerr(-1, "Master process is already running (\"%s\").", config.pid);
@@ -215,7 +221,6 @@ pid_t spawn_worker (char * procname)
 				setgid(grp->gr_gid);
 			
 			setprocname(procname, PROG_NAME " (worker)");
-			setup_signals(quit_worker);
 			
 			#ifdef HAVE_PRCTL_H
 			(void) prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
@@ -228,7 +233,7 @@ pid_t spawn_worker (char * procname)
 		waitpid(pid, &status, 0);
 		
 		if (WIFEXITED(status))
-			quit(WEXITSTATUS(status));
+			exit(WEXITSTATUS(status));
 		else
 		{
 			status = WTERMSIG(status);
