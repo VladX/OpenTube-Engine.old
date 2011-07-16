@@ -24,30 +24,42 @@
 #include <QRegExp>
 #include <QDir>
 
+#define DOWNLOAD_BRANCH_NAME "binary-stable"
+
 static const char * temp_dir_name = "installer_dl_data";
 
 struct r_host
 {
 	const char * host;
 	const char * start_path;
+	const char * trailer_path;
 	QHttp::ConnectionMode mode;
 };
 
 static const struct r_host hosts[] = {
 	{
 		"raw.github.com",
-		"/VladX/OpenTube-Engine/binary-stable/",
+		"/VladX/OpenTube-Engine/" DOWNLOAD_BRANCH_NAME "/",
+		"",
+		QHttp::ConnectionModeHttps
+	},
+	{
+		"opentube-engine.googlecode.com",
+		"/git/",
+		"?r=" DOWNLOAD_BRANCH_NAME,
 		QHttp::ConnectionModeHttps
 	},
 	{
 		"opentube-engine.git.sourceforge.net",
-		"/git/gitweb.cgi?p=opentube-engine/opentube-engine;a=blob_plain;hb=binary-stable;f=",
+		"/git/gitweb.cgi?p=opentube-engine/opentube-engine;a=blob_plain;hb=" DOWNLOAD_BRANCH_NAME ";f=",
+		"",
 		QHttp::ConnectionModeHttp
 	}
 };
 
 static QHttp http;
 static QString path;
+static QString trailer_path;
 static QStringList index_hashes;
 static QStringList index_files;
 static QDir * temp_dir = NULL;
@@ -76,9 +88,11 @@ bool get_files_index (QObject * obj, QBuffer * buf)
 	http.connect(&http, SIGNAL(sslErrors(const QList<QSslError> &)), SLOT(ignoreSslErrors()));
 	http.setHost(hosts[i].host, hosts[i].mode);
 	path = hosts[i].start_path;
+	trailer_path = hosts[i].trailer_path;
 	path.append((os_is64bit()) ? "win64/" : "win32/");
 	QString str = path;
 	str.append("index.md5");
+	str.append(trailer_path);
 	http.get(str, buf);
 	try_num++;
 	
@@ -127,6 +141,7 @@ int download_all_files (QObject * obj)
 	{
 		str = path;
 		str.append(index_files[i]);
+		str.append(trailer_path);
 		pos = index_files[i].lastIndexOf('/');
 		if (pos > 0)
 			temp_dir->mkpath(index_files[i].left(pos));
