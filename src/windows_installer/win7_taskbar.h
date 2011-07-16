@@ -42,6 +42,7 @@ typedef enum TBPFLAG
 #define WINVER 0x0500
 #include <windows.h>
 #include <initguid.h>
+#include <unknwn.h>
 #define CMIC_MASK_ASYNCOK SEE_MASK_ASYNCOK
 
 typedef enum THUMBBUTTONMASK

@@ -22,6 +22,10 @@
 #ifndef INSTALL_ARCHIVE_H
 #define INSTALL_ARCHIVE_H 1
 
+#ifdef _MSC_VER
+ #define ssize_t long
+#endif
+
 #include <QFile>
 #include <QString>
 #include <libtar.h>
