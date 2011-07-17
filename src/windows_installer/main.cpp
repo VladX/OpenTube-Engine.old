@@ -24,6 +24,9 @@
 #include "win7_taskbar.h"
 #include "install_archive.h"
 #include "../config.h"
+#ifdef WIN_TASKBAR_STAFF
+ #include <objbase.h>
+#endif
 
 bool local_installation = false;
 QString ar_data_root;

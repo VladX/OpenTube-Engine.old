@@ -20,6 +20,7 @@
  */
 
 #include "detect_os.h"
+#include <stdlib.h>
 #include <QDir>
 #include <QFile>
 

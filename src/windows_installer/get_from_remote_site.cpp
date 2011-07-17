@@ -47,7 +47,7 @@ static const struct r_host hosts[] = {
 		"opentube-engine.googlecode.com",
 		"/git/",
 		"?r=" DOWNLOAD_BRANCH_NAME,
-		QHttp::ConnectionModeHttps
+		QHttp::ConnectionModeHttp
 	},
 	{
 		"opentube-engine.git.sourceforge.net",
