@@ -466,7 +466,7 @@ inline void events_out_data (int fd)
 				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
 				#endif
 				
-				if (unlikely(res == -1 && errno != EAGAIN))
+				if (unlikely(res == -1 && socket_wouldntblock(errno)))
 				{
 					perr("sendfile(): %d", (int) res);
 					close(request[it]->temp.sendfile_fd);

@@ -113,6 +113,8 @@
 /* Platform-specific */
 #ifdef _WIN
  #define socket_close(SOCKET) closesocket(SOCKET)
+ #define socket_wouldblock(ERROR_CODE) (ERROR_CODE == WSAEWOULDBLOCK)
+ #define socket_wouldntblock(ERROR_CODE) (ERROR_CODE != WSAEWOULDBLOCK)
  #define getpid (int) GetCurrentProcessId
  #undef errno
  #define errno WSAGetLastError()
@@ -120,6 +122,8 @@
  #define io_errno GetLastError()
 #else
  #define socket_close(SOCKET) close(SOCKET)
+ #define socket_wouldblock(ERROR_CODE) (ERROR_CODE == EAGAIN)
+ #define socket_wouldntblock(ERROR_CODE) (ERROR_CODE != EAGAIN)
  #define socket_errno errno
  #define io_errno errno
 #endif

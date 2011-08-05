@@ -135,7 +135,7 @@ static inline bool http_send (request_t * r)
 	
 	res = writev(r->sock, data, r->out_vec->cur_len);
 	
-	if (unlikely(res == -1 && errno != EAGAIN))
+	if (unlikely(res == -1 && socket_wouldntblock(errno)))
 	{
 		perr("writev(%d)", r->sock);
 		
@@ -762,7 +762,7 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	res = sendfile(r->sock, fd, &(r->temp.sendfile_offset), (size_t) r->out.content_length);
 	#endif
 	
-	if (unlikely(res == -1 && errno != EAGAIN))
+	if (unlikely(res == -1 && socket_wouldntblock(errno)))
 	{
 		perr("sendfile(): %d", (int) res);
 		
@@ -1322,7 +1322,7 @@ bool http_serve_client (request_t * request)
 		return false;
 	}
 	
-	if (unlikely(r == -1 && errno == EAGAIN))
+	if (unlikely(r == -1 && socket_wouldblock(errno)))
 	{
 		request->b->cur_len -= HTTP_RECV_BUFFER;
 		

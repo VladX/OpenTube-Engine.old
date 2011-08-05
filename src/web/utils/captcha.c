@@ -50,12 +50,12 @@
 
 struct captcha_syms
 {
-	char sym;
 	uchar * rows;
 	uint rowbytes;
-	uchar channels;
 	ushort width;
 	ushort height;
+	uchar channels;
+	char sym;
 };
 
 static pthread_mutex_t mutex[1] = {PTHREAD_MUTEX_INITIALIZER};
@@ -104,7 +104,7 @@ static bool png_output (uchar * d)
 	_BEGIN_LOCAL_SECTION_
 	uint i, pos, sz;
 	int r;
-	uchar buf[CAPTCHA_ROWSIZE * 4];
+	uchar buf[CAPTCHA_ROWSIZE + 100];
 	
 	for (i = 0; i < CAPTCHA_HEIGHT; i++)
 	{
