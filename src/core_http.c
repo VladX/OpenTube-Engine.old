@@ -817,9 +817,21 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	time_t curtime;
 	ushort code;
 	
+	/* Per-thread gzip stream */
+	z_stream z[1];
+	
 	extern threadsafe jmp_buf web_exceptions_jmpbuf;
 	extern threadsafe request_t * thread_request;
 	extern threadsafe volatile bool thread_allow_compression;
+	
+	/* Init gzip stream */
+	if (config.gzip)
+	{
+		memset(z, 0, sizeof(z_stream));
+		res = deflateInit2(z, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
+		if (res != Z_OK)
+			peerr(-1, "deflateInit2(): %d", res);
+	}
 	
 	pthread_spin_lock(spin_queue_atomic);
 	tpl_init();
@@ -881,18 +893,17 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		
 		if (accept_gzip)
 		{
-			register z_stream * z = r->temp.gzip_stream;
 			buf_expand(r->temp.gzip_buf, buf->cur_len);
 			z->avail_in = buf->cur_len;
 			z->next_in = buf->data;
 			z->avail_out = r->temp.gzip_buf->cur_len;
 			z->next_out = r->temp.gzip_buf->data;
 			
-			do
+			for (;;)
 			{
 				res = deflate(z, Z_FINISH);
 				
-				if (res == Z_STREAM_END)
+				if (z->avail_out > 0 || res == Z_STREAM_END)
 					break;
 				
 				if (res == Z_OK)
@@ -915,7 +926,6 @@ static void * http_pass_to_handlers_routine (void * ptr)
 					goto _start_from_the_beginning_;
 				}
 			}
-			while (z->avail_out == 0);
 			
 			i = r->temp.gzip_buf->cur_len - z->avail_out;
 			r->out.content_length = i + 18;
@@ -1387,13 +1397,12 @@ void http_cleanup (request_t * r)
 
 static void http_init_constants (void);
 
-static bool http_prepare_once_flag = false;
-
 static void http_prepare_once (void)
 {
 	int i;
+	static bool once_flag = false;
 	
-	if (http_prepare_once_flag)
+	if (once_flag)
 		return;
 	
 	header_server_string.str = "Server: " SERVER_STRING;
@@ -1413,7 +1422,7 @@ static void http_prepare_once (void)
 	for (i = 0; i < config.worker_threads; i++)
 		pthread_create(&(wthreads[i]), NULL, http_pass_to_handlers_routine, NULL);
 	
-	http_prepare_once_flag = true;
+	once_flag = true;
 	
 	if (chdir((char *) config.document_root.str) == -1)
 		peerr(-1, "chdir(%s): ", config.document_root.str);
@@ -1438,8 +1447,6 @@ static void http_prepare_once (void)
 
 void http_prepare (request_t * r, bool save_space)
 {
-	int res;
-	
 	http_prepare_once();
 	
 	r->sock = -1;
@@ -1459,54 +1466,56 @@ void http_prepare (request_t * r, bool save_space)
 	r->temp.hMapFile = INVALID_HANDLE_VALUE;
 	#endif
 	
-	r->out.content_range.str = (char *) malloc(64);
+	r->out.content_range.str = (char *) malloc(93); /* Allocate here for both content_range.str and expires.str (64 + 29). Dirty... but decreases memory fragmentation */
 	r->out.content_range.len = 0;
-	r->out.expires.str = (char *) malloc(29);
+	r->out.expires.str = (char *) r->out.content_range.str + 64; /* We have already allocated memory for this buffer above with one malloc call, so use it */
 	r->out.expires.len = 29;
 	
-	r->out_data = buf_create(1, WEB_DATA_BUFFER_RESERVED_SIZE);
+	r->out_data = buf_create(1, (save_space) ? 0 : WEB_DATA_BUFFER_RESERVED_SIZE);
 	
 	if (config.gzip)
-	{
-		r->temp.gzip_buf = buf_create(1, HTTP_GZIP_BUFFER_RESERVED_SIZE);
-		r->temp.gzip_stream = (z_stream *) malloc(sizeof(z_stream));
-		memset(r->temp.gzip_stream, 0, sizeof(z_stream));
-		res = deflateInit2(r->temp.gzip_stream, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
-		if (res != Z_OK)
-			peerr(-1, "deflateInit2(): %d", res);
-	}
+		r->temp.gzip_buf = buf_create(1, (save_space) ? 0 : HTTP_GZIP_BUFFER_RESERVED_SIZE);
 	
 	r->out_vec = buf_create(sizeof(struct iovec), HTTP_OUTPUT_VECTOR_START_SIZE);
 	
-	if (save_space)
-		r->b = buf_create(1, 1);
-	else
-		r->b = buf_create(1, HTTP_BUFFER_RESERVED_SIZE);
+	r->b = buf_create(1, (save_space) ? 0 : HTTP_BUFFER_RESERVED_SIZE);
 	
 	r->in.p = pool_create(sizeof(header_t), HTTP_HEADERS_POOL_RESERVED_FRAGMENTS);
 	
-	r->in.args.b = buf_create(sizeof(url_arg_t), HTTP_URL_ARGS_BUFFER_RESERVED_SIZE);
+	r->in.args.b = buf_create(sizeof(url_arg_t), (save_space) ? 0 : HTTP_URL_ARGS_BUFFER_RESERVED_SIZE);
 	
-	if (save_space)
-		r->in.args.v = buf_create(1, 1);
-	else
-		r->in.args.v = buf_create(1, HTTP_URL_VALS_BUFFER_RESERVED_SIZE);
+	r->in.args.v = buf_create(1, (save_space) ? 0 : HTTP_URL_VALS_BUFFER_RESERVED_SIZE);
 	
-	r->in.cookies.b = buf_create(sizeof(cookie_t), HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
+	r->in.cookies.b = buf_create(sizeof(cookie_t), (save_space) ? 0 : HTTP_COOKIES_ARGS_BUFFER_RESERVED_SIZE);
 	
-	if (save_space)
-		r->in.cookies.v = buf_create(1, 1);
-	else
-		r->in.cookies.v = buf_create(1, HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
+	r->in.cookies.v = buf_create(1, (save_space) ? 0 : HTTP_COOKIES_VALS_BUFFER_RESERVED_SIZE);
 	
-	r->body.post.b = buf_create(sizeof(post_arg_t), HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
+	r->body.post.b = buf_create(sizeof(post_arg_t), (save_space) ? 0 : HTTP_POST_ARGS_BUFFER_RESERVED_SIZE);
 	
-	if (save_space)
-		r->body.post.v = buf_create(1, 1);
-	else
-		r->body.post.v = buf_create(1, HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
+	r->body.post.v = buf_create(1, (save_space) ? 0 : HTTP_POST_VALS_BUFFER_RESERVED_SIZE);
 	
-	r->body.files.b = buf_create(sizeof(post_file_t), HTTP_POST_FILES_BUFFER_RESERVED_SIZE);
+	r->body.files.b = buf_create(sizeof(post_file_t), (save_space) ? 0 : HTTP_POST_FILES_BUFFER_RESERVED_SIZE);
+}
+
+void http_destroy (request_t * r)
+{
+	free(r->in.path.str);
+	free(r->out.content_range.str);
+	buf_destroy(r->out_data);
+	
+	if (config.gzip)
+		buf_destroy(r->temp.gzip_buf);
+	
+	buf_destroy(r->out_vec);
+	buf_destroy(r->b);
+	pool_destroy(r->in.p);
+	buf_destroy(r->in.args.b);
+	buf_destroy(r->in.args.v);
+	buf_destroy(r->in.cookies.b);
+	buf_destroy(r->in.cookies.v);
+	buf_destroy(r->body.post.b);
+	buf_destroy(r->body.post.v);
+	buf_destroy(r->body.files.b);
 }
 
 void http_terminate (void)

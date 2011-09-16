@@ -249,7 +249,6 @@ typedef struct
 		off_t sendfile_offset;
 		char dates[60];
 		buf_t * gzip_buf;
-		z_stream * gzip_stream;
 		uint32_t gzip_ending[2];
 		void * func;
 		#if defined(HAVE_MMAP)
@@ -304,4 +303,5 @@ struct loaded_config
 	uchar cache_update;
 	uchar script_update;
 	uchar tpl_cache_update;
+	uchar idle_request_structures;
 };

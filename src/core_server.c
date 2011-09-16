@@ -53,12 +53,17 @@
 #include "win32_utils.h"
 
 
+typedef struct request_vec
+{
+	request_t r;
+	struct request_vec * next;
+} request_vec_t;
+
+
 bool ipv6_addr = false;
 pid_t worker_pid = 0;
 int sockfd;
-static uint requests_vector_prealloc;
-static uint requests_vector_size;
-static request_t ** request;
+static request_vec_t * requests_vector;
 static uint maxfds;
 static uint keepalive_max_conn;
 static frag_pool_t * limit_req_clients = NULL;
@@ -156,7 +161,7 @@ void remove_keepalive_socket(int sock)
 	}
 }
 
-inline bool limit_requests (struct sockaddr * addr)
+bool limit_requests (struct sockaddr * addr)
 {
 	register uchar * bin;
 	register uchar len;
@@ -220,7 +225,7 @@ inline bool limit_requests (struct sockaddr * addr)
 	return false;
 }
 
-inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
+bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_len, int sock)
 {
 	register uchar * bin1, * bin2;
 	register uchar len;
@@ -273,23 +278,23 @@ inline bool limit_sim_requests (struct sockaddr * addr, socklen_t client_name_le
 
 inline request_t * event_find_request (int sock)
 {
-	register uint it;
+	register request_vec_t * it;
 	
 	pthread_mutex_lock(wmutex);
 	
-	for (it = 0; it < requests_vector_size; it++)
-		if (request[it]->sock == sock)
+	for (it = requests_vector; it != NULL; it = it->next)
+		if (it->r.sock == sock)
 		{
 			pthread_mutex_unlock(wmutex);
-			return request[it];
+			return &(it->r);
 		}
 	
-	for (it = 0; it < requests_vector_size; it++)
-		if (request[it]->sock == -1)
+	for (it = requests_vector; it != NULL; it = it->next)
+		if (it->r.sock == -1)
 		{
-			request[it]->sock = sock;
+			it->r.sock = sock;
 			pthread_mutex_unlock(wmutex);
-			return request[it];
+			return &(it->r);
 		}
 	
 	pthread_mutex_unlock(wmutex);
@@ -297,49 +302,48 @@ inline request_t * event_find_request (int sock)
 	return NULL;
 }
 
-inline request_t * event_fetch_request (int sock)
+request_t * event_fetch_request (int sock)
 {
-	register uint it;
+	register request_vec_t * it;
+	register request_vec_t * new;
 	
 	pthread_mutex_lock(wmutex);
 	
-	for (it = 0; it < requests_vector_size; it++)
-		if (request[it]->sock == sock)
+	for (it = requests_vector; it != NULL; it = it->next)
+		if (it->r.sock == sock)
 		{
 			pthread_mutex_unlock(wmutex);
-			return request[it];
+			return &(it->r);
 		}
 	
-	for (it = 0; it < requests_vector_size; it++)
-		if (request[it]->sock == -1)
+	for (it = requests_vector; it != NULL; it = it->next)
+		if (it->r.sock == -1)
 		{
-			request[it]->sock = sock;
+			it->r.sock = sock;
 			pthread_mutex_unlock(wmutex);
-			return request[it];
+			return &(it->r);
 		}
 	
-	requests_vector_size++;
+	for (it = requests_vector; it->next != NULL; it = it->next);
 	
-	debug_print_3("new request structure (current number: %d)", requests_vector_size);
-	
-	if (requests_vector_size > requests_vector_prealloc)
-		request = (request_t **) realloc(request, requests_vector_size * sizeof(request_t *));
-	
-	request[it] = (request_t *) malloc(sizeof(request_t));
-	
-	http_prepare(request[it], true);
-	
-	request[it]->sock = sock;
+	new = (request_vec_t *) malloc(sizeof(request_vec_t));
+	new->next = NULL;
+	it->next = new;
+	http_prepare(&(new->r), true);
+	new->r.sock = sock;
 	
 	pthread_mutex_unlock(wmutex);
 	
-	return request[it];
+	debug_print_3("new request structure (%p)", new);
+	
+	return &(new->r);
 }
 
 void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 {
-	const uint maxevents = config.prealloc_request_structures;
 	uint i;
+	request_vec_t * prealloc_request = NULL;
+	request_vec_t * prev_prealloc_request = NULL;
 	
 	#if IPV6_SUPPORT
 	if (ipv6_addr)
@@ -362,23 +366,28 @@ void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 		limit_sim_req_clients = frag_pool_create(sizeof(int), HTTP_LIMIT_SIM_REQUESTS_POOL_RESERVED_SIZE);
 	keepalive_sockets = frag_pool_create(sizeof(keepalive_sock_t), HTTP_KEEPALIVE_SOCKETS_POOL_RESERVED_SIZE);
 	
-	request = (request_t **) malloc(requests_vector_prealloc * sizeof(request_t *));
-	requests_vector_size = maxevents;
-	
-	for (i = 0; i < requests_vector_size; i++)
+	for (i = 0; i < config.prealloc_request_structures; i++)
 	{
-		request[i] = (request_t *) malloc(sizeof(request_t));
+		prev_prealloc_request = prealloc_request;
+		prealloc_request = (request_vec_t *) malloc(sizeof(request_vec_t));
+		prealloc_request->next = NULL;
 		
-		http_prepare(request[i], false);
+		if (prev_prealloc_request)
+			prev_prealloc_request->next = prealloc_request;
+		else
+			requests_vector = prealloc_request;
+		
+		http_prepare(&(prealloc_request->r), false);
 	}
 }
 
 inline void event_iter (void)
 {
 	register time_t curtime;
-	register uint i, it;
+	register uint i;
 	register int64 dlt;
 	register keepalive_sock_t * k;
+	register request_vec_t * it, * prev;
 	
 	curtime = current_time_sec;
 	
@@ -393,16 +402,31 @@ inline void event_iter (void)
 		
 		if (dlt > config.keepalive_timeout_val || dlt < 0)
 		{
-			for (it = 0; it < requests_vector_size; it++)
-				if (request[it]->sock == k->sock)
+			for (it = requests_vector; it != NULL; it = it->next)
+				if (it->r.sock == k->sock)
 					break;
-			if (it == requests_vector_size)
+			if (it == NULL)
 			{
 				socket_close(k->sock);
 				debug_print_3("keepalive-timeout expired, close(): %d", k->sock);
 				frag_pool_free_alt(keepalive_sockets, i);
 			}
 		}
+	}
+	
+	if (config.idle_request_structures)
+	{
+		for (it = requests_vector, prev = requests_vector, i = 0; i < config.prealloc_request_structures; i++, prev = it, it = it->next); /* skip preallocated request structures */
+		
+		for (; it != NULL; prev = it, it = it->next)
+			if (it->r.sock == -1)
+			{
+				/* free idle structure, release memory */
+				prev->next = it->next;
+				http_destroy(&(it->r));
+				free(it);
+				it = prev;
+			}
 	}
 	
 	if (config.limit_req)
@@ -417,36 +441,36 @@ inline void end_request (request_t * r);
 
 inline void events_out_data (int fd)
 {
-	register uint it;
+	register request_t * it;
 	register uint t, d, size;
 	register ssize_t res;
 	
-	for (it = 0; it < requests_vector_size; it++)
-		if (request[it]->sock == fd)
+	for (it = (request_t *) requests_vector; it != NULL; it = (request_t *) ((request_vec_t *) it)->next)
+		if (it->sock == fd)
 		{
-			if (request[it]->temp.writev_total > 0)
+			if (it->temp.writev_total > 0)
 			{
-				res = writev(request[it]->sock, request[it]->temp.out_vec, request[it]->temp.out_vec_len);
+				res = writev(it->sock, it->temp.out_vec, it->temp.out_vec_len);
 				if (res == -1)
 				{
 					perr("writev(): %d", -1);
-					http_cleanup(request[it]);
+					http_cleanup(it);
 					break;
 				}
 				
-				request[it]->temp.writev_total -= res;
+				it->temp.writev_total -= res;
 				
-				for (t = 0, size = 0; t < request[it]->temp.out_vec_len; t++)
+				for (t = 0, size = 0; t < it->temp.out_vec_len; t++)
 				{
-					size += request[it]->temp.out_vec[t].iov_len;
+					size += it->temp.out_vec[t].iov_len;
 					
 					if (size >= res)
 					{
-						request[it]->temp.out_vec += t;
-						d = request[it]->temp.out_vec[0].iov_len - (size - res);
-						request[it]->temp.out_vec[0].iov_base = ((uchar *) request[it]->temp.out_vec[0].iov_base) + d;
-						request[it]->temp.out_vec[0].iov_len -= d;
-						request[it]->temp.out_vec_len = request[it]->temp.out_vec_len - t;
+						it->temp.out_vec += t;
+						d = it->temp.out_vec[0].iov_len - (size - res);
+						it->temp.out_vec[0].iov_base = ((uchar *) it->temp.out_vec[0].iov_base) + d;
+						it->temp.out_vec[0].iov_len -= d;
+						it->temp.out_vec_len = it->temp.out_vec_len - t;
 						break;
 					}
 				}
@@ -455,33 +479,33 @@ inline void events_out_data (int fd)
 			}
 			
 			#ifndef _WIN
-			if (request[it]->temp.sendfile_fd != -1)
+			if (it->temp.sendfile_fd != -1)
 			{
 				#ifdef _BSD
 				static off_t sbytes;
 				sbytes = 0;
-				res = sendfile(request[it]->temp.sendfile_fd, request[it]->sock, request[it]->temp.sendfile_offset, request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset, NULL, &sbytes, 0);
-				request[it]->temp.sendfile_offset += sbytes;
+				res = sendfile(it->temp.sendfile_fd, it->sock, it->temp.sendfile_offset, it->temp.sendfile_last - it->temp.sendfile_offset, NULL, &sbytes, 0);
+				it->temp.sendfile_offset += sbytes;
 				#else
-				res = sendfile(request[it]->sock, request[it]->temp.sendfile_fd, &(request[it]->temp.sendfile_offset), request[it]->temp.sendfile_last - request[it]->temp.sendfile_offset);
+				res = sendfile(it->sock, it->temp.sendfile_fd, &(it->temp.sendfile_offset), it->temp.sendfile_last - it->temp.sendfile_offset);
 				#endif
 				
 				if (unlikely(res == -1 && socket_wouldntblock(errno)))
 				{
 					perr("sendfile(): %d", (int) res);
-					close(request[it]->temp.sendfile_fd);
-					http_cleanup(request[it]);
+					close(it->temp.sendfile_fd);
+					http_cleanup(it);
 					break;
 				}
 				
-				if (request[it]->temp.sendfile_offset < request[it]->temp.sendfile_last)
+				if (it->temp.sendfile_offset < it->temp.sendfile_last)
 					break;
 				else
-					close(request[it]->temp.sendfile_fd);
+					close(it->temp.sendfile_fd);
 			}
 			#endif
 			
-			end_request(request[it]);
+			end_request(it);
 			
 			break;
 		}
@@ -992,8 +1016,6 @@ void init (char * procname)
 	setup_signals(quit);
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
-	
-	requests_vector_prealloc = config.prealloc_request_structures * 10;
 	
 	pr_set_limits();
 	time_routine();

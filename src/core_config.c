@@ -215,6 +215,15 @@ static void process_directive_string (const char * const key, char * value, cons
 		else
 			EINVALIDVAL;
 	}
+	else if (strcmp(key, "server.idle-request-structures") == 0)
+	{
+		if (strcmp(value, "keep") == 0)
+			config.idle_request_structures = 0;
+		else if (strcmp(value, "free") == 0)
+			config.idle_request_structures = 1;
+		else
+			EINVALIDVAL;
+	}
 	else
 		EUNKNOWNDIRECTIVE;
 }

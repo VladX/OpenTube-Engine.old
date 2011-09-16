@@ -103,8 +103,8 @@
 #endif
 
 #ifdef COMPILER_HAVE_BUILTIN_EXPECT
- #define likely(X) __builtin_expect((X), 1)
- #define unlikely(X) __builtin_expect((X), 0)
+ #define likely(X) __builtin_expect(!!(X), 1)
+ #define unlikely(X) __builtin_expect(!!(X), 0)
 #else
  #define likely(X) (X)
  #define unlikely(X) (X)
@@ -159,6 +159,8 @@ void * pool_alloc (pool_t * p);
 void pool_free (pool_t * p, uint len);
 
 void pool_free_last (pool_t * p, uint len);
+
+void pool_destroy (pool_t * p);
 
 frag_pool_t * frag_pool_create (uint size, uint res_len);
 

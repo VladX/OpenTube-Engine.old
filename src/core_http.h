@@ -29,4 +29,6 @@ void http_cleanup (request_t * r);
 
 void http_prepare (request_t * r, bool save_space);
 
+void http_destroy (request_t * r);
+
 void http_terminate (void);

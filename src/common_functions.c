@@ -99,9 +99,9 @@ void * pool_alloc (pool_t * p)
 
 void pool_free (pool_t * p, uint len)
 {
-	register uint i = len;
+	register uint i;
 	
-	for (; i < p->real_len; i++)
+	for (i = len; i < p->real_len; i++)
 		free(p->data[i]);
 	
 	p->cur_len = 0;
@@ -117,6 +117,17 @@ void pool_free_last (pool_t * p, uint len)
 		
 		free(p->data[p->cur_len]);
 	}
+}
+
+void pool_destroy (pool_t * p)
+{
+	register uint i;
+	
+	for (i = 0; i < p->real_len; i++)
+		free(p->data[i]);
+	
+	free(p->data);
+	free(p);
 }
 
 frag_pool_t * frag_pool_create (uint size, uint res_len)
