@@ -804,6 +804,20 @@ static inline bool http_send_file (request_t * r, const char * filepath)
 	#endif
 }
 
+/* We forced zlib to use our allocator instead of standard malloc. The following are wrapper functions */
+
+static void * zalloc (void * opaque, uint items, uint size)
+{
+	return allocator_calloc(items, size);
+}
+
+static void zfree (void * opaque, void * ptr)
+{
+	allocator_free(ptr);
+}
+
+/* ------- */
+
 void run_init_callbacks (void);
 
 static void * http_pass_to_handlers_routine (void * ptr)
@@ -828,6 +842,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	if (config.gzip)
 	{
 		memset(z, 0, sizeof(z_stream));
+		z->zalloc = zalloc;
+		z->zfree = zfree;
 		res = deflateInit2(z, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
 		if (res != Z_OK)
 			peerr(-1, "deflateInit2(): %d", res);
