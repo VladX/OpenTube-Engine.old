@@ -57,4 +57,4 @@ def run_test():
 	if i == 0:
 		raise UnitTestError()
 	
-	print('Simultaneous connections limit: %s' % (('more or equal %d' % (maxconn)) if (i == 99) else str(i)))
+	print('Simultaneous connections limit: %s' % (('more or equal %d' % (maxconn)) if (i == maxconn - 1) else str(i)))
