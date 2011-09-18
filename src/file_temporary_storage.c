@@ -25,14 +25,14 @@ bool frag_pool_save (frag_pool_t * p, const char * filename)
 {
 	uint i, len = strlen(filename);
 	FILE * f;
-	char * path = (char *) malloc(config.temp_dir.len + len + 1);
+	char * path = (char *) allocator_malloc(config.temp_dir.len + len + 1);
 	
 	memcpy(path, config.temp_dir.str, config.temp_dir.len);
 	memcpy(path + config.temp_dir.len, filename, len + 1);
 	
 	f = fopen(path, "wb");
 	debug_print_3("save pool to file \"%s\"", path);
-	free(path);
+	allocator_free(path);
 	
 	if (f == NULL)
 		return false;
@@ -52,7 +52,7 @@ frag_pool_t * frag_pool_load (uint size, uint res_len, const char * filename)
 	frag_pool_t * p;
 	long fsize;
 	uint i, len = strlen(filename);
-	char * path = (char *) malloc(config.temp_dir.len + len + 1);
+	char * path = (char *) allocator_malloc(config.temp_dir.len + len + 1);
 	
 	memcpy(path, config.temp_dir.str, config.temp_dir.len);
 	memcpy(path + config.temp_dir.len, filename, len + 1);
@@ -80,7 +80,7 @@ frag_pool_t * frag_pool_load (uint size, uint res_len, const char * filename)
 	fclose(f);
 	remove(path);
 	debug_print_3("pool loaded from file \"%s\"", path);
-	free(path);
+	allocator_free(path);
 	
 	return p;
 	
@@ -88,7 +88,7 @@ frag_pool_t * frag_pool_load (uint size, uint res_len, const char * filename)
 	fclose(f);
 	remove(path);
 	free_exit:
-	free(path);
+	allocator_free(path);
 	
 	return NULL;
 }

@@ -518,7 +518,7 @@ static bool http_divide_uri (request_t * r)
 	register uint i;
 	
 	if (r->in.uri.len > HTTP_PATH_PREALLOC)
-		r->in.path.str = (uchar *) realloc(r->in.path.str, r->in.uri.len);
+		r->in.path.str = (uchar *) allocator_realloc(r->in.path.str, r->in.uri.len);
 	c = r->in.path.str;
 	d = r->in.uri.str;
 	
@@ -1417,7 +1417,7 @@ static void http_prepare_once (void)
 	pthread_mutex_init(wmutex, NULL);
 	pthread_spin_init(spin_queue_atomic, PTHREAD_PROCESS_PRIVATE);
 	
-	wthreads = (pthread_t *) malloc(config.worker_threads * sizeof(pthread_t));
+	wthreads = (pthread_t *) allocator_malloc(config.worker_threads * sizeof(pthread_t));
 	
 	for (i = 0; i < config.worker_threads; i++)
 		pthread_create(&(wthreads[i]), NULL, http_pass_to_handlers_routine, NULL);
@@ -1454,7 +1454,7 @@ void http_prepare (request_t * r, bool save_space)
 	r->keepalive_time = 1;
 	r->in.method_get = (r->in.method_post = (r->in.method_head = false));
 	r->in.uri.len = 0;
-	r->in.path.str = (uchar *) malloc(HTTP_PATH_PREALLOC);
+	r->in.path.str = (uchar *) allocator_malloc(HTTP_PATH_PREALLOC);
 	r->in.path.len = 0;
 	r->in.content_type = NULL;
 	r->in.content_length = NULL;
@@ -1466,7 +1466,7 @@ void http_prepare (request_t * r, bool save_space)
 	r->temp.hMapFile = INVALID_HANDLE_VALUE;
 	#endif
 	
-	r->out.content_range.str = (char *) malloc(93); /* Allocate here for both content_range.str and expires.str (64 + 29). Dirty... but decreases memory fragmentation */
+	r->out.content_range.str = (char *) allocator_malloc(93); /* Allocate here for both content_range.str and expires.str (64 + 29). Dirty... but decreases memory fragmentation */
 	r->out.content_range.len = 0;
 	r->out.expires.str = (char *) r->out.content_range.str + 64; /* We have already allocated memory for this buffer above with one malloc call, so use it */
 	r->out.expires.len = 29;
@@ -1499,8 +1499,8 @@ void http_prepare (request_t * r, bool save_space)
 
 void http_destroy (request_t * r)
 {
-	free(r->in.path.str);
-	free(r->out.content_range.str);
+	allocator_free(r->in.path.str);
+	allocator_free(r->out.content_range.str);
 	buf_destroy(r->out_data);
 	
 	if (config.gzip)

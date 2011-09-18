@@ -57,7 +57,7 @@ void tpl_init (void)
 {
 	if (cur_template_dir == NULL)
 	{
-		cur_template_dir = (char *) malloc(config.data.len + config.template_name.len + 12);
+		cur_template_dir = (char *) allocator_malloc(config.data.len + config.template_name.len + 12);
 		strcpy(cur_template_dir, (char *) config.data.str);
 		strcat(cur_template_dir, "/templates/");
 		strcat(cur_template_dir, (char *) config.template_name.str);

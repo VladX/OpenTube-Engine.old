@@ -69,7 +69,7 @@ void ServiceMain (int argc, char ** argv)
 	do
 	{
 		userprofile_size = ret;
-		userprofile = (WCHAR *) realloc(userprofile, userprofile_size * sizeof(WCHAR));
+		userprofile = (WCHAR *) allocator_realloc(userprofile, userprofile_size * sizeof(WCHAR));
 		ret = GetEnvironmentVariableW(L"USERPROFILE", userprofile, userprofile_size);
 		if (ret == 0)
 			break;
@@ -80,7 +80,7 @@ void ServiceMain (int argc, char ** argv)
 		if (SetCurrentDirectoryW(userprofile) == 0)
 			win32_fatal_error("SetCurrentDirectoryW()");
 	
-	free(userprofile);
+	allocator_free(userprofile);
 	
 	userprofile = NULL;
 	
@@ -157,14 +157,14 @@ static bool service_try_install (void)
 		win32_fatal_error("OpenSCManager()");
 	}
 	
-	lpServiceStartName = malloc(strlen(config.group) + strlen(config.user) + 2);
+	lpServiceStartName = allocator_malloc(strlen(config.group) + strlen(config.user) + 2);
 	strcpy(lpServiceStartName, ".\\");
 	strcat(lpServiceStartName, config.user);
 	
 	if (GetFullPathNameA(path_to_configuration_file, MAX_PATH, conf_path, NULL) == 0)
 		peerr(-1, "GetFullPathNameA(%s)", path_to_configuration_file);
 	
-	full_path = malloc(strlen(bin_path) + strlen(conf_path) + 9);
+	full_path = allocator_malloc(strlen(bin_path) + strlen(conf_path) + 9);
 	strcpy(full_path, "\"");
 	strcat(full_path, bin_path);
 	strcat(full_path, "\" -c \"");
@@ -173,8 +173,8 @@ static bool service_try_install (void)
 	
 	hService = CreateServiceA(hSCManager, SHORT_PROG_NAME, PROG_NAME, SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, full_path, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD);
 	
-	free(lpServiceStartName);
-	free(full_path);
+	allocator_free(lpServiceStartName);
+	allocator_free(full_path);
 	
 	if (hService == NULL)
 		switch (GetLastError())
@@ -215,7 +215,7 @@ static void service_change_conf (void)
 	if (hService == NULL)
 		win32_fatal_error("OpenServiceA()");
 	
-	lpServiceStartName = malloc(strlen(config.group) + strlen(config.user) + 2);
+	lpServiceStartName = allocator_malloc(strlen(config.group) + strlen(config.user) + 2);
 	
 	strcpy(lpServiceStartName, ".\\");
 	strcat(lpServiceStartName, config.user);
@@ -223,7 +223,7 @@ static void service_change_conf (void)
 	if (!ChangeServiceConfigA(hService, SERVICE_WIN32_OWN_PROCESS, SERVICE_AUTO_START, SERVICE_ERROR_NORMAL, NULL, NULL, NULL, NULL, lpServiceStartName, WIN32_DEFAULT_USER_PASWORD, NULL))
 		win32_fatal_error("ChangeServiceConfigA()");
 	
-	free(lpServiceStartName);
+	allocator_free(lpServiceStartName);
 	
 	set_failure_actions(hService);
 	service_try_start(hService);
@@ -250,7 +250,7 @@ static void add_service_user (void)
 	
 	if (nStatus == ERROR_ACCESS_DENIED)
 	{
-		free(gi.lgrpi0_name);
+		allocator_free(gi.lgrpi0_name);
 		
 		return;
 	}
@@ -278,10 +278,10 @@ static void add_service_user (void)
 	if (nStatus != NERR_Success && nStatus != ERROR_MEMBER_IN_ALIAS)
 		eerr(-1, "NetLocalGroupAddMembers(): %d", (int) nStatus);
 	
-	free(gi.lgrpi0_name);
-	free(ui.usri1_name);
-	free(ui.usri1_password);
-	free(ui.usri1_home_dir);
+	allocator_free(gi.lgrpi0_name);
+	allocator_free(ui.usri1_name);
+	allocator_free(ui.usri1_password);
+	allocator_free(ui.usri1_home_dir);
 	
 	_BEGIN_LOCAL_SECTION_
 	NTSTATUS ret;
@@ -302,8 +302,8 @@ static void add_service_user (void)
 	
 	again:
 	
-	sid = (PSID) realloc(sid, cbsid);
-	ReferencedDomainName = (LPSTR) realloc(ReferencedDomainName, rdnsz);
+	sid = (PSID) allocator_realloc(sid, cbsid);
+	ReferencedDomainName = (LPSTR) allocator_realloc(ReferencedDomainName, rdnsz);
 	
 	if (!LookupAccountNameA(NULL, config.user, sid, &cbsid, ReferencedDomainName, &rdnsz, &peUse))
 	{
@@ -335,8 +335,8 @@ static void add_service_user (void)
 		eerr(-1, "LsaAddAccountRights(): %d", (int) LsaNtStatusToWinError(ret));
 	
 	LsaClose(hPolicy);
-	free(sid);
-	free(ReferencedDomainName);
+	allocator_free(sid);
+	allocator_free(ReferencedDomainName);
 	
 	_END_LOCAL_SECTION_
 	_END_LOCAL_SECTION_

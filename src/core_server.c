@@ -326,7 +326,7 @@ request_t * event_fetch_request (int sock)
 	
 	for (it = requests_vector; it->next != NULL; it = it->next);
 	
-	new = (request_vec_t *) malloc(sizeof(request_vec_t));
+	new = (request_vec_t *) allocator_malloc(sizeof(request_vec_t));
 	new->next = NULL;
 	it->next = new;
 	http_prepare(&(new->r), true);
@@ -352,7 +352,7 @@ void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 	#endif
 		* client_name_len = sizeof(struct sockaddr_in);
 	
-	* addr = (struct sockaddr *) malloc(* client_name_len);
+	* addr = (struct sockaddr *) allocator_malloc(* client_name_len);
 	
 	web_init();
 	
@@ -369,7 +369,7 @@ void event_startup (struct sockaddr ** addr, socklen_t * client_name_len)
 	for (i = 0; i < config.prealloc_request_structures; i++)
 	{
 		prev_prealloc_request = prealloc_request;
-		prealloc_request = (request_vec_t *) malloc(sizeof(request_vec_t));
+		prealloc_request = (request_vec_t *) allocator_malloc(sizeof(request_vec_t));
 		prealloc_request->next = NULL;
 		
 		if (prev_prealloc_request)
@@ -424,7 +424,7 @@ inline void event_iter (void)
 				/* free idle structure, release memory */
 				prev->next = it->next;
 				http_destroy(&(it->r));
-				free(it);
+				allocator_free(it);
 				it = prev;
 			}
 	}
@@ -692,7 +692,7 @@ static bool gethostaddr (char * name, const int type, in_addr_t * dst)
 	if (type == AF_INET6)
 	{
 		memcpy(&(addr6.s6_addr), dst, len);
-		addr_str = (char *) malloc(INET6_ADDRSTRLEN);
+		addr_str = (char *) allocator_malloc(INET6_ADDRSTRLEN);
 		addr_str = (char *) inet_ntop(AF_INET6, &addr6, addr_str, INET6_ADDRSTRLEN);
 	}
 	else
@@ -727,7 +727,7 @@ static int connect_to_socket (void)
 		sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (sockfd < 0)
 			peerr(-1, "socket(): %d", sockfd);
-		uname = (struct sockaddr_un *) malloc(sizeof(* uname));
+		uname = (struct sockaddr_un *) allocator_malloc(sizeof(* uname));
 		memset(uname, 0, sizeof(* uname));
 		uname->sun_family = AF_UNIX;
 		memcpy(uname->sun_path, http_server_unix_addr.str, http_server_unix_addr.len + 1);
@@ -743,7 +743,7 @@ static int connect_to_socket (void)
 		sockfd = socket(AF_INET6, SOCK_STREAM, 0);
 		if (sockfd < 0)
 			peerr(-1, "socket(): %d", sockfd);
-		i6name = (struct sockaddr_in6 *) malloc(sizeof(* i6name));
+		i6name = (struct sockaddr_in6 *) allocator_malloc(sizeof(* i6name));
 		memset(i6name, 0, sizeof(* i6name));
 		i6name->sin6_family = AF_INET6;
 		i6name->sin6_port = htons(http_port);
@@ -764,7 +764,7 @@ static int connect_to_socket (void)
 		sockfd = socket(AF_INET, SOCK_STREAM, 0);
 		if (sockfd < 0)
 			peerr(-1, "socket(): %d", sockfd);
-		iname = (struct sockaddr_in *) malloc(sizeof(* iname));
+		iname = (struct sockaddr_in *) allocator_malloc(sizeof(* iname));
 		memset(iname, 0, sizeof(* iname));
 		iname->sin_family = AF_INET;
 		iname->sin_port = htons(http_port);
@@ -987,7 +987,7 @@ void init (char * procname)
 		http_server_tcp_addr.str++;
 		http_server_tcp_addr.str[http_server_tcp_addr.len - 2] = '\0';
 		set_cpy_str(&http_server_tcp_addr, http_server_tcp_addr.str);
-		free(garbage);
+		allocator_free(garbage);
 		ipv6_addr = true;
 		
 		debug_print_1("IPv6 enabled, addr \"%s\"", http_server_tcp_addr.str);

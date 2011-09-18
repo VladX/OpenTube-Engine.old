@@ -144,7 +144,7 @@ static void process_directive_string (const char * const key, char * value, cons
 			config.temp_dir.len++;
 		}
 		
-		config.temp_dir.str = realloc(config.temp_dir.str, config.temp_dir.len + 10);
+		config.temp_dir.str = allocator_realloc(config.temp_dir.str, config.temp_dir.len + 10);
 	}
 	else if (strcmp(key, "server.data") == 0)
 	{
@@ -186,7 +186,7 @@ static void process_directive_string (const char * const key, char * value, cons
 		if (value[len - 1] != '/')
 		{
 			len++;
-			value = realloc(value, len + 1);
+			value = allocator_realloc(value, len + 1);
 			value[len - 1] = '/';
 			value[len] = '\0';
 		}
@@ -266,7 +266,7 @@ static void process_directive_int (const char * const key, const int value, cons
 		if (value <= 0)
 			EINVALIDVAL;
 		config.keepalive_timeout.len = digits_in_int(value);
-		config.keepalive_timeout.str = (uchar *) malloc(config.keepalive_timeout.len + 1);
+		config.keepalive_timeout.str = (uchar *) allocator_malloc(config.keepalive_timeout.len + 1);
 		config.keepalive_timeout_val = (uint) value;
 		int_to_str(value, (char *) config.keepalive_timeout.str, 10);
 	}
@@ -345,7 +345,7 @@ static bool process_conf (config_setting_t * setting)
 	if (type == CONFIG_TYPE_STRING)
 	{
 		string = config_setting_get_string(setting);
-		value = calloc(strlen(string) + 1, sizeof(* value));
+		value = allocator_calloc(strlen(string) + 1, sizeof(* value));
 		if (value == NULL)
 			peerr(-1, "%s", "Memory error");
 		strcpy(value, string);

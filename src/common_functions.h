@@ -37,6 +37,7 @@
 #endif
 
 #include "common_types.h"
+#include "allocator.h"
 #include "global.h"
 #include "localization.h"
 #include "core_logger.h"

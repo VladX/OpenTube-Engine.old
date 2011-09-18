@@ -153,7 +153,7 @@ bool ctpp_compile (const char * file)
 		#endif
 		if (r == -1)
 			peerr(-1, "chdir(%s)", cwd);
-		free(cwd);
+		allocator_free(cwd);
 	}
 	
 	std::string mkey = file;
@@ -169,7 +169,7 @@ bool ctpp_compile (const char * file)
 		}
 		it->second->data.clear();
 		delete it->second->vmmemcore;
-		free((void *) it->second->exec);
+		allocator_free((void *) it->second->exec);
 		delete it->second->out;
 		delete it->second;
 	}
@@ -226,7 +226,7 @@ bool ctpp_compile (const char * file)
 	UINT_32 iSize = 0;
 	const VMExecutable * aProgramCore = oDumper.GetExecutable(iSize);
 	compiled_template * ct = new compiled_template;
-	ct->exec = (const VMExecutable *) malloc(iSize);
+	ct->exec = (const VMExecutable *) allocator_malloc(iSize);
 	memcpy((void*) ct->exec, aProgramCore, iSize);
 	ct->size = iSize;
 	ct->vmmemcore = new VMMemoryCore(ct->exec);
@@ -256,7 +256,7 @@ void ctpp_destroy (void)
 	{
 		it->second->data.clear();
 		delete it->second->vmmemcore;
-		free((void *) it->second->exec);
+		allocator_free((void *) it->second->exec);
 		delete it->second->out;
 		delete it->second;
 	}

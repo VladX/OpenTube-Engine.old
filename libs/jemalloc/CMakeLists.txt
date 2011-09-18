@@ -1,0 +1,39 @@
+project (jemalloc C)
+cmake_minimum_required (VERSION 2.6)
+
+add_definitions (-DNDEBUG -DTRIMMED -DMOZ_MEMORY=1 -DMALLOC_OPENTUBE=1)
+
+if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
+ set (CMAKE_C_FLAGS "-O3 -g -Wno-unused-result")
+endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
+
+if (MSVC)
+ set (CMAKE_C_FLAGS "/MT /O2")
+endif (MSVC)
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+ add_definitions (-DMOZ_MEMORY_LINUX=1)
+endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+
+if (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
+ add_definitions (-DMOZ_MEMORY_BSD=1)
+endif (CMAKE_SYSTEM_NAME MATCHES ".*BSD")
+
+if (WIN32 OR MINGW)
+ add_definitions (-DMOZ_MEMORY_WINDOWS=1)
+endif (WIN32 OR MINGW)
+
+include (CheckTypeSize)
+check_type_size ("void *" TYPE_VOID_POINTER_SIZE BUILTIN_TYPES_ONLY)
+
+if (TYPE_VOID_POINTER_SIZE EQUAL 4)
+ set (MOZ_MEMORY_SIZEOF_PTR_2POW 2)
+elseif (TYPE_VOID_POINTER_SIZE EQUAL 8)
+ set (MOZ_MEMORY_SIZEOF_PTR_2POW 3)
+elseif (TYPE_VOID_POINTER_SIZE EQUAL 16)
+ set (MOZ_MEMORY_SIZEOF_PTR_2POW 4)
+endif (TYPE_VOID_POINTER_SIZE EQUAL 4)
+
+add_definitions (-DMOZ_MEMORY_SIZEOF_PTR_2POW=${MOZ_MEMORY_SIZEOF_PTR_2POW})
+
+add_library (jemalloc STATIC jemalloc.c)

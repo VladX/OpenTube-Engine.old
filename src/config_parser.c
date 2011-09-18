@@ -82,7 +82,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 	
 	while ((ret = fread(buf, 1, sizeof(buf), f)))
 	{
-		content = realloc(content, cur_size + ret + 2);
+		content = allocator_realloc(content, cur_size + ret + 2);
 		if (content == NULL)
 			peerr(-1, "%s", "memory error");
 		memcpy(content + cur_size, buf, ret);
@@ -92,7 +92,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 	if (ferror(f))
 	{
 		if (content)
-			free(content);
+			allocator_free(content);
 		
 		config_set_error_text(s, "I/O error");
 		
@@ -100,7 +100,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 	}
 	
 	if (!content)
-		content = malloc(sizeof(* content));
+		content = allocator_malloc(sizeof(* content));
 	
 	content[cur_size] = '\0';
 	content[cur_size + 1] = '\0';
@@ -109,7 +109,7 @@ static bool config_load_file_contents (config_setting_t * s, FILE * f)
 	if (!config_quick_validate(s, cur_size))
 	{
 		if (content)
-			free(content);
+			allocator_free(content);
 		
 		return false;
 	}
@@ -344,7 +344,7 @@ static char * config_parse_childs (config_setting_t * s)
 		}
 		
 		s->childs.num++;
-		s->childs.elems = realloc(s->childs.elems, s->childs.num * sizeof(config_setting_t));
+		s->childs.elems = allocator_realloc(s->childs.elems, s->childs.num * sizeof(config_setting_t));
 		
 		for (i = 0; i < (s->childs.num - 1); i++)
 			for (k = 0; k < s->childs.elems[i].childs.num; k++)
@@ -460,7 +460,7 @@ static char * config_parse_childs (config_setting_t * s)
 
 bool config_read (config_t * c, const char * filename, FILE * f)
 {
-	c->root = calloc(1, sizeof(config_setting_t));
+	c->root = allocator_calloc(1, sizeof(config_setting_t));
 	
 	if (c->root == NULL)
 		return false;
@@ -644,12 +644,12 @@ static void config_destroy_elem (config_setting_t * s)
 		for (i = 0; i < s->childs.num; i++)
 			config_destroy_elem(&(s->childs.elems[i]));
 		
-		free(s->childs.elems);
+		allocator_free(s->childs.elems);
 		s->childs.elems = NULL;
 		s->childs.num = 0;
 		
 		if (s->name.len == 0 && s->type == CONFIG_TYPE_GROUP && s->file_content)
-			free(s->file_content);
+			allocator_free(s->file_content);
 		
 		s->file_content = NULL;
 	}
@@ -658,6 +658,6 @@ static void config_destroy_elem (config_setting_t * s)
 void config_destroy (config_t * c)
 {
 	config_destroy_elem(c->root);
-	free(c->root);
+	allocator_free(c->root);
 	c->root = NULL;
 }

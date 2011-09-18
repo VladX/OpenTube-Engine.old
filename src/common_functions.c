@@ -35,13 +35,13 @@ void set_str (str_t * str, char * src)
 void set_cpy_str (str_t * str, char * src)
 {
 	str->len = strlen(src);
-	str->str = (char *) malloc(str->len + 1);
+	str->str = (char *) allocator_malloc(str->len + 1);
 	memcpy(str->str, src, str->len + 1);
 }
 
 str_t * new_str (char * src)
 {
-	str_t * str = (str_t *) malloc(sizeof(str_t));
+	str_t * str = (str_t *) allocator_malloc(sizeof(str_t));
 	set_cpy_str(str, src);
 	
 	return str;
@@ -56,13 +56,13 @@ void set_ustr (u_str_t * str, uchar * src)
 void set_cpy_ustr (u_str_t * str, uchar * src)
 {
 	str->len = strlen((char *) src);
-	str->str = (uchar *) malloc(str->len + 1);
+	str->str = (uchar *) allocator_malloc(str->len + 1);
 	memcpy(str->str, src, str->len + 1);
 }
 
 u_str_t * new_ustr (uchar * src)
 {
-	u_str_t * str = (u_str_t *) malloc(sizeof(u_str_t));
+	u_str_t * str = (u_str_t *) allocator_malloc(sizeof(u_str_t));
 	set_cpy_ustr(str, src);
 	
 	return str;
@@ -73,14 +73,14 @@ pool_t * pool_create (uint size, uint start_len)
 	register pool_t * p;
 	register uint i;
 	
-	p = (pool_t *) malloc(sizeof(pool_t));
+	p = (pool_t *) allocator_malloc(sizeof(pool_t));
 	p->cur_len = 0;
 	p->real_len = start_len;
 	p->node_size = size;
-	p->data = malloc(sizeof(void *) * p->real_len);
+	p->data = allocator_malloc(sizeof(void *) * p->real_len);
 	
 	for (i = 0; i < p->real_len; i++)
-		p->data[i] = malloc(p->node_size);
+		p->data[i] = allocator_malloc(p->node_size);
 	
 	return p;
 }
@@ -89,8 +89,8 @@ void * pool_alloc (pool_t * p)
 {
 	if (p->cur_len >= p->real_len)
 	{
-		p->data = realloc(p->data, sizeof(void *) * (p->cur_len + 1));
-		p->data[p->cur_len] = malloc(p->node_size);
+		p->data = allocator_realloc(p->data, sizeof(void *) * (p->cur_len + 1));
+		p->data[p->cur_len] = allocator_malloc(p->node_size);
 		p->real_len++;
 	}
 	
@@ -102,7 +102,7 @@ void pool_free (pool_t * p, uint len)
 	register uint i;
 	
 	for (i = len; i < p->real_len; i++)
-		free(p->data[i]);
+		allocator_free(p->data[i]);
 	
 	p->cur_len = 0;
 	p->real_len = len;
@@ -115,7 +115,7 @@ void pool_free_last (pool_t * p, uint len)
 	{
 		p->real_len--;
 		
-		free(p->data[p->cur_len]);
+		allocator_free(p->data[p->cur_len]);
 	}
 }
 
@@ -124,10 +124,10 @@ void pool_destroy (pool_t * p)
 	register uint i;
 	
 	for (i = 0; i < p->real_len; i++)
-		free(p->data[i]);
+		allocator_free(p->data[i]);
 	
-	free(p->data);
-	free(p);
+	allocator_free(p->data);
+	allocator_free(p);
 }
 
 frag_pool_t * frag_pool_create (uint size, uint res_len)
@@ -135,16 +135,16 @@ frag_pool_t * frag_pool_create (uint size, uint res_len)
 	register frag_pool_t * p;
 	register uint i;
 	
-	p = (frag_pool_t *) malloc(sizeof(frag_pool_t));
+	p = (frag_pool_t *) allocator_malloc(sizeof(frag_pool_t));
 	p->cur_len = 0;
 	p->reserved_len = res_len;
 	p->real_len = res_len;
 	p->node_size = size;
-	p->e = (frag_pool_elem_t *) malloc(sizeof(frag_pool_elem_t) * res_len);
+	p->e = (frag_pool_elem_t *) allocator_malloc(sizeof(frag_pool_elem_t) * res_len);
 	
 	for (i = 0; i < res_len; i++)
 	{
-		p->e[i].data = malloc(size);
+		p->e[i].data = allocator_malloc(size);
 		p->e[i].free = true;
 	}
 	
@@ -165,8 +165,8 @@ void * frag_pool_alloc (frag_pool_t * p)
 	
 	p->cur_len++;
 	p->real_len++;
-	p->e = (frag_pool_elem_t *) realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
-	p->e[p->real_len - 1].data = malloc(p->node_size);
+	p->e = (frag_pool_elem_t *) allocator_realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
+	p->e[p->real_len - 1].data = allocator_malloc(p->node_size);
 	p->e[p->real_len - 1].free = false;
 	
 	return p->e[p->real_len - 1].data;
@@ -179,8 +179,8 @@ static inline void _frag_try_internal_pool_free (frag_pool_t * p, uint i)
 		if (i == p->real_len - 1)
 		{
 			p->real_len--;
-			free(p->e[i].data);
-			p->e = (frag_pool_elem_t *) realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
+			allocator_free(p->e[i].data);
+			p->e = (frag_pool_elem_t *) allocator_realloc(p->e, sizeof(frag_pool_elem_t) * p->real_len);
 			
 			if (i > 0 && p->e[i - 1].free)
 				_frag_try_internal_pool_free(p, i - 1);
@@ -219,10 +219,10 @@ pqueue_t * pqueue_create (ulong res_len)
 {
 	register pqueue_t * p;
 	
-	p = (pqueue_t *) malloc(sizeof(pqueue_t));
+	p = (pqueue_t *) allocator_malloc(sizeof(pqueue_t));
 	p->cur_len = 0;
 	p->reserved_len = res_len;
-	p->data = malloc(sizeof(void *) * res_len);
+	p->data = allocator_malloc(sizeof(void *) * res_len);
 	
 	return p;
 }
@@ -232,7 +232,7 @@ void pqueue_push (pqueue_t * p, void * ptr)
 	p->cur_len++;
 	
 	if (p->cur_len > p->reserved_len)
-		p->data = realloc(p->data, sizeof(void *) * p->cur_len);
+		p->data = allocator_realloc(p->data, sizeof(void *) * p->cur_len);
 	
 	p->data[p->cur_len - 1] = ptr;
 }
@@ -242,7 +242,7 @@ void * pqueue_fetch (pqueue_t * p)
 	p->cur_len--;
 	
 	if (p->cur_len > p->reserved_len)
-		p->data = realloc(p->data, sizeof(void *) * p->cur_len);
+		p->data = allocator_realloc(p->data, sizeof(void *) * p->cur_len);
 	
 	return p->data[p->cur_len];
 }
@@ -251,19 +251,19 @@ buf_t * buf_create (uint size, uint res_len)
 {
 	register buf_t * b;
 	
-	b = (buf_t *) malloc(sizeof(buf_t));
+	b = (buf_t *) allocator_malloc(sizeof(buf_t));
 	b->cur_len = 0;
 	b->reserved_len = res_len;
 	b->node_size = size;
-	b->data = malloc(size * res_len);
+	b->data = allocator_malloc(size * res_len);
 	
 	return b;
 }
 
 void buf_destroy (buf_t * b)
 {
-	free(b->data);
-	free(b);
+	allocator_free(b->data);
+	allocator_free(b);
 }
 
 long buf_expand (buf_t * b, uint add)
@@ -275,7 +275,7 @@ long buf_expand (buf_t * b, uint add)
 	if (b->cur_len > b->reserved_len)
 	{
 		old_ptr = b->data;
-		b->data = realloc(b->data, b->node_size * b->cur_len);
+		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
 		return (long) ((uchar *) b->data - (uchar *) old_ptr);
 	}
@@ -292,7 +292,7 @@ long buf_expand_i (buf_t * b, int add)
 	if (b->cur_len > b->reserved_len)
 	{
 		old_ptr = b->data;
-		b->data = realloc(b->data, b->node_size * b->cur_len);
+		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
 		return (long) ((uchar *) b->data - (uchar *) old_ptr);
 	}
@@ -309,7 +309,7 @@ long buf_resize (buf_t * b, uint new_size)
 	if (b->cur_len > b->reserved_len)
 	{
 		old_ptr = b->data;
-		b->data = realloc(b->data, b->node_size * b->cur_len);
+		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
 		return (long) ((uchar *) b->data - (uchar *) old_ptr);
 	}
@@ -320,7 +320,7 @@ long buf_resize (buf_t * b, uint new_size)
 void buf_free (buf_t * b)
 {
 	if (b->cur_len > b->reserved_len)
-		b->data = realloc(b->data, b->node_size * b->reserved_len);
+		b->data = allocator_realloc(b->data, b->node_size * b->reserved_len);
 	
 	b->cur_len = 0;
 }
@@ -471,11 +471,11 @@ bool load_file_contents (const char * path, str_big_t * out)
 		return false;
 	}
 	
-	content = (char *) malloc(size + 1);
+	content = (char *) allocator_malloc(size + 1);
 	
 	if (read(fd, content, size) == -1)
 	{
-		free(content);
+		allocator_free(content);
 		close(fd);
 		return false;
 	}

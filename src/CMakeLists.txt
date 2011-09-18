@@ -23,8 +23,8 @@ if (NOT CMAKE_BUILD_TYPE)
  set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (link_libraries_list pthread z pcre ctpp2-st)
-set (link_directories_list ${CMAKE_BINARY_DIR}/libs/ctpp2)
+set (link_libraries_list pthread z pcre jemalloc ctpp2-st)
+set (link_directories_list ${CMAKE_BINARY_DIR}/libs/jemalloc ${CMAKE_BINARY_DIR}/libs/ctpp2)
 set (exec_filename opentube-server)
 
 check_type_size ("void *" TYPE_VOID_POINTER_SIZE BUILTIN_TYPES_ONLY)
@@ -66,6 +66,10 @@ endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 if (NOT _LINUX OR MINGW)
  set (link_libraries_list ${link_libraries_list} intl iconv)
 endif (NOT _LINUX OR MINGW)
+
+if (_LINUX)
+ set (CCFLAGS "${CCFLAGS} -pthread")
+endif (_LINUX)
 
 add_subdirectory (test_features test_features)
 

@@ -56,7 +56,7 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	if (p != pattern)
 	{
 		p++;
-		basedir = malloc((p - pattern) + 1);
+		basedir = allocator_malloc((p - pattern) + 1);
 		memcpy(basedir, pattern, p - pattern);
 		basedir[p - pattern] = '\0';
 		basedir_len = p - pattern;
@@ -69,9 +69,9 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	}
 	else
 	{
-		pglob->gl_pathv = malloc(sizeof(char *));
+		pglob->gl_pathv = allocator_malloc(sizeof(char *));
 		len = strlen(data.cFileName);
-		pglob->gl_pathv[0] = malloc(basedir_len + len + 1);
+		pglob->gl_pathv[0] = allocator_malloc(basedir_len + len + 1);
 		memcpy(pglob->gl_pathv[0], basedir, basedir_len);
 		(pglob->gl_pathv[0])[basedir_len] = '\0';
 		strcat(pglob->gl_pathv[0], data.cFileName);
@@ -82,9 +82,9 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	{
 		if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			continue;
-		pglob->gl_pathv = realloc(pglob->gl_pathv, sizeof(char *) * (pglob->gl_pathc + 1));
+		pglob->gl_pathv = allocator_realloc(pglob->gl_pathv, sizeof(char *) * (pglob->gl_pathc + 1));
 		len = strlen(data.cFileName);
-		pglob->gl_pathv[pglob->gl_pathc] = malloc(basedir_len + len + 1);
+		pglob->gl_pathv[pglob->gl_pathc] = allocator_malloc(basedir_len + len + 1);
 		memcpy(pglob->gl_pathv[pglob->gl_pathc], basedir, basedir_len);
 		(pglob->gl_pathv[pglob->gl_pathc])[basedir_len] = '\0';
 		strcat(pglob->gl_pathv[pglob->gl_pathc], data.cFileName);
@@ -92,7 +92,7 @@ int win32_glob (const char * pattern, int flags, void * error_cb, glob_t * pglob
 	}
 	
 	if (basedir)
-		free(basedir);
+		allocator_free(basedir);
 	
 	FindClose(h);
 	
@@ -108,11 +108,11 @@ void win32_globfree (glob_t * pglob)
 	
 	for (i = 0; i < pglob->gl_pathc; i++)
 	{
-		free(pglob->gl_pathv[i]);
+		allocator_free(pglob->gl_pathv[i]);
 		pglob->gl_pathv[i] = NULL;
 	}
 	
-	free(pglob->gl_pathv);
+	allocator_free(pglob->gl_pathv);
 }
 
 #ifndef HAVE_INET_NTOP
@@ -236,7 +236,7 @@ LPWSTR win32_utf8_to_utf16 (const char * src)
 {
 	uint l = (uint) strlen(src);
 	uint len = (uint) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, NULL, 0);
-	wchar_t * dst = malloc(sizeof(wchar_t) * (len + 1));
+	wchar_t * dst = allocator_malloc(sizeof(wchar_t) * (len + 1));
 	(void) MultiByteToWideChar(CP_UTF8, 0, (LPCSTR) src, l, (LPWSTR) dst, len);
 	dst[len] = 0;
 	

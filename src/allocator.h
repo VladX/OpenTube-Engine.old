@@ -19,38 +19,25 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include <libintl.h>
-#include <locale.h>
-#include "common_functions.h"
-#include "lang/strings.h"
+#ifndef __ALLOCATOR_H
+#define __ALLOCATOR_H
 
-static const uchar ** lstrings;
+#define ALLOCATOR_MALLOC_FN je_malloc
+#define ALLOCATOR_CALLOC_FN je_calloc
+#define ALLOCATOR_REALLOC_FN je_realloc
+#define ALLOCATOR_MEMALIGN_FN je_memalign
+#define ALLOCATOR_FREE_FN je_free
 
-const uchar * localization_get_string (uint id)
-{
-	return lstrings[id];
-}
+void * ALLOCATOR_CALLOC_FN (size_t nmemb, size_t size);
+void * ALLOCATOR_MALLOC_FN (size_t size);
+void ALLOCATOR_FREE_FN (void * ptr);
+void * ALLOCATOR_REALLOC_FN (void * ptr, size_t size);
+void * ALLOCATOR_MEMALIGN_FN (size_t boundary, size_t size);
 
-static void localization_load_strings (void)
-{
-	uint i, len = ARRAY_LENGTH(strings);
-	
-	for (i = 0; i < len; i++)
-	{
-		lstrings[i] = (const uchar *) strings[i];
-		if (strings[i] == NULL)
-			continue;
-		lstrings[i] = (const uchar *) gettext(strings[i]);
-	}
-}
+#define allocator_malloc(SIZE) ALLOCATOR_MALLOC_FN(SIZE)
+#define allocator_calloc(NMEMB, SIZE) ALLOCATOR_CALLOC_FN(NMEMB, SIZE)
+#define allocator_realloc(PTR, SIZE) ALLOCATOR_REALLOC_FN(PTR, SIZE)
+#define allocator_memalign(BOUNDARY, SIZE) ALLOCATOR_MEMALIGN_FN(BOUNDARY, SIZE)
+#define allocator_free(PTR) ALLOCATOR_FREE_FN(PTR)
 
-void localization_init (void)
-{
-	#ifndef _WIN
-	setlocale(LC_ALL, "");
-	#endif
-	bindtextdomain(GETTEXT_DOMAIN, LOCALE_DIR);
-	textdomain(GETTEXT_DOMAIN);
-	lstrings = allocator_malloc(sizeof(strings));
-	localization_load_strings();
-}
+#endif

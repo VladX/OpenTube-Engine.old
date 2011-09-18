@@ -60,7 +60,7 @@ static void gen_gzipped_value (cache_t * c)
 	do
 	{
 		len += GZIP_BUFFER_SIZE;
-		ptr = (uchar *) realloc(ptr, len);
+		ptr = (uchar *) allocator_realloc(ptr, len);
 		gz_strm->avail_out = GZIP_BUFFER_SIZE;
 		gz_strm->next_out = (ptr + len) - GZIP_BUFFER_SIZE;
 		r = deflate(gz_strm, Z_FINISH);
@@ -69,7 +69,7 @@ static void gen_gzipped_value (cache_t * c)
 		if (r != Z_OK)
 		{
 			err("deflate(): %d", r);
-			free(ptr);
+			allocator_free(ptr);
 			c->gzipped_value.str = NULL;
 			c->gzipped_value.len = 0;
 			return;
@@ -78,18 +78,18 @@ static void gen_gzipped_value (cache_t * c)
 	while (gz_strm->avail_out == 0);
 	
 	if (c->gzipped_value.len)
-		free(c->gzipped_value.str);
+		allocator_free(c->gzipped_value.str);
 	
 	len -= gz_strm->avail_out;
 	l = len + 18;
 	
-	p = malloc(l);
+	p = allocator_malloc(l);
 	memcpy(p, gzip_header, 10);
 	c->gzipped_value.str = p;
 	p += 10;
 	memcpy(p, ptr, len);
 	p += len;
-	free(ptr);
+	allocator_free(ptr);
 	
 	_BEGIN_LOCAL_SECTION_
 	static uint32_t gzip_ending[2];
@@ -144,7 +144,7 @@ void cache_update (u_str_t * name)
 			
 			if (res != NULL)
 			{
-				c->value.str = realloc(c->value.str, res->len);
+				c->value.str = allocator_realloc(c->value.str, res->len);
 				memcpy(c->value.str, res->str, res->len);
 				c->value.len = res->len;
 				c->time = current_time_sec;
@@ -161,10 +161,10 @@ void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
 	cache_t * c;
 	buf_expand(cache, 1);
 	c = &(((cache_t *) cache->data)[cache->cur_len - 1]);
-	c->key.str = (uchar *) malloc(name->len);
+	c->key.str = (uchar *) allocator_malloc(name->len);
 	memcpy(c->key.str, name->str, name->len);
 	c->key.len = name->len;
-	c->value.str = (uchar *) malloc(data->len);
+	c->value.str = (uchar *) allocator_malloc(data->len);
 	memcpy(c->value.str, data->str, data->len);
 	c->value.len = data->len;
 	c->update_callback = (cache_update_cb) update_callback;
@@ -180,10 +180,10 @@ void cache_free (void)
 	for (i = 0; i < cache->cur_len; i++)
 	{
 		c = &(((cache_t *) cache->data)[i]);
-		free(c->key.str);
-		free(c->value.str);
+		allocator_free(c->key.str);
+		allocator_free(c->value.str);
 		if (c->gzipped_value.len)
-			free(c->gzipped_value.str);
+			allocator_free(c->gzipped_value.str);
 	}
 	
 	buf_free(cache);

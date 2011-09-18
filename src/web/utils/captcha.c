@@ -431,7 +431,7 @@ static struct ppm_image * ppm_load (struct ppm_image * ppm, FILE * f)
 	while ((r = fread(buf, 1, sizeof(buf), f)) != 0)
 	{
 		len += r;
-		p = realloc(p, len);
+		p = allocator_realloc(p, len);
 		memcpy(p + (len - r), buf, r);
 	}
 	
@@ -459,7 +459,7 @@ void captcha_init (void)
 	
 	init = true;
 	_BEGIN_LOCAL_SECTION_
-	char * captcha_pat = (char *) malloc(config.data.len + strlen(captcha_patterns) + 1);
+	char * captcha_pat = (char *) allocator_malloc(config.data.len + strlen(captcha_patterns) + 1);
 	strcpy(captcha_pat, (char *) config.data.str);
 	strcat(captcha_pat, captcha_patterns);
 	
@@ -495,7 +495,7 @@ void captcha_init (void)
 			eerr(-1, "Image corrupted: \"%s\"", globbuf.gl_pathv[i]);
 		k = syms_size;
 		syms_size++;
-		syms = (struct captcha_syms *) realloc(syms, syms_size * sizeof(struct captcha_syms));
+		syms = (struct captcha_syms *) allocator_realloc(syms, syms_size * sizeof(struct captcha_syms));
 		syms[k].sym = TO_LOWER(* sym);
 		syms[k].channels = 3;
 		syms[k].rowbytes = ppm.width * syms[k].channels;
@@ -507,7 +507,7 @@ void captcha_init (void)
 	}
 	
 	globfree(&globbuf);
-	free(captcha_pat);
+	allocator_free(captcha_pat);
 	
 	_BEGIN_LOCAL_SECTION_
 	uint * _crc = (uint *) (((uchar *) png_header) + 29);
@@ -522,9 +522,9 @@ void captcha_init (void)
 	
 	if (blankimg == NULL)
 	{
-		blankimg = (uchar **) malloc(sizeof(uchar *) * CAPTCHA_HEIGHT);
-		blankimg[0] = (uchar *) malloc(CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
-		outimg = (uchar *) malloc(CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
+		blankimg = (uchar **) allocator_malloc(sizeof(uchar *) * CAPTCHA_HEIGHT);
+		blankimg[0] = (uchar *) allocator_malloc(CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
+		outimg = (uchar *) allocator_malloc(CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
 		memset(outimg, 0xFF, CAPTCHA_ROWSIZE * CAPTCHA_HEIGHT);
 		for (i = 0; i < CAPTCHA_HEIGHT; i++)
 			blankimg[i] = (blankimg[0]) + i * CAPTCHA_ROWSIZE;
@@ -533,7 +533,7 @@ void captcha_init (void)
 	if (outputbuffer == NULL)
 	{
 		outputbuffer = buf_create(1, 256);
-		outputkeyword = (uchar *) malloc(CAPTCHA_MAX_CHARS + 1);
+		outputkeyword = (uchar *) allocator_malloc(CAPTCHA_MAX_CHARS + 1);
 		memset(outputkeyword, 0, CAPTCHA_MAX_CHARS + 1);
 	}
 	
