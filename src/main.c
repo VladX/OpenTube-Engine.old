@@ -119,6 +119,7 @@ static void parse_args (char ** args, int n)
 
 int main (int argc, char ** argv)
 {
+	allocator_init();
 	localization_init();
 	parse_args(argv, argc);
 	logger_init();

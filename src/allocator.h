@@ -34,6 +34,12 @@ void ALLOCATOR_FREE_FN (void * ptr);
 void * ALLOCATOR_REALLOC_FN (void * ptr, size_t size);
 void * ALLOCATOR_MEMALIGN_FN (size_t boundary, size_t size);
 
+#ifdef _WIN
+ #define allocator_init() malloc_init_hard()
+#else
+ #define allocator_init()
+#endif
+
 #define allocator_malloc(SIZE) ALLOCATOR_MALLOC_FN(SIZE)
 #define allocator_calloc(NMEMB, SIZE) ALLOCATOR_CALLOC_FN(NMEMB, SIZE)
 #define allocator_realloc(PTR, SIZE) ALLOCATOR_REALLOC_FN(PTR, SIZE)

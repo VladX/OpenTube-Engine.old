@@ -200,6 +200,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #ifdef MOZ_MEMORY_WINDOWS
 
@@ -228,6 +229,7 @@ static unsigned long tlsIndex = 0xffffffff;
 #define	_pthread_self() __threadid()
 #define	issetugid() 0
 
+#if defined(_MSC_VER)
 /* use MSVC intrinsics */
 #pragma intrinsic(_BitScanForward)
 static __forceinline int
@@ -240,6 +242,9 @@ ffs(int x)
 
 	return (0);
 }
+#elif defined(__GNUC__)
+#define ffs(x) __builtin_ffs(x)
+#endif
 
 /* Implement getenv without using malloc */
 static char mozillaMallocOptionsBuf[64];
