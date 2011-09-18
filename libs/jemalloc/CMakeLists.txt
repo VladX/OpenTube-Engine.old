@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 2.6)
 add_definitions (-DNDEBUG -DTRIMMED -DMOZ_MEMORY=1 -DMALLOC_OPENTUBE=1)
 
 if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
- set (CMAKE_C_FLAGS "-O3 -g -Wno-unused-result")
+ set (CMAKE_C_FLAGS "-O3 -g -Wno-unused-result -Wno-attributes")
 endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 
 if (MSVC)

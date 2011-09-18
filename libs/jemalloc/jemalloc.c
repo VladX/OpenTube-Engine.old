@@ -218,6 +218,7 @@
 #define	inline __inline
 #define	SIZE_T_MAX SIZE_MAX
 #define	STDERR_FILENO 2
+#undef	PATH_MAX
 #define	PATH_MAX MAX_PATH
 #define	vsnprintf _vsnprintf
 

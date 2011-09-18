@@ -35,6 +35,7 @@ void * ALLOCATOR_REALLOC_FN (void * ptr, size_t size);
 void * ALLOCATOR_MEMALIGN_FN (size_t boundary, size_t size);
 
 #ifdef _WIN
+bool malloc_init_hard (void);
  #define allocator_init() malloc_init_hard()
 #else
  #define allocator_init()
