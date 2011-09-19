@@ -45,7 +45,7 @@ def run_test():
 		try:
 			conn[i].sock.recv(0)
 		except socket.error as e:
-			if e.errno == 11:
+			if e.errno == 11 or e.errno == 10035:
 				continue
 			else:
 				break

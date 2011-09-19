@@ -6413,7 +6413,8 @@ jemalloc_stats(jemalloc_stats_t *stats)
 	assert(stats->committed >= stats->allocated);
 }
 
-#ifdef MOZ_MEMORY_WINDOWS
+#if 0
+/*#ifdef MOZ_MEMORY_WINDOWS*/
 void*
 _recalloc(void *ptr, size_t count, size_t size)
 {

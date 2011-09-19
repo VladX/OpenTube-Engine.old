@@ -22,19 +22,11 @@
 #ifndef __ALLOCATOR_H
 #define __ALLOCATOR_H
 
-#ifdef _MSVC_
- #define ALLOCATOR_MALLOC_FN malloc
- #define ALLOCATOR_CALLOC_FN calloc
- #define ALLOCATOR_REALLOC_FN realloc
- #define ALLOCATOR_MEMALIGN_FN memalign
- #define ALLOCATOR_FREE_FN free
-#else
- #define ALLOCATOR_MALLOC_FN je_malloc
- #define ALLOCATOR_CALLOC_FN je_calloc
- #define ALLOCATOR_REALLOC_FN je_realloc
- #define ALLOCATOR_MEMALIGN_FN je_memalign
- #define ALLOCATOR_FREE_FN je_free
-#endif
+#define ALLOCATOR_MALLOC_FN je_malloc
+#define ALLOCATOR_CALLOC_FN je_calloc
+#define ALLOCATOR_REALLOC_FN je_realloc
+#define ALLOCATOR_MEMALIGN_FN je_memalign
+#define ALLOCATOR_FREE_FN je_free
 
 void * ALLOCATOR_CALLOC_FN (size_t nmemb, size_t size);
 void * ALLOCATOR_MALLOC_FN (size_t size);
@@ -42,7 +34,7 @@ void ALLOCATOR_FREE_FN (void * ptr);
 void * ALLOCATOR_REALLOC_FN (void * ptr, size_t size);
 void * ALLOCATOR_MEMALIGN_FN (size_t boundary, size_t size);
 
-#if defined(_WIN) && !defined(_MSVC_)
+#ifdef _WIN
 bool malloc_init_hard (void);
  #define allocator_init() malloc_init_hard()
 #else
