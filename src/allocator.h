@@ -47,4 +47,65 @@ bool malloc_init_hard (void);
 #define allocator_memalign(BOUNDARY, SIZE) ALLOCATOR_MEMALIGN_FN(BOUNDARY, SIZE)
 #define allocator_free(PTR) ALLOCATOR_FREE_FN(PTR)
 
+#ifdef __cplusplus
+
+/* Overload new/delete operators */
+
+extern "C++"
+{
+
+inline void * operator new (size_t size)
+{
+	void * ptr = (void *) allocator_malloc(size);
+	
+	if (ptr == NULL)
+		throw std::bad_alloc();
+	
+	return ptr;
+}
+
+inline void * operator new [] (size_t size)
+{
+	void * ptr = (void *) allocator_malloc(size);
+	
+	if (ptr == NULL)
+		throw std::bad_alloc();
+	
+	return ptr;
+}
+
+inline void operator delete (void * ptr)
+{
+	allocator_free(ptr);
+}
+
+inline void operator delete [] (void * ptr)
+{
+	allocator_free(ptr);
+}
+
+inline void * operator new (size_t size, const std::nothrow_t &)
+{
+	return (void *) allocator_malloc(size);
+}
+
+inline void * operator new [] (size_t size, const std::nothrow_t &)
+{
+	return (void *) allocator_malloc(size);
+}
+
+inline void operator delete (void * ptr, const std::nothrow_t &)
+{
+	allocator_free(ptr);
+}
+
+inline void operator delete [] (void * ptr, const std::nothrow_t &)
+{
+	allocator_free(ptr);
+}
+
+}
+
+#endif
+
 #endif
