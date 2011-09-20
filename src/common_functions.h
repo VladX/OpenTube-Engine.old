@@ -215,6 +215,10 @@ bool is_path_absolute (const char * path);
 
 char * gnu_getcwd (void);
 
+umlong save_cwd (void);
+
+bool restore_cwd (umlong d);
+
 const char * gnu_basename (const char * path);
 
 #endif

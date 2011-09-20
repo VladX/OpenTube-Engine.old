@@ -120,21 +120,18 @@ bool ctpp_compile (const char * file)
 	static struct stat st;
 	
 	int r;
-	char * cwd = gnu_getcwd();
+	char saved_cwd = save_cwd();
 	
-	if (cwd != NULL)
+	#ifdef _WIN
+	r = _chdir(cur_template_dir);
+	#else
+	r = chdir(cur_template_dir);
+	#endif
+	if (r == -1)
 	{
-		#ifdef _WIN
-		r = _chdir(cur_template_dir);
-		#else
-		r = chdir(cur_template_dir);
-		#endif
-		if (r == -1)
-		{
-			perr("chdir(%s)", cur_template_dir);
-			pthread_spin_unlock(spin_access);
-			return false;
-		}
+		perr("chdir(%s)", cur_template_dir);
+		pthread_spin_unlock(spin_access);
+		return false;
 	}
 	
 	if (stat(file, &st) == -1)
@@ -144,17 +141,8 @@ bool ctpp_compile (const char * file)
 		return false;
 	}
 	
-	if (cwd != NULL)
-	{
-		#ifdef _WIN
-		r = _chdir(cwd);
-		#else
-		r = chdir(cwd);
-		#endif
-		if (r == -1)
-			peerr(-1, "chdir(%s)", cwd);
-		allocator_free(cwd);
-	}
+	if (!restore_cwd(saved_cwd))
+		peerr(-1, "restore_cwd(%ul) failed", (ulong) saved_cwd);
 	
 	std::string mkey = file;
 	

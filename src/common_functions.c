@@ -566,6 +566,41 @@ char * gnu_getcwd (void)
 	#endif
 }
 
+/* Save the location of the current working directory for the purpose of returning to it later */
+umlong save_cwd (void)
+{
+	#ifdef _WIN
+	return gnu_getcwd();
+	#else
+	return open(".", O_RDONLY);
+	#endif
+}
+
+bool restore_cwd (umlong d)
+{
+	#ifdef _WIN
+	int ret = _chdir((const char *) d);
+	free((void *) d);
+	
+	return ((ret == -1) ? false : true);
+	#else
+	int ret;
+	
+	if (likely(d != -1))
+	{
+		ret = fchdir(d);
+		close(d);
+		
+		if (unlikely(ret == -1))
+			return false;
+		
+		return true;
+	}
+	
+	return false;
+	#endif
+}
+
 const char * gnu_basename (const char * path)
 {
 	register char * p = (char *) path + strlen(path);
