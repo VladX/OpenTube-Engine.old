@@ -1,7 +1,15 @@
 project (jemalloc C)
 cmake_minimum_required (VERSION 2.6)
 
-add_definitions (-DNDEBUG -DTRIMMED -DMOZ_MEMORY=1 -DMALLOC_OPENTUBE=1)
+option (DEBUG_MEMORY "Debug memory." OFF)
+
+add_definitions (-DTRIMMED -DMOZ_MEMORY=1 -DMALLOC_OPENTUBE=1)
+
+if (DEBUG_MEMORY)
+ add_definitions (-DDEBUG -DMOZ_MEMORY_DEBUG)
+else (DEBUG_MEMORY)
+ add_definitions (-DNDEBUG)
+endif (DEBUG_MEMORY)
 
 if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
  set (CMAKE_C_FLAGS "-O3 -g -Wno-unused-result -Wno-attributes")

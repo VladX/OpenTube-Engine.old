@@ -47,7 +47,8 @@ bool malloc_init_hard (void);
 #define allocator_memalign(BOUNDARY, SIZE) ALLOCATOR_MEMALIGN_FN(BOUNDARY, SIZE)
 #define allocator_free(PTR) ALLOCATOR_FREE_FN(PTR)
 
-#ifdef __cplusplus
+/* FIXME Using our allocator in new/delete operators can lead to memory corruption when using third-party C++ libs */
+#if 0 && defined(__cplusplus)
 
 /* Overload new/delete operators */
 
