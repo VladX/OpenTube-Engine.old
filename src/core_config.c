@@ -23,7 +23,7 @@
 #include "config_parser.h"
 #include "win32_utils.h"
 
-#define EUNKNOWNDIRECTIVE eerr(-1, "Unknown directive \"%s\" in configuration file on line %d.", key, line)
+#define EUNKNOWNDIRECTIVE eerr(-1, "Unknown directive \"%s\" of type %s in configuration file on line %d. Make sure you use the correct type for this directive.", key, directive_type, line)
 #define EINVALIDVAL eerr(-1, "Invalid value for \"%s\".", key)
 
 
@@ -58,12 +58,15 @@ static void default_config (void)
 	config.tpl_cache_update = 0;
 	config.worker_threads = 5;
 	config.prealloc_request_structures = 10;
+	config.idle_request_structures = 0;
 	config.script_init = "init.js";
 	config.script_update = 0;
 }
 
 static void process_directive_string (const char * const key, char * value, const int line)
 {
+	const char * directive_type = "string";
+	
 	if (strcmp(key, "server.listen") == 0)
 	{
 		char * addr, * port;
@@ -230,6 +233,7 @@ static void process_directive_string (const char * const key, char * value, cons
 
 static void process_directive_int (const char * const key, const int value, const int line)
 {
+	const char * directive_type = "integer";
 	
 	if (strcmp(key, "server.worker-threads") == 0)
 	{
@@ -282,7 +286,7 @@ static void process_directive_int (const char * const key, const int value, cons
 			eerr(-1, "%s", "The gzip compression level must be between 1 and 9.");
 		config.gzip_level = value;
 	}
-	else if (strcmp(key, "http.gzip.min-page-size") == 0)
+	else if (strcmp(key, "http.gzip.threshold") == 0)
 	{
 		if (value < 1)
 			EINVALIDVAL;
@@ -294,16 +298,22 @@ static void process_directive_int (const char * const key, const int value, cons
 
 static void process_directive_int64 (const char * const key, const int64 value, const int line)
 {
+	const char * directive_type = "integer";
+	
 	EUNKNOWNDIRECTIVE;
 }
 
 static void process_directive_float (const char * const key, const float value, const int line)
 {
+	const char * directive_type = "float";
+	
 	EUNKNOWNDIRECTIVE;
 }
 
 static void process_directive_bool (const char * const key, const int value, const int line)
 {
+	const char * directive_type = "boolean";
+	
 	if (strcmp(key, "http.gzip.enable") == 0)
 	{
 		if (value)
