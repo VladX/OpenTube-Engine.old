@@ -1,3 +1,3 @@
-<TMPL_include "header.tpl">
+{include "header.tpl"}
 
-<TMPL_include "footer.tpl">
+{include "footer.tpl"}

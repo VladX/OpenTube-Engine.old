@@ -19,15 +19,26 @@
  * Boston, MA  02110-1301  USA
  */
 
+threadsafe template_context_t tpl_ctx;
+
 WEB_CALLBACK(video, "/v/", false)
 {
-	u_str_t * s;
-	tpl_set_var("title", _l(1));
-	s = tpl_load("main.tpl");
-	if (s == NULL)
+	template_t tpl;
+	
+	tpl = tpl_compile("main.tpl");
+	
+	if (tpl == NULL)
 		internal_server_error();
 	else
-		APPEND(s->str, s->len);
+	{
+		tpl_set_var_static(tpl_ctx, "title", _l(1));
+		tpl_complete(tpl, tpl_ctx, thread_global_buffer);
+	}
 	
 	return thread_global_buffer;
+}
+
+WEB_INIT(video)
+{
+	tpl_ctx = tpl_context_create();
 }

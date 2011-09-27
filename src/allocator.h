@@ -45,7 +45,7 @@ bool malloc_init_hard (void);
 #define allocator_calloc(NMEMB, SIZE) ALLOCATOR_CALLOC_FN(NMEMB, SIZE)
 #define allocator_realloc(PTR, SIZE) ALLOCATOR_REALLOC_FN(PTR, SIZE)
 #define allocator_memalign(BOUNDARY, SIZE) ALLOCATOR_MEMALIGN_FN(BOUNDARY, SIZE)
-#define allocator_free(PTR) ALLOCATOR_FREE_FN(PTR)
+#define allocator_free(PTR) ALLOCATOR_FREE_FN((void *) PTR)
 
 /* FIXME Using our allocator in new/delete operators can lead to memory corruption when using third-party C++ libs */
 #if 0 && defined(__cplusplus)

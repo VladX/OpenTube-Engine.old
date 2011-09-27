@@ -570,9 +570,9 @@ char * gnu_getcwd (void)
 umlong save_cwd (void)
 {
 	#ifdef _WIN
-	return gnu_getcwd();
+	return (umlong) gnu_getcwd();
 	#else
-	return open(".", O_RDONLY);
+	return (umlong) open(".", O_RDONLY);
 	#endif
 }
 

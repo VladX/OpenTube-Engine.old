@@ -19,9 +19,25 @@
  * Boston, MA  02110-1301  USA
  */
 
-void tpl_set_var (const char * name, const char * value);
+#define IS_VALID_TPL_VARIABLE_CHARACTER(X) (((X) >= 'a' && (X) <= 'z') || ((X) >= 'A' && (X) <= 'Z') || ((X) >= '0' && (X) <= '9') || (X) == '-' || (X) == '_' || (X) == ' ')
 
-u_str_t * tpl_load (const char * file);
+typedef void * template_t;
+
+typedef void * template_context_t;
+
+template_context_t tpl_context_create (void);
+
+void tpl_set_global_var (const char * name, const char * value);
+
+void tpl_set_global_var_static (const char * name, const char * value);
+
+void tpl_set_var (template_context_t ctx, const char * name, const char * value);
+
+void tpl_set_var_static (template_context_t ctx, const char * name, const char * value);
+
+template_t tpl_compile (const char * file);
+
+void tpl_complete (template_t tpl, template_context_t ctx, buf_t * out);
 
 void tpl_init (void);
 
