@@ -38,11 +38,8 @@ enum tpl_block_types
 struct tpl_block
 {
 	size_t content_offset;
-	union
-	{
-		size_t content_length;
-		uint32_t checksum;
-	};
+	size_t content_length;
+	uint32_t checksum;
 	enum tpl_block_types type;
 };
 
@@ -58,6 +55,7 @@ struct assoc_variable
 	const char * value;
 	uint value_len;
 	uint32_t checksum;
+	bool allocated;
 };
 
 struct context
@@ -326,9 +324,12 @@ void tpl_set_global_var (const char * name, const char * value)
 	
 	if (var)
 	{
-		allocator_free(var->value);
+		if (var->allocated)
+			allocator_free(var->value);
+		
 		var->value = value_dup;
 		var->value_len = value_len;
+		var->allocated = true;
 	}
 	else
 	{
@@ -336,6 +337,7 @@ void tpl_set_global_var (const char * name, const char * value)
 		global_vars_vector[global_vars_vector_size - 1].checksum = checksum;
 		global_vars_vector[global_vars_vector_size - 1].value = value_dup;
 		global_vars_vector[global_vars_vector_size - 1].value_len = value_len;
+		global_vars_vector[global_vars_vector_size - 1].allocated = true;
 	}
 	
 	pthread_spin_unlock(global_vars_spin);
@@ -354,8 +356,12 @@ void tpl_set_global_var_static (const char * name, const char * value)
 	
 	if (var)
 	{
+		if (var->allocated)
+			allocator_free(var->value);
+		
 		var->value = value;
 		var->value_len = value_len;
+		var->allocated = false;
 	}
 	else
 	{
@@ -363,6 +369,7 @@ void tpl_set_global_var_static (const char * name, const char * value)
 		global_vars_vector[global_vars_vector_size - 1].checksum = checksum;
 		global_vars_vector[global_vars_vector_size - 1].value = value;
 		global_vars_vector[global_vars_vector_size - 1].value_len = value_len;
+		global_vars_vector[global_vars_vector_size - 1].allocated = false;
 	}
 	
 	pthread_spin_unlock(global_vars_spin);
@@ -373,14 +380,16 @@ template_context_t tpl_context_create (void)
 	return memset(allocator_malloc(sizeof(struct context)), 0, sizeof(struct context));
 }
 
-void tpl_context_destroy (template_context_t ctx)
+void tpl_context_destroy (template_context_t ctx_void)
 {
-	/*
-	 * FIXME: We should free all cloned values in vars vector. Otherwise here will be leak.
-	 * But we must somehow distinguish static and dynamic values. Static values can't be freed.
-	 */
+	struct context * ctx = ctx_void;
+	mlong i;
 	
-	allocator_free(((struct context *) ctx)->vars);
+	for (i = ctx->vars_len - 1; i >= 0; i--)
+		if (ctx->vars[i].allocated)
+			allocator_free(ctx->vars[i].value);
+	
+	allocator_free(ctx->vars);
 	allocator_free(ctx);
 }
 
@@ -408,9 +417,12 @@ void tpl_set_var (template_context_t ctx_void, const char * name, const char * v
 	
 	if (var)
 	{
-		allocator_free(var->value);
+		if (var->allocated)
+			allocator_free(var->value);
+		
 		var->value = value_dup;
 		var->value_len = value_len;
+		var->allocated = true;
 	}
 	else
 	{
@@ -418,6 +430,7 @@ void tpl_set_var (template_context_t ctx_void, const char * name, const char * v
 		ctx->vars[ctx->vars_len - 1].checksum = checksum;
 		ctx->vars[ctx->vars_len - 1].value = value_dup;
 		ctx->vars[ctx->vars_len - 1].value_len = value_len;
+		ctx->vars[ctx->vars_len - 1].allocated = true;
 	}
 }
 
@@ -430,9 +443,12 @@ void tpl_set_var_static (template_context_t ctx_void, const char * name, const c
 	
 	if (var)
 	{
-		allocator_free(var->value);
+		if (var->allocated)
+			allocator_free(var->value);
+		
 		var->value = value;
 		var->value_len = value_len;
+		var->allocated = false;
 	}
 	else
 	{
@@ -440,6 +456,7 @@ void tpl_set_var_static (template_context_t ctx_void, const char * name, const c
 		ctx->vars[ctx->vars_len - 1].checksum = checksum;
 		ctx->vars[ctx->vars_len - 1].value = value;
 		ctx->vars[ctx->vars_len - 1].value_len = value_len;
+		ctx->vars[ctx->vars_len - 1].allocated = false;
 	}
 }
 
