@@ -1,5 +1,0 @@
-CTestTestfile.cmake
-ctpp2-config
-include/CTPP2SysHeaders.h
-lib*.a
-ctpp*.lib
