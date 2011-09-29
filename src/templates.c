@@ -26,7 +26,7 @@
 #include "libs/zlib.h"
 #include "libs/pcre.h"
 
-#define CALC_CHECKSUM(F, L) adler32(1L, (const uchar *) F, L)
+#define CALC_CHECKSUM(BUF, LEN) adler32(1L, (const uchar *) BUF, LEN)
 
 enum tpl_block_types
 {
