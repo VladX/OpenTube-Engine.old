@@ -23,6 +23,9 @@
 #include "templates.h"
 #include <pthread.h>
 #include <sys/stat.h>
+#ifdef _WIN
+ #include <io.h>
+#endif
 #include "libs/zlib.h"
 #include "libs/pcre.h"
 
@@ -467,7 +470,11 @@ template_t tpl_compile (const char * file)
 	pthread_mutex_lock(mutex);
 	cwd = save_cwd();
 	
+	#ifdef _WIN
+	if (_chdir(cur_template_dir) == -1)
+	#else
 	if (chdir(cur_template_dir) == -1)
+	#endif
 	{
 		perr("chdir(%s) failed", cur_template_dir);
 		ret = NULL;
