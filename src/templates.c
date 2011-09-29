@@ -503,7 +503,7 @@ template_t tpl_compile (const char * file)
 		
 		if (compiled_template == NULL)
 		{
-			compiled_templates = allocator_realloc(compiled_templates, ++compiled_templates_num);
+			compiled_templates = allocator_realloc(compiled_templates, sizeof(* compiled_template) * (++compiled_templates_num));
 			compiled_template = &(compiled_templates[compiled_templates_num - 1]);
 		}
 		else

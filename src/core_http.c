@@ -986,6 +986,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		pthread_mutex_unlock(wmutex);
 	}
 	
+	deflateEnd(z);
+	
 	pthread_spin_lock(spin_queue_atomic);
 	tpl_destroy();
 	pthread_spin_unlock(spin_queue_atomic);
