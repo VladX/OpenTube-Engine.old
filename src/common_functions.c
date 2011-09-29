@@ -458,8 +458,8 @@ bool load_file_contents (const char * path, str_big_t * out)
 		return false;
 	
 	#ifdef HAVE_LSEEKI64
-	size = _lseeki64(fd, 0L, SEEK_END);
-	(void) _lseeki64(fd, 0L, SEEK_SET);
+	size = _lseeki64(fd, 0LL, SEEK_END);
+	(void) _lseeki64(fd, 0LL, SEEK_SET);
 	#else
 	size = lseek(fd, 0, SEEK_END);
 	(void) lseek(fd, 0, SEEK_SET);
