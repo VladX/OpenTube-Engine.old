@@ -24,6 +24,7 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include "libs/zlib.h"
+#include "libs/pcre.h"
 
 #define CALC_CHECKSUM(F, L) adler32(1L, (const uchar *) F, L)
 
@@ -38,8 +39,12 @@ enum tpl_block_types
 struct tpl_block
 {
 	size_t content_offset;
-	size_t content_length;
-	uint32_t checksum;
+	union
+	{
+		size_t content_length;
+		uint32_t checksum;
+	};
+	uint32_t block_checksum;
 	enum tpl_block_types type;
 };
 
@@ -64,9 +69,39 @@ struct context
 	size_t vars_len;
 };
 
+struct block_context
+{
+	struct context ctx;
+	uint32_t checksum;
+};
+
 char * cur_template_dir = NULL;
 static struct compiled_template * compiled_templates = NULL;
 static uint compiled_templates_num = 0;
+static const pcre * regexp_block_code;
+
+static inline size_t calculate_vector_size (struct tpl_block * vector)
+{
+	size_t vector_size;
+	struct tpl_block * v;
+	
+	for (vector_size = 1, v = vector; v->type != TPL_TYPE_TERM; v++, vector_size++);
+	
+	return vector_size;
+}
+
+static void adjust_offsets (struct tpl_block * vector, size_t add)
+{
+	size_t vector_size, i;
+	
+	vector_size = calculate_vector_size(vector);
+	
+	if (!add)
+		add = sizeof(struct tpl_block) * vector_size;
+	
+	for (i = 0; i < vector_size - 1; i++)
+		vector[i].content_offset += add;
+}
 
 static char * gather_into_single_file (const char * file, str_big_t * content)
 {
@@ -129,7 +164,7 @@ static char * gather_into_single_file (const char * file, str_big_t * content)
 	return content->str;
 }
 
-static template_t parse_variables (str_big_t * content)
+static struct tpl_block * parse_variables (str_big_t * content)
 {
 	struct tpl_block * vector = NULL;
 	size_t offset = 0, vector_size = 0;
@@ -178,14 +213,14 @@ static template_t parse_variables (str_big_t * content)
 		vector = allocator_realloc(vector, sizeof(struct tpl_block) * (++vector_size));
 		vector[vector_size - 1].type = TPL_TYPE_VAR;
 		vector[vector_size - 1].content_offset = found - content->str;
-		/*vector[vector_size - 1].content_length = end - found;*/
+		vector[vector_size - 1].content_length = end - found;
 		vector[vector_size - 1].checksum = CALC_CHECKSUM(found, end - found);
 		
 		offset = braceend - content->str;
 	}
 	
 	vector_size += 2;
-	vector = allocator_realloc(vector, sizeof(struct tpl_block) * vector_size + content->len);
+	vector = allocator_realloc(vector, sizeof(struct tpl_block) * vector_size);
 	vector[vector_size - 2].type = TPL_TYPE_TEXT;
 	vector[vector_size - 2].content_offset = offset;
 	vector[vector_size - 2].content_length = content->len - offset;
@@ -193,22 +228,217 @@ static template_t parse_variables (str_big_t * content)
 	vector[vector_size - 1].content_offset = sizeof(struct tpl_block) * vector_size + content->len;
 	vector[vector_size - 1].content_length = vector[vector_size - 1].content_offset;
 	
-	memcpy(vector + vector_size, content->str, content->len);
-	
 	return vector;
 }
 
-static void adjust_offsets (struct tpl_block * vector)
+static struct tpl_block * concat_vectors (struct tpl_block * v1, struct tpl_block * v2)
 {
-	size_t vector_size, add, i;
-	struct tpl_block * v;
+	struct tpl_block * res;
+	size_t v1_size, v2_size;
 	
-	for (vector_size = 1, v = vector; v->type != TPL_TYPE_TERM; v++, vector_size++);
+	if (v1 == NULL && v2 == NULL)
+		return NULL;
 	
-	add = sizeof(struct tpl_block) * vector_size;
+	if (v2 == NULL)
+		return v1;
 	
-	for (i = 0; i < vector_size - 1; i++)
-		vector[i].content_offset += add;
+	if (v1 == NULL)
+		return v2;
+	
+	v1_size = calculate_vector_size(v1) - 1;
+	v2_size = calculate_vector_size(v2) - 1;
+	
+	res = allocator_malloc(sizeof(struct tpl_block) * (v1_size + v2_size + 1));
+	res[v1_size + v2_size].type = TPL_TYPE_TERM;
+	res[v1_size + v2_size].content_offset = 0;
+	res[v1_size + v2_size].content_length = 0;
+	memcpy(res, v1, sizeof(struct tpl_block) * v1_size);
+	memcpy(res + v1_size, v2, sizeof(struct tpl_block) * v2_size);
+	
+	allocator_free(v1);
+	allocator_free(v2);
+	
+	return res;
+}
+
+static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block * vector, size_t vector_size, size_t i)
+{
+	struct tpl_block * cur = &(vector[i]);
+	struct tpl_block * next;
+	struct tpl_block * res_vector = NULL, * tmp_vector = NULL, * tmp_vector_upper;
+	str_big_t block_content;
+	size_t k, prev_offset = cur->content_offset;
+	
+	for (;;)
+	{
+		new_iter:
+		
+		i++;
+		
+		if (i >= vector_size)
+			break;
+		
+		next = &(vector[i]);
+		
+		if (res_vector)
+			for (k = 0; k < calculate_vector_size(res_vector) - 1; k++)
+				if (res_vector[k].block_checksum == next->block_checksum)
+					goto new_iter;
+		
+		if (cur->content_offset < next->content_offset && cur->content_offset + cur->content_length > next->content_offset + next->content_length)
+			tmp_vector = process_blocks(content, vector, vector_size, i);
+		else
+			break;
+		
+		if (tmp_vector == NULL)
+		{
+			allocator_free(res_vector);
+			
+			return NULL;
+		}
+		
+		block_content = * content;
+		block_content.str += prev_offset;
+		block_content.len = next->content_offset - prev_offset;
+		
+		if (block_content.str[block_content.len - 1] == '}')
+		{
+			while (block_content.str[block_content.len - 1] != '{')
+				block_content.len--;
+			
+			block_content.len--;
+		}
+		
+		if (block_content.len > 0)
+		{
+			tmp_vector_upper = parse_variables(&block_content);
+			
+			if (tmp_vector_upper == NULL)
+			{
+				allocator_free(res_vector);
+				allocator_free(tmp_vector);
+				
+				return NULL;
+			}
+			
+			if (prev_offset != 0)
+				adjust_offsets(tmp_vector_upper, prev_offset);
+			
+			for (k = 0; k < calculate_vector_size(tmp_vector_upper) - 1; k++)
+				tmp_vector_upper[k].block_checksum = cur->block_checksum;
+			
+			tmp_vector = concat_vectors(tmp_vector_upper, tmp_vector);
+		}
+		
+		res_vector = concat_vectors(res_vector, tmp_vector);
+		
+		prev_offset = next->content_offset + next->content_length;
+		
+		if (content->str[prev_offset] == '{')
+		{
+			while (content->str[prev_offset] != '}')
+				prev_offset++;
+			
+			prev_offset++;
+		}
+	}
+	
+	block_content = * content;
+	block_content.str += prev_offset;
+	block_content.len = (cur->content_offset + cur->content_length) - prev_offset;
+	
+	if (block_content.len > 0)
+	{
+		tmp_vector = parse_variables(&block_content);
+		
+		if (tmp_vector == NULL)
+		{
+			allocator_free(res_vector);
+			allocator_free(tmp_vector);
+			
+			return NULL;
+		}
+		
+		if (prev_offset != 0)
+			adjust_offsets(tmp_vector, prev_offset);
+		
+		for (k = 0; k < calculate_vector_size(tmp_vector) - 1; k++)
+			tmp_vector[k].block_checksum = cur->block_checksum;
+		
+		res_vector = concat_vectors(res_vector, tmp_vector);
+	}
+	
+	return res_vector;
+}
+
+static template_t parse_blocks (str_big_t * content)
+{
+	struct tpl_block * vector = NULL, * result_vector = NULL;
+	size_t offset = 0, vector_size = 0, i, content_length, content_offset;
+	int ovector[15];
+	int r;
+	uint32_t checksum;
+	
+	vector = allocator_realloc(vector, sizeof(struct tpl_block) * (++vector_size));
+	vector[0].type = TPL_TYPE_BLOCK;
+	vector[0].content_offset = 0;
+	vector[0].content_length = content->len;
+	vector[0].block_checksum = 0;
+	
+	for (;;)
+	{
+		r = pcre_exec(regexp_block_code, NULL, content->str, content->len, offset, 0, ovector, ARRAY_LENGTH(ovector));
+		
+		if (r < 0)
+			break;
+		
+		assert(r == 3);
+		
+		checksum = CALC_CHECKSUM(content->str + ovector[2], ovector[3] - ovector[2]);
+		content_offset = ovector[4];
+		content_length = ovector[5] - ovector[4];
+		
+		for (i = 0; i < vector_size; i++)
+		{
+			if (content_offset >= vector[i].content_offset && ovector[5] >= vector[i].content_offset + vector[i].content_length && content_offset <= vector[i].content_offset + vector[i].content_length)
+			{
+				allocator_free(vector);
+				err("Block \"%.*s\" is overlapped by other block", ovector[3] - ovector[2], content->str + ovector[2]);
+				
+				return NULL;
+			}
+			
+			if (vector[i].block_checksum == checksum)
+			{
+				allocator_free(vector);
+				err("Duplicate block \"%.*s\"", ovector[3] - ovector[2], content->str + ovector[2]);
+				
+				return NULL;
+			}
+		}
+		
+		vector = allocator_realloc(vector, sizeof(struct tpl_block) * (++vector_size));
+		vector[vector_size - 1].type = TPL_TYPE_BLOCK;
+		vector[vector_size - 1].content_offset = content_offset;
+		vector[vector_size - 1].content_length = content_length;
+		vector[vector_size - 1].block_checksum = checksum;
+		
+		offset = content_offset;
+	}
+	
+	result_vector = process_blocks(content, vector, vector_size, 0);
+	
+	if (result_vector)
+	{
+		vector_size = calculate_vector_size(result_vector);
+		result_vector = allocator_realloc(result_vector, sizeof(struct tpl_block) * vector_size + content->len);
+		memcpy(result_vector + vector_size, content->str, content->len);
+		vector_size = 0;
+	}
+	
+	allocator_free(vector);
+	
+	return result_vector;
 }
 
 template_t tpl_compile (const char * file)
@@ -265,11 +495,11 @@ template_t tpl_compile (const char * file)
 		goto _return_;
 	}
 	
-	ret = parse_variables(&content);
+	ret = parse_blocks(&content);
 	
 	if (ret)
 	{
-		adjust_offsets(ret);
+		adjust_offsets(ret, 0);
 		
 		if (compiled_template == NULL)
 		{
@@ -393,6 +623,21 @@ void tpl_context_destroy (template_context_t ctx_void)
 	allocator_free(ctx);
 }
 
+template_context_t tpl_block_context_create (const char * name)
+{
+	struct block_context * ctx = allocator_malloc(sizeof(struct block_context));
+	
+	memset(ctx, 0, sizeof(struct block_context));
+	ctx->checksum = CALC_CHECKSUM(name, strlen(name));
+	
+	return ctx;
+}
+
+void tpl_block_context_destroy (template_context_t ctx_void)
+{
+	tpl_context_destroy(ctx_void);
+}
+
 static inline struct assoc_variable * get_var (struct context * ctx, uint32_t checksum)
 {
 	mlong i;
@@ -466,13 +711,32 @@ static inline void append_to_buffer (buf_t * buf, const void * ptr, uint len)
 	memcpy((uchar *) buf->data + (buf->cur_len - len), ptr, len);
 }
 
-void tpl_complete (template_t tpl, template_context_t ctx, buf_t * out)
+void tpl_complete (template_t tpl, template_context_t ctx, template_context_t * block_ctx_vector, size_t vector_size, buf_t * out)
 {
 	struct tpl_block * vector;
 	struct assoc_variable * var;
+	template_context_t local_ctx;
+	size_t i;
 	
 	for (vector = tpl; vector->type != TPL_TYPE_TERM; vector++)
 	{
+		local_ctx = NULL;
+		
+		if (vector->block_checksum)
+		{
+			for (i = 0; i < vector_size; i++)
+				if (((struct block_context **) block_ctx_vector)[i]->checksum == vector->block_checksum)
+				{
+					local_ctx = block_ctx_vector[i];
+					
+					goto x;
+				}
+			
+			continue;
+		}
+		
+		x:
+		
 		switch (vector->type)
 		{
 			case TPL_TYPE_TEXT:
@@ -480,6 +744,18 @@ void tpl_complete (template_t tpl, template_context_t ctx, buf_t * out)
 				break;
 			
 			case TPL_TYPE_VAR:
+				if (local_ctx)
+				{
+					var = get_var(local_ctx, vector->checksum);
+					
+					if (var)
+					{
+						append_to_buffer(out, var->value, var->value_len);
+						
+						break;
+					}
+				}
+				
 				if (ctx)
 				{
 					var = get_var(ctx, vector->checksum);
@@ -514,6 +790,9 @@ void tpl_init (void)
 {
 	if (cur_template_dir == NULL)
 	{
+		const char * errptr;
+		int erroffset;
+		
 		cur_template_dir = (char *) allocator_malloc(config.data.len + config.template_name.len + 12);
 		strcpy(cur_template_dir, (char *) config.data.str);
 		strcat(cur_template_dir, "/templates/");
@@ -523,6 +802,14 @@ void tpl_init (void)
 		debug_print_1("Template directory is \"%s\"", cur_template_dir);
 		
 		pthread_spin_init(global_vars_spin, PTHREAD_PROCESS_PRIVATE);
+		
+		pcre_malloc = ALLOCATOR_MALLOC_FN;
+		pcre_free = ALLOCATOR_FREE_FN;
+		
+		regexp_block_code = pcre_compile("{block ([\\w _-]+) *}(.*?){end \\1 *}", PCRE_DOTALL | PCRE_MULTILINE | PCRE_UTF8, &errptr, &erroffset, NULL);
+		
+		if (regexp_block_code == NULL)
+			eerr(-1, "PCRE: %s at offset %d", errptr, erroffset);
 	}
 }
 

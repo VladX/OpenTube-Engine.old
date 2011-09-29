@@ -32,7 +32,7 @@ WEB_CALLBACK(video, "/v/", false)
 	else
 	{
 		tpl_set_var_static(tpl_ctx, "title", _l(1));
-		tpl_complete(tpl, tpl_ctx, thread_global_buffer);
+		tpl_complete(tpl, tpl_ctx, NULL, 0, thread_global_buffer);
 	}
 	
 	return thread_global_buffer;
