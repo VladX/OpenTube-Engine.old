@@ -66,11 +66,13 @@ int sockfd;
 static request_vec_t * requests_vector;
 static uint maxfds;
 static uint keepalive_max_conn;
+static time_t server_start_time;
 static frag_pool_t * limit_req_clients = NULL;
 static frag_pool_t * limit_sim_req_clients = NULL;
 static frag_pool_t * keepalive_sockets = NULL;
 extern pthread_mutex_t wmutex[1];
 
+static void quit_ex (int, int);
 
 bool new_keepalive_socket (int sock)
 {
@@ -390,6 +392,17 @@ inline void event_iter (void)
 	register request_vec_t * it, * prev;
 	
 	curtime = current_time_sec;
+	
+	if (config.restart_timeout && curtime - server_start_time > config.restart_timeout)
+	{
+		#ifdef _WIN
+		/* Special magic (hack) that makes the running service exit() with non-zero code. Then it automatically restart by service host. Maybe it's a dirty solution and should be rewritten. */
+		extern bool win32_service_running;
+		win32_service_running = false;
+		#endif
+		log_msg("Process lifetime limit (%ld) has reached. Restarting...", config.restart_timeout);
+		quit_ex(0, WORKER_RESTART_STATUS_CODE);
+	}
 	
 	for (i = 0; i < keepalive_sockets->real_len; i++)
 	{
@@ -925,7 +938,7 @@ static void pr_set_limits (void)
 	keepalive_max_conn = max((maxfds - config.prealloc_request_structures) - 2, 2);
 }
 
-void quit (int prm)
+static void quit_ex (int prm, int exit_status)
 {
 	static bool already_in_quit = false;
 	
@@ -962,13 +975,18 @@ void quit (int prm)
 	extern bool win32_service_running;
 	
 	if (!win32_service_running)
-		exit(0);
+		exit(exit_status);
 	_END_LOCAL_SECTION_
 	#else
-	exit(0);
+	exit(exit_status);
 	#endif
 	
 	already_in_quit = false;
+}
+
+void quit (int prm)
+{
+	quit_ex(prm, 0);
 }
 
 void init (char * procname)
@@ -1016,6 +1034,8 @@ void init (char * procname)
 	setup_signals(quit);
 	
 	debug_print_2("worker process spawned successfully, PID is %d", worker_pid);
+	
+	server_start_time = time(NULL);
 	
 	pr_set_limits();
 	time_routine();

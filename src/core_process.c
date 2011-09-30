@@ -52,6 +52,9 @@ static const char * statustomsg (int status)
 		case 15:
 			return "TERM";
 			break;
+		case WORKER_RESTART_STATUS_CODE:
+			return "Scheduled restart";
+			break;
 	}
 	
 	return NULL;
@@ -233,7 +236,12 @@ pid_t spawn_worker (char * procname)
 		waitpid(pid, &status, 0);
 		
 		if (WIFEXITED(status))
-			exit(WEXITSTATUS(status));
+		{
+			status = WEXITSTATUS(status);
+			
+			if (status != WORKER_RESTART_STATUS_CODE)
+				exit(status);
+		}
 		else
 		{
 			status = WTERMSIG(status);

@@ -61,6 +61,7 @@ static void default_config (void)
 	config.idle_request_structures = 0;
 	config.script_init = "init.js";
 	config.script_update = 0;
+	config.restart_timeout = 0;
 }
 
 static void process_directive_string (const char * const key, char * value, const int line)
@@ -291,6 +292,12 @@ static void process_directive_int (const char * const key, const int value, cons
 		if (value < 1)
 			EINVALIDVAL;
 		config.gzip_min_page_size = value;
+	}
+	else if (strcmp(key, "server.restart-timeout") == 0)
+	{
+		if (value < 0)
+			EINVALIDVAL;
+		config.restart_timeout = value;
 	}
 	else
 		EUNKNOWNDIRECTIVE;

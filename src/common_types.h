@@ -296,6 +296,7 @@ struct loaded_config
 	u_str_t cache_prefix;
 	uint worker_threads;
 	uint prealloc_request_structures;
+	uint restart_timeout;
 	bool gzip;
 	bool limit_req;
 	bool limit_sim_req;

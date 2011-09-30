@@ -20,6 +20,7 @@
  */
 
 #define WORKER_GROUP_DEFAULT "nobody"
+#define WORKER_RESTART_STATUS_CODE 0xFE
 
 pid_t spawn_worker (char * procname);
 
