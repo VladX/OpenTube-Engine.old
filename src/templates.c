@@ -44,10 +44,11 @@ struct tpl_block
 	size_t content_offset;
 	union
 	{
-		size_t content_length;
+		uint content_length;
 		uint32_t checksum;
 	};
 	uint32_t block_checksum;
+	uint block_length;
 	enum tpl_block_types type;
 };
 
@@ -187,6 +188,7 @@ static struct tpl_block * parse_variables (str_big_t * content)
 			vector[vector_size - 1].type = TPL_TYPE_TEXT;
 			vector[vector_size - 1].content_offset = offset;
 			vector[vector_size - 1].content_length = found - (content->str + offset);
+			vector[vector_size - 1].block_length = 0;
 		}
 		
 		found += sizeof(cmd_var) - 1;
@@ -218,6 +220,7 @@ static struct tpl_block * parse_variables (str_big_t * content)
 		vector[vector_size - 1].content_offset = found - content->str;
 		vector[vector_size - 1].content_length = end - found;
 		vector[vector_size - 1].checksum = CALC_CHECKSUM(found, end - found);
+		vector[vector_size - 1].block_length = 0;
 		
 		offset = braceend - content->str;
 	}
@@ -227,6 +230,7 @@ static struct tpl_block * parse_variables (str_big_t * content)
 	vector[vector_size - 2].type = TPL_TYPE_TEXT;
 	vector[vector_size - 2].content_offset = offset;
 	vector[vector_size - 2].content_length = content->len - offset;
+	vector[vector_size - 2].block_length = 0;
 	vector[vector_size - 1].type = TPL_TYPE_TERM;
 	vector[vector_size - 1].content_offset = sizeof(struct tpl_block) * vector_size + content->len;
 	vector[vector_size - 1].content_length = vector[vector_size - 1].content_offset;
@@ -270,7 +274,7 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 	struct tpl_block * next;
 	struct tpl_block * res_vector = NULL, * tmp_vector = NULL, * tmp_vector_upper;
 	str_big_t block_content;
-	size_t k, prev_offset = cur->content_offset;
+	size_t k, tmp_size, prev_offset = cur->content_offset;
 	
 	for (;;)
 	{
@@ -284,9 +288,13 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 		next = &(vector[i]);
 		
 		if (res_vector)
-			for (k = 0; k < calculate_vector_size(res_vector) - 1; k++)
+		{
+			tmp_size = calculate_vector_size(res_vector) - 1;
+			
+			for (k = 0; k < tmp_size; k++)
 				if (res_vector[k].block_checksum == next->block_checksum)
 					goto new_iter;
+		}
 		
 		if (cur->content_offset < next->content_offset && cur->content_offset + cur->content_length > next->content_offset + next->content_length)
 			tmp_vector = process_blocks(content, vector, vector_size, i);
@@ -327,7 +335,9 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 			if (prev_offset != 0)
 				adjust_offsets(tmp_vector_upper, prev_offset);
 			
-			for (k = 0; k < calculate_vector_size(tmp_vector_upper) - 1; k++)
+			tmp_size = calculate_vector_size(tmp_vector_upper) - 1;
+			
+			for (k = 0; k < tmp_size; k++)
 				tmp_vector_upper[k].block_checksum = cur->block_checksum;
 			
 			tmp_vector = concat_vectors(tmp_vector_upper, tmp_vector);
@@ -365,11 +375,16 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 		if (prev_offset != 0)
 			adjust_offsets(tmp_vector, prev_offset);
 		
-		for (k = 0; k < calculate_vector_size(tmp_vector) - 1; k++)
+		tmp_size = calculate_vector_size(tmp_vector) - 1;
+		
+		for (k = 0; k < tmp_size; k++)
 			tmp_vector[k].block_checksum = cur->block_checksum;
 		
 		res_vector = concat_vectors(res_vector, tmp_vector);
 	}
+	
+	if (res_vector)
+		res_vector[0].block_length = calculate_vector_size(res_vector) - 1;
 	
 	return res_vector;
 }
@@ -377,7 +392,8 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 static template_t parse_blocks (str_big_t * content)
 {
 	struct tpl_block * vector = NULL, * result_vector = NULL;
-	size_t offset = 0, vector_size = 0, i, content_length, content_offset;
+	size_t offset = 0, vector_size = 0, i, content_offset;
+	uint content_length;
 	int ovector[15];
 	int r;
 	uint32_t checksum;
@@ -387,6 +403,7 @@ static template_t parse_blocks (str_big_t * content)
 	vector[0].content_offset = 0;
 	vector[0].content_length = content->len;
 	vector[0].block_checksum = 0;
+	vector[0].block_length = 0;
 	
 	for (;;)
 	{
@@ -425,6 +442,7 @@ static template_t parse_blocks (str_big_t * content)
 		vector[vector_size - 1].content_offset = content_offset;
 		vector[vector_size - 1].content_length = content_length;
 		vector[vector_size - 1].block_checksum = checksum;
+		vector[vector_size - 1].block_length = 0;
 		
 		offset = content_offset;
 	}
@@ -454,9 +472,10 @@ template_t tpl_compile (const char * file)
 	template_t ret = NULL;
 	static pthread_mutex_t mutex[1] = {PTHREAD_MUTEX_INITIALIZER};
 	uint i;
+	uint32_t checksum = CALC_CHECKSUM(file, strlen(file));
 	
 	for (i = 0; i < compiled_templates_num; i++)
-		if (CALC_CHECKSUM(file, strlen(file)) == compiled_templates[i].checksum)
+		if (checksum == compiled_templates[i].checksum)
 		{
 			compiled_template = &(compiled_templates[i]);
 			
@@ -738,6 +757,9 @@ void tpl_complete (template_t tpl, template_context_t ctx, template_context_t * 
 					
 					goto x;
 				}
+			
+			if (vector->block_length)
+				vector += vector->block_length - 1;
 			
 			continue;
 		}
