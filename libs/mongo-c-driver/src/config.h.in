@@ -1,0 +1,4 @@
+#cmakedefine MONGO_HAVE_STDINT
+#cmakedefine MONGO_BIG_ENDIAN
+#cmakedefine _MONGO_USE_LINUX_SYSTEM
+#cmakedefine _MONGO_WIN

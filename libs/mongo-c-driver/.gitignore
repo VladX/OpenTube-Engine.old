@@ -28,3 +28,5 @@ CMakeFiles
 docs/html
 docs/source/sphinx/build
 docs/source/doxygen
+
+src/config.h

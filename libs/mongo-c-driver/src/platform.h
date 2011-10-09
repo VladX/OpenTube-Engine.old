@@ -21,6 +21,8 @@
 #ifndef _PLATFORM_HACKS_H_
 #define _PLATFORM_HACKS_H_
 
+#include "config.h"
+
 #ifdef __GNUC__
 #define MONGO_INLINE static __inline__
 #else
