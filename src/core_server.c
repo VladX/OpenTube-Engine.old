@@ -21,10 +21,6 @@
 
 #define _GNU_SOURCE
 #define __USE_GNU
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/tcp.h>
 #ifndef _MSC_VER
  #include <sys/time.h>
 #endif
@@ -34,12 +30,12 @@
 #include <fcntl.h>
 #include <time.h>
 #include <pthread.h>
+#include "network_utils.h"
 #include "common_functions.h"
 #include "localization.h"
 #ifdef HAVE_EPOLL
  #include <sys/epoll.h>
 #endif
-#include "network_utils.h"
 #include "sendfile.h"
 #include "core_process.h"
 #include "core_http.h"

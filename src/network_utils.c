@@ -19,8 +19,12 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "common_functions.h"
 #include "network_utils.h"
+#include "common_functions.h"
+
+#ifdef _WIN
+ #include "win32_utils.h"
+#endif
 
 static const char * addr2str (const int ai_family, struct sockaddr * addr)
 {
@@ -39,7 +43,7 @@ static const char * addr2str (const int ai_family, struct sockaddr * addr)
 	return addr_str;
 }
 
-size_t net_gethostaddr (char * name, ushort port, const int type, struct sockaddr * result_addr)
+size_t net_gethostaddr (char * name, unsigned short port, const int type, struct sockaddr * result_addr)
 {
 	struct addrinfo hints;
 	struct addrinfo * res;

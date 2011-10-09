@@ -22,13 +22,21 @@
 #ifndef _NETWORK_UTILS_H
 #define _NETWORK_UTILS_H 1
 
+#include "config.h"
+
+#if defined(_WIN) && !defined(WINVER)
+ #define WINVER 0x0501
+#endif
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <resolv.h>
 
-size_t net_gethostaddr (char * name, ushort port, const int type, struct sockaddr * result_addr);
+size_t net_gethostaddr (char * name, unsigned short port, const int type, struct sockaddr * result_addr);
 
 #endif

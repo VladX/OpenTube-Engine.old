@@ -22,6 +22,7 @@
 #include "mongo.h"
 
 #ifdef _MONGO_WIN
+#define WINVER 0x0501
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #define mongo_close_socket(sock) ( closesocket(sock) )
