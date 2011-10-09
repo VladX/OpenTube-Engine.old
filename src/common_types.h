@@ -282,6 +282,8 @@ struct loaded_config
 	const char * pid;
 	const char * log;
 	const char * script_init;
+	const char * db_replica_set;
+	const char * db_servers;
 	u_str_t document_root;
 	u_str_t temp_dir;
 	u_str_t data;

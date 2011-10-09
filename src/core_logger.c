@@ -299,9 +299,7 @@ static void _logger_log_file (bool sys_error, enum logger_level level, const cha
 	const time_t curtime = time(NULL);
 	
 	fprintf(log_file, "%.*s ", 24, ctime(&curtime));
-	if (* http_server_unix_addr.str)
-		fprintf(log_file, "%s ", http_server_unix_addr.str);
-	else if (* http_server_tcp_addr.str)
+	if (* http_server_tcp_addr.str)
 		fprintf(log_file, "%s:%d ", http_server_tcp_addr.str, http_port);
 	print_level_str(log_file, level, false);
 	v_print_formatted_message(log_file, fmt, ap);

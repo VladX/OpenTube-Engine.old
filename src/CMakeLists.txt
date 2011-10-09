@@ -23,7 +23,7 @@ if (NOT CMAKE_BUILD_TYPE)
  set (CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel" FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
-set (link_libraries_list pthread z pcre jemalloc)
+set (link_libraries_list pthread z pcre jemalloc mongocdriver)
 set (link_directories_list ${CMAKE_BINARY_DIR}/libs/jemalloc)
 set (exec_filename opentube-server)
 
@@ -116,6 +116,7 @@ if (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 endif (CMAKE_COMPILER_IS_GNUCC OR MINGW OR CYGWIN)
 
 include_directories (BEFORE ./)
+include_directories (BEFORE ${CMAKE_SOURCE_DIR}/libs/mongo-c-driver/src/)
 link_directories (${link_directories_list})
 add_executable (${exec_filename} ${source_files})
 target_link_libraries (${exec_filename} ${link_libraries_list})

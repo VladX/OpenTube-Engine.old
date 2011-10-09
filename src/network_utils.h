@@ -19,11 +19,16 @@
  * Boston, MA  02110-1301  USA
  */
 
-extern int http_port;
-extern str_t http_server_tcp_addr;
-extern bool ipv6_addr;
-extern pid_t worker_pid;
-extern struct loaded_config config;
-extern buf_t * uri_map;
-extern volatile time_t current_time_sec;
-extern volatile uint64 current_time_msec;
+#ifndef _NETWORK_UTILS_H
+#define _NETWORK_UTILS_H 1
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <resolv.h>
+
+size_t net_gethostaddr (char * name, ushort port, const int type, struct sockaddr * result_addr);
+
+#endif

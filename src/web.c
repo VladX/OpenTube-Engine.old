@@ -22,6 +22,7 @@
 #include <setjmp.h>
 #include "common_functions.h"
 #include "templates.h"
+#include "database.h"
 #include "web/callbacks/callbacks.h"
 
 buf_t * uri_map;
@@ -60,5 +61,6 @@ void web_init (void)
 	uri_map = buf_create(sizeof(uri_map_t), 10);
 	
 	tpl_init();
+	db_init();
 	set_callbacks();
 }

@@ -29,13 +29,13 @@
 
 struct loaded_config config;
 int http_port;
-str_t http_server_tcp_addr, http_server_unix_addr;
+str_t http_server_tcp_addr;
 const char * path_to_configuration_file = NULL;
 
 static const char * required_directives[] = {
 	"server.listen", "server.user", "server.group", "server.pid-file", "server.log-file", "server.data",
 	"http.document-root", "http.temp", "http.cache.prefix", "http.cache.update",
-	"template.name"
+	"template.name", "database.servers"
 };
 
 
@@ -62,6 +62,7 @@ static void default_config (void)
 	config.script_init = "init.js";
 	config.script_update = 0;
 	config.restart_timeout = 0;
+	config.db_replica_set = NULL;
 }
 
 static void process_directive_string (const char * const key, char * value, const int line)
@@ -90,13 +91,9 @@ static void process_directive_string (const char * const key, char * value, cons
 			if (!is_num(port) || http_port <= 0 || http_port > 65535)
 				eerr(-1, "Invalid port: %s", port);
 			set_cpy_str(&http_server_tcp_addr, addr);
-			set_cpy_str(&http_server_unix_addr, "");
 		}
 		else
-		{
-			set_cpy_str(&http_server_unix_addr, addr);
-			set_cpy_str(&http_server_tcp_addr, "");
-		}
+			EINVALIDVAL;
 		
 		debug_print_1("address \"%s\", port %d", addr, http_port);
 	}
@@ -227,6 +224,15 @@ static void process_directive_string (const char * const key, char * value, cons
 			config.idle_request_structures = 1;
 		else
 			EINVALIDVAL;
+	}
+	else if (strcmp(key, "database.replica-set-name") == 0)
+	{
+		if (strlen(value))
+			config.db_replica_set = value;
+	}
+	else if (strcmp(key, "database.servers") == 0)
+	{
+		config.db_servers = value;
 	}
 	else
 		EUNKNOWNDIRECTIVE;

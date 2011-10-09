@@ -24,17 +24,13 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <arpa/inet.h>
 #ifndef _MSC_VER
  #include <sys/time.h>
 #endif
 #include <sys/resource.h> 
 #include <unistd.h>
 #include <signal.h>
-#include <netdb.h>
-#include <resolv.h>
 #include <fcntl.h>
 #include <time.h>
 #include <pthread.h>
@@ -43,6 +39,7 @@
 #ifdef HAVE_EPOLL
  #include <sys/epoll.h>
 #endif
+#include "network_utils.h"
 #include "sendfile.h"
 #include "core_process.h"
 #include "core_http.h"
@@ -670,129 +667,18 @@ static void event_routine (void)
 #include "event_wrapper_kqueue.h"
 #include "event_wrapper_select.h"
 
-static bool gethostaddr (char * name, const int type, in_addr_t * dst)
-{
-	int len;
-	struct hostent * host;
-	
-	#if IPV6_SUPPORT
-	#ifdef RES_USE_INET6
-	if (type == AF_INET6)
-	{
-		res_init();
-		_res.options |= RES_USE_INET6;
-	}
-	#endif
-	#endif
-	host = gethostbyname(name);
-	if (!host || type != host->h_addrtype)
-		return false;
-	if (type == AF_INET6)
-		len = 16;
-	else
-		len = sizeof(* dst);
-	memcpy(dst, host->h_addr_list[0], len);
-	
-	#if DEBUG_LEVEL > 2
-	_BEGIN_LOCAL_SECTION_
-	struct in_addr addr;
-	#if IPV6_SUPPORT
-	struct in6_addr addr6;
-	#endif
-	char * addr_str = NULL;
-	
-	#if IPV6_SUPPORT
-	if (type == AF_INET6)
-	{
-		memcpy(&(addr6.s6_addr), dst, len);
-		addr_str = (char *) allocator_malloc(INET6_ADDRSTRLEN);
-		addr_str = (char *) inet_ntop(AF_INET6, &addr6, addr_str, INET6_ADDRSTRLEN);
-	}
-	else
-	{
-	#endif
-		addr.s_addr = * dst;
-		addr_str = inet_ntoa(addr);
-	#if IPV6_SUPPORT
-	}
-	#endif
-	debug_print_3("gethostaddr(): %s -> %s", name, addr_str);
-	_END_LOCAL_SECTION_
-	#endif
-	
-	return true;
-}
-
 static int connect_to_socket (void)
 {
 	int sockfd = 0, res = 0;
 	const int enable = 1;
-	struct sockaddr * name = NULL;
-	socklen_t name_len = sizeof(* name);
+	uchar name_buf[128];
+	struct sockaddr * name = (struct sockaddr *) name_buf;
+	socklen_t name_len = net_gethostaddr(http_server_tcp_addr.str, http_port, AF_UNSPEC, name);
 	
-	if (* http_server_unix_addr.str)
-	{
-		#ifdef _WIN
-		eerr(-1, "%s", "Unix domains are not supported on Windows.");
-		#else
-		struct sockaddr_un * uname;
-		
-		sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-		if (sockfd < 0)
-			peerr(-1, "socket(): %d", sockfd);
-		uname = (struct sockaddr_un *) allocator_malloc(sizeof(* uname));
-		memset(uname, 0, sizeof(* uname));
-		uname->sun_family = AF_UNIX;
-		memcpy(uname->sun_path, http_server_unix_addr.str, http_server_unix_addr.len + 1);
-		name = (struct sockaddr *) uname;
-		#endif
-	}
-	#if IPV6_SUPPORT
-	else if (* http_server_tcp_addr.str && ipv6_addr)
-	{
-		struct sockaddr_in6 * i6name;
-		struct in6_addr addr;
-		
-		sockfd = socket(AF_INET6, SOCK_STREAM, 0);
-		if (sockfd < 0)
-			peerr(-1, "socket(): %d", sockfd);
-		i6name = (struct sockaddr_in6 *) allocator_malloc(sizeof(* i6name));
-		memset(i6name, 0, sizeof(* i6name));
-		i6name->sin6_family = AF_INET6;
-		i6name->sin6_port = htons(http_port);
-		if (!gethostaddr(http_server_tcp_addr.str, AF_INET6, (in_addr_t *) &(i6name->sin6_addr.s6_addr)))
-		{
-			if (inet_pton(AF_INET6, http_server_tcp_addr.str, &addr) <= 0)
-				peerr(-1, "Invalid address: %s", http_server_tcp_addr.str);
-			memcpy(&(i6name->sin6_addr), &addr, sizeof(addr));
-		}
-		name = (struct sockaddr *) i6name;
-		name_len = sizeof(* i6name);
-	}
-	#endif
-	else
-	{
-		struct sockaddr_in * iname;
-		
-		sockfd = socket(AF_INET, SOCK_STREAM, 0);
-		if (sockfd < 0)
-			peerr(-1, "socket(): %d", sockfd);
-		iname = (struct sockaddr_in *) allocator_malloc(sizeof(* iname));
-		memset(iname, 0, sizeof(* iname));
-		iname->sin_family = AF_INET;
-		iname->sin_port = htons(http_port);
-		if (!gethostaddr(http_server_tcp_addr.str, AF_INET, (void *) &(iname->sin_addr.s_addr)))
-		{
-			#ifdef __USE_MISC
-			if (inet_aton(http_server_tcp_addr.str, (struct in_addr *) &(iname->sin_addr.s_addr)) == 0)
-			#else
-			iname->sin_addr.s_addr = inet_addr(http_server_tcp_addr.str);
-			if (iname->sin_addr.s_addr == INADDR_NONE && strcmp(http_server_tcp_addr.str, "255.255.255.255") != 0)
-			#endif
-				eerr(-1, "Invalid address: %s", http_server_tcp_addr.str);
-		}
-		name = (struct sockaddr *) iname;
-	}
+	sockfd = socket(name->sa_family, SOCK_STREAM, 0);
+	
+	if (sockfd < 0)
+		peerr(-1, "socket(): %d", sockfd);
 	
 	#ifdef _WIN
 	if (ioctlsocket(sockfd, FIONBIO, (void *) &enable) == -1)
