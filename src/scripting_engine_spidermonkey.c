@@ -55,9 +55,18 @@ static JSClass global_class = {
 	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub, JSCLASS_NO_OPTIONAL_MEMBERS
 };
 
+static JSClass request_class = {
+	"request", 0, JS_PropertyStub, JS_PropertyStub, JS_PropertyStub, JS_StrictPropertyStub,
+	JS_EnumerateStub, JS_ResolveStub, JS_ConvertStub, JS_FinalizeStub, JSCLASS_NO_OPTIONAL_MEMBERS
+};
+
 static JSBool js_function_map_uri (JSContext *, uintN, jsval *);
 static JSBool js_function_print (JSContext *, uintN, jsval *);
 static JSObject * js_compile (const char *, JSObject *, time_t *);
+static JSBool stub_setter (JSContext * ctx, JSObject * obj, jsid id, JSBool strict, jsval * vp){ return JS_FALSE; };
+static JSBool uri_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp);
+static JSBool path_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp);
+static JSBool querystring_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp);
 
 static JSFunctionSpec js_global_functions[] = {
 	JS_FS("map_uri", js_function_map_uri, 3, 0),
@@ -65,6 +74,49 @@ static JSFunctionSpec js_global_functions[] = {
 	JS_FS("echo", js_function_print, 1, 0),
 	JS_FS_END
 };
+
+static JSPropertySpec request_props[] = {
+	{"uri", 0, JSPROP_READONLY | JSPROP_PERMANENT, uri_getter, (void *) stub_setter},
+	{"path", 0, JSPROP_READONLY | JSPROP_PERMANENT, path_getter, (void *) stub_setter},
+	{"queryString", 0, JSPROP_READONLY | JSPROP_PERMANENT, querystring_getter, (void *) stub_setter},
+	{0, 0, 0, 0, 0}
+};
+
+static JSBool uri_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp)
+{
+	JSString * str = JS_NewStringCopyN(ctx, (const char *) thread_request->in.uri.str, thread_request->in.uri.len);
+	
+	if (unlikely(str == NULL))
+		return JS_FALSE;
+	
+	JS_SET_RVAL(ctx, vp, STRING_TO_JSVAL(str));
+	
+	return JS_TRUE;
+}
+
+static JSBool path_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp)
+{
+	JSString * str = JS_NewStringCopyN(ctx, (const char *) thread_request->in.path.str, thread_request->in.path.len);
+	
+	if (unlikely(str == NULL))
+		return JS_FALSE;
+	
+	JS_SET_RVAL(ctx, vp, STRING_TO_JSVAL(str));
+	
+	return JS_TRUE;
+}
+
+static JSBool querystring_getter (JSContext * ctx, JSObject * obj, jsid id, jsval * vp)
+{
+	JSString * str = JS_NewStringCopyN(ctx, (const char *) thread_request->in.query_string.str, thread_request->in.query_string.len);
+	
+	if (unlikely(str == NULL))
+		return JS_FALSE;
+	
+	JS_SET_RVAL(ctx, vp, STRING_TO_JSVAL(str));
+	
+	return JS_TRUE;
+}
 
 static void js_update_bytecode (struct js_compiled_script * cs)
 {
@@ -193,7 +245,7 @@ static JSBool js_function_map_uri (JSContext * ctx, uintN n, jsval * args)
 	time_t mtime = 0;
 	JSBool matching = JS_TRUE;
 	JSObject * script;
-	struct js_compiled_script * cs;
+	struct js_compiled_script * cs = NULL;
 	
 	if (!JS_ConvertArguments(ctx, n, JS_ARGV(ctx, args), "Sb*", &unicode_str, &matching))
 		return JS_FALSE;
@@ -236,7 +288,9 @@ static JSBool js_function_map_uri (JSContext * ctx, uintN n, jsval * args)
 		web_set_callback(js_web_callback, cs->uri.str, cs->full_match);
 	}
 	
-	JS_AddObjectRoot(ctx, &(cs->script));
+	if (cs)
+		JS_AddObjectRoot(ctx, &(cs->script));
+	
 	JS_SET_RVAL(ctx, args, JSVAL_VOID);
 	
 	return JS_TRUE;
@@ -321,6 +375,9 @@ void scripts_sm_init (void)
 	
 	if (JS_ExecuteScript(jsctx, jsglobal, initscript, &retval) == JS_FALSE)
 		eerr(-1, "%s", "At least one error occurred while running initial script.");
+	
+	if (JS_InitClass(jsctx, jsglobal, NULL, &request_class, NULL, 0, request_props, NULL, NULL, NULL) == NULL)
+		eerr(-1, "%s", "JS_InitClass() failed.");
 	
 	JS_MaybeGC(jsctx);
 	JS_EndRequest(jsctx);
