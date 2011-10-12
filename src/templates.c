@@ -46,7 +46,7 @@ struct tpl_block
 		uint32_t checksum;
 	};
 	uint32_t block_checksum;
-	uint block_length;
+	int block_length;
 	enum tpl_block_types type;
 };
 
@@ -382,7 +382,12 @@ static struct tpl_block * process_blocks (str_big_t * content, struct tpl_block 
 	}
 	
 	if (res_vector)
+	{
 		res_vector[0].block_length = calculate_vector_size(res_vector) - 1;
+		
+		if (res_vector[0].block_length > 1)
+			res_vector[res_vector[0].block_length - 1].block_length = -(res_vector[0].block_length - 1);
+	}
 	
 	return res_vector;
 }
@@ -741,28 +746,38 @@ void tpl_complete (template_t tpl, template_context_t ctx, template_context_t * 
 	struct assoc_variable * var;
 	template_context_t local_ctx;
 	size_t i;
+	uint32_t * checksums = alloca(vector_size * sizeof(uint32_t));
+	
+	for (i = 0; i < vector_size; i++)
+		checksums[i] = ((struct block_context **) block_ctx_vector)[i]->checksum;
 	
 	for (vector = tpl; vector->type != TPL_TYPE_TERM; vector++)
 	{
+		a:
+		
 		local_ctx = NULL;
 		
 		if (vector->block_checksum)
 		{
 			for (i = 0; i < vector_size; i++)
-				if (((struct block_context **) block_ctx_vector)[i]->checksum == vector->block_checksum)
+				if (checksums[i] == vector->block_checksum)
 				{
 					local_ctx = block_ctx_vector[i];
 					
-					goto x;
+					goto b;
 				}
 			
-			if (vector->block_length)
-				vector += vector->block_length - 1;
+			if (vector->block_length > 0)
+			{
+				vector += vector->block_length;
+				
+				goto a;
+			}
 			
 			continue;
 		}
 		
-		x:
+		b:
 		
 		switch (vector->type)
 		{
@@ -809,6 +824,26 @@ void tpl_complete (template_t tpl, template_context_t ctx, template_context_t * 
 			case TPL_TYPE_BLOCK:
 			case TPL_TYPE_TERM:
 				break;
+		}
+		
+		if (vector->block_checksum)
+		{
+			if (vector->block_length < 0)
+			{
+				vector += vector->block_length;
+				assert(local_ctx == block_ctx_vector[i]);
+				checksums[i] = 0;
+				
+				goto a;
+			}
+			
+			if (vector->block_length == 1)
+			{
+				assert(local_ctx == block_ctx_vector[i]);
+				checksums[i] = 0;
+				
+				goto a;
+			}
 		}
 	}
 }
