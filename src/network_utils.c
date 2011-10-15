@@ -24,6 +24,7 @@
  #include "win32_utils.h"
 #endif
 
+#if DEBUG_LEVEL > 2
 static const char * addr2str (const int ai_family, struct sockaddr * addr)
 {
 	static char addr_str[128];
@@ -40,6 +41,7 @@ static const char * addr2str (const int ai_family, struct sockaddr * addr)
 	
 	return addr_str;
 }
+#endif
 
 size_t net_gethostaddr (char * name, unsigned short port, const int type, struct sockaddr * result_addr)
 {
