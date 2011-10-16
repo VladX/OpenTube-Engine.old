@@ -848,6 +848,7 @@ static void * http_pass_to_handlers_routine (void * ptr)
 	}
 	
 	pthread_spin_lock(spin_queue_atomic);
+	web_allocator_init();
 	tpl_init();
 	scripts_init();
 	run_init_callbacks();
@@ -885,6 +886,8 @@ static void * http_pass_to_handlers_routine (void * ptr)
 		web_setup_global_buffer(r);
 		
 		buf = ((web_func_t) r->temp.func)();
+		
+		web_allocator_garbage_collect();
 		
 		/* Condition r->sock == -1 means, that client closed connection while handler is executed */
 		if (r->sock == -1)

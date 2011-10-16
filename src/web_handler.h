@@ -30,6 +30,10 @@
 #define WEB_CALLBACK(NAME, URI, FULL_MATCH) buf_t * WEB_CALLBACK_TO_C_FUNC(NAME) (void)
 #define WEB_INIT(NAME) void WEB_INIT_CALLBACK_TO_C_FUNC(NAME) (void)
 
+#define gc_malloc(SIZE) web_allocator_malloc(SIZE)
+#define gc_realloc(PTR, SIZE) allocator_realloc(PTR, SIZE)
+#define gc_free(PTR) web_allocator_free(PTR)
+
 extern threadsafe buf_t * thread_global_buffer;
 extern threadsafe request_t * thread_request;
 
@@ -40,5 +44,9 @@ void http_parse_cookies (request_t * r);
 void http_parse_post (request_t * r);
 
 void web_raise (ushort code);
+
+void * web_allocator_malloc (size_t size);
+
+void web_allocator_free (void * ptr);
 
 #endif
