@@ -27,8 +27,8 @@
 
 #ifndef  __cplusplus
  #define bool unsigned char
- #define true 1
- #define false 0
+ #define true ((unsigned char) 1)
+ #define false ((unsigned char) 0)
 #endif
 
 #define CLRF "\r\n"

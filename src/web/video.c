@@ -23,7 +23,7 @@ WEB_CALLBACK(video, "/v/", false)
 {
 	template_t tpl;
 	
-	tpl = tpl_compile("main.tpl");
+	tpl = tpl_compile("video.tpl");
 	
 	if (tpl == NULL)
 		internal_server_error();
