@@ -27,7 +27,7 @@
 #if DEBUG_LEVEL > 2
 static const char * addr2str (const int ai_family, struct sockaddr * addr)
 {
-	static char addr_str[128];
+	static char addr_str[48];
 	
 	memset(addr_str, 0, sizeof(addr_str));
 	
