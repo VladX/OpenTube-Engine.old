@@ -215,6 +215,8 @@ char * gnu_getcwd (void);
 
 umlong save_cwd (void);
 
+umlong save_and_change_cwd (const char * path);
+
 bool restore_cwd (umlong d);
 
 const char * gnu_basename (const char * path);

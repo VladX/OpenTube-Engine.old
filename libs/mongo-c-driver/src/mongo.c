@@ -15,6 +15,7 @@
  *    limitations under the License.
  */
 
+#include "net.h"
 #include "mongo.h"
 #include "md5.h"
 
@@ -22,14 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#ifdef _USE_LINUX_SYSTEM
-#include "platform/linux/net.h"
-#elif defined _USE_CUSTOM_SYSTEM
-#include "platform/custom/net.h"
-#else
-#include "net.h"
-#endif
 
 static const int ZERO = 0;
 static const int ONE = 1;

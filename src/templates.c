@@ -490,13 +490,9 @@ template_t tpl_compile (const char * file)
 	
 	memset(&content, 0, sizeof(content));
 	pthread_mutex_lock(mutex);
-	cwd = save_cwd();
+	cwd = save_and_change_cwd(cur_template_dir);
 	
-	#ifdef _WIN
-	if (_chdir(cur_template_dir) == -1)
-	#else
-	if (chdir(cur_template_dir) == -1)
-	#endif
+	if (cwd == -1)
 	{
 		perr("chdir(%s) failed", cur_template_dir);
 		ret = NULL;

@@ -551,10 +551,6 @@ bool is_path_absolute (const char * path)
 	return false;
 }
 
-#ifdef _WIN
-char * _getcwd (char *, int);
-#endif
-
 char * gnu_getcwd (void)
 {
 	#ifdef _WIN
@@ -572,6 +568,28 @@ umlong save_cwd (void)
 	#else
 	return (umlong) open(".", O_RDONLY);
 	#endif
+}
+
+umlong save_and_change_cwd (const char * path)
+{
+	umlong ret = save_cwd();
+	
+	#ifdef _WIN
+	if (_chdir(path) == -1)
+	#else
+	if (chdir(path) == -1)
+	#endif
+	{
+		#ifdef _WIN
+		free((void *) ret);
+		#else
+		close(ret);
+		#endif
+		
+		return -1;
+	}
+	
+	return ret;
 }
 
 bool restore_cwd (umlong d)
