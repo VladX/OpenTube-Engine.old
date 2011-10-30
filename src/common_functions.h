@@ -139,17 +139,17 @@
  #define strncasecmp(X, Y, Z) _strnicmp(X, Y, Z)
 #endif
 
-void set_str (str_t * str, char * src);
+void set_str (str_t * str, const char * src);
 
-void set_cpy_str (str_t * str, char * src);
+void set_cpy_str (str_t * str, const char * src);
 
-str_t * new_str (char * src);
+str_t * new_str (const char * src);
 
-void set_ustr (u_str_t * str, uchar * src);
+void set_ustr (u_str_t * str, const uchar * src);
 
-void set_cpy_ustr (u_str_t * str, uchar * src);
+void set_cpy_ustr (u_str_t * str, const uchar * src);
 
-u_str_t * new_ustr (uchar * src);
+u_str_t * new_ustr (const uchar * src);
 
 pool_t * pool_create (uint size, uint start_len);
 

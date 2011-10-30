@@ -19,6 +19,7 @@
 
 /* This is a simple wrapper for systems, that doesn't support epoll_create() system call, but support select() */
 
+#define _GNU_SOURCE
 #include "common_functions.h"
 #include "core_server.h"
 
@@ -26,8 +27,6 @@
 #ifndef HAVE_KQUEUE
 #ifdef HAVE_SELECT
 
-#define _GNU_SOURCE
-#define __USE_GNU
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>

@@ -24,20 +24,20 @@
 #include "common_functions.h"
 
 
-void set_str (str_t * str, char * src)
+void set_str (str_t * str, const char * src)
 {
 	str->len = strlen(src);
-	str->str = src;
+	str->str = (char *) src;
 }
 
-void set_cpy_str (str_t * str, char * src)
+void set_cpy_str (str_t * str, const char * src)
 {
 	str->len = strlen(src);
 	str->str = (char *) allocator_malloc(str->len + 1);
 	memcpy(str->str, src, str->len + 1);
 }
 
-str_t * new_str (char * src)
+str_t * new_str (const char * src)
 {
 	str_t * str = (str_t *) allocator_malloc(sizeof(str_t));
 	set_cpy_str(str, src);
@@ -45,20 +45,20 @@ str_t * new_str (char * src)
 	return str;
 }
 
-void set_ustr (u_str_t * str, uchar * src)
+void set_ustr (u_str_t * str, const uchar * src)
 {
 	str->len = strlen((char *) src);
-	str->str = src;
+	str->str = (uchar *) src;
 }
 
-void set_cpy_ustr (u_str_t * str, uchar * src)
+void set_cpy_ustr (u_str_t * str, const uchar * src)
 {
 	str->len = strlen((char *) src);
 	str->str = (uchar *) allocator_malloc(str->len + 1);
 	memcpy(str->str, src, str->len + 1);
 }
 
-u_str_t * new_ustr (uchar * src)
+u_str_t * new_ustr (const uchar * src)
 {
 	u_str_t * str = (u_str_t *) allocator_malloc(sizeof(u_str_t));
 	set_cpy_ustr(str, src);

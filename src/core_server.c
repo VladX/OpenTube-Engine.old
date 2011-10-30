@@ -18,7 +18,6 @@
  */
 
 #define _GNU_SOURCE
-#define __USE_GNU
 #ifndef _MSC_VER
  #include <sys/time.h>
 #endif

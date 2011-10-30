@@ -18,7 +18,7 @@
  */
 
 #include "common_functions.h"
-#include <mongo.h>
+#include "libs/mongo.h"
 
 struct mongo_server
 {

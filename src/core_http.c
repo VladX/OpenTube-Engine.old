@@ -18,7 +18,6 @@
  */
 
 #define _GNU_SOURCE
-#define __USE_GNU
 #define WINVER 0x0501
 #include <sys/types.h>
 #include <sys/socket.h>

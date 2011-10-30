@@ -23,6 +23,7 @@
 #include "common_functions.h"
 #include "templates.h"
 #include "localization.h"
+#include "libs/mongo.h"
 
 #define WEB_CALLBACK_TO_C_FUNC(NAME) web_cb__##NAME
 #define WEB_INIT_CALLBACK_TO_C_FUNC(NAME) web_init_cb__##NAME
@@ -30,12 +31,15 @@
 #define WEB_CALLBACK(NAME, URI, FULL_MATCH) buf_t * WEB_CALLBACK_TO_C_FUNC(NAME) (void)
 #define WEB_INIT(NAME) void WEB_INIT_CALLBACK_TO_C_FUNC(NAME) (void)
 
+#define DB_COLLECTION(NAME) (SHORT_PROG_NAME "." NAME)
+
 #define gc_malloc(SIZE) web_allocator_malloc(SIZE)
 #define gc_realloc(PTR, SIZE) allocator_realloc(PTR, SIZE)
 #define gc_free(PTR) web_allocator_free(PTR)
 
 extern threadsafe buf_t * thread_global_buffer;
 extern threadsafe request_t * thread_request;
+extern mongo mongo_connection[1];
 
 void http_parse_query_string (request_t * r);
 
