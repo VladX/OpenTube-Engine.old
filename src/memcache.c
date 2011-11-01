@@ -37,20 +37,17 @@ typedef struct
 	time_t time;
 } cache_t;
 
-buf_t * cache;
-
+static buf_t * cache = NULL;
+static buf_t * cache_names = NULL;
 static z_stream gz_strm[1];
-static const char gzip_header[10] = GZIP_HEADER;
-
 
 static void gen_gzipped_value (cache_t * c)
 {
-	register int r;
-	register uchar * ptr, * p;
-	register uint len, l;
+	static const char gzip_header[10] = GZIP_HEADER;
+	static uint32_t gzip_ending[2];
 	
-	ptr = NULL;
-	len = 0;
+	uint len = 0;
+	int r;
 	
 	gz_strm->avail_in = c->value.len;
 	gz_strm->next_in = c->value.str;
@@ -58,16 +55,16 @@ static void gen_gzipped_value (cache_t * c)
 	do
 	{
 		len += GZIP_BUFFER_SIZE;
-		ptr = (uchar *) allocator_realloc(ptr, len);
+		gz_strm->next_in = (c->value.str = allocator_realloc(gz_strm->next_in, gz_strm->avail_in + len + 18));
 		gz_strm->avail_out = GZIP_BUFFER_SIZE;
-		gz_strm->next_out = (ptr + len) - GZIP_BUFFER_SIZE;
+		gz_strm->next_out = gz_strm->next_in + ((gz_strm->avail_in + len + 10) - GZIP_BUFFER_SIZE);
 		r = deflate(gz_strm, Z_FINISH);
 		if (r == Z_STREAM_END)
 			break;
 		if (r != Z_OK)
 		{
 			err("deflate(): %d", r);
-			allocator_free(ptr);
+			c->value.str = allocator_realloc(c->value.str, c->value.len);
 			c->gzipped_value.str = NULL;
 			c->gzipped_value.len = 0;
 			return;
@@ -75,32 +72,24 @@ static void gen_gzipped_value (cache_t * c)
 	}
 	while (gz_strm->avail_out == 0);
 	
-	if (c->gzipped_value.len)
-		allocator_free(c->gzipped_value.str);
+	if (gz_strm->avail_out)
+	{
+		len -= gz_strm->avail_out;
+		c->value.str = allocator_realloc(c->value.str, c->value.len + len + 18);
+	}
 	
-	len -= gz_strm->avail_out;
-	l = len + 18;
+	c->gzipped_value.str = c->value.str + c->value.len;
+	c->gzipped_value.len = len + 18;
 	
-	p = allocator_malloc(l);
-	memcpy(p, gzip_header, 10);
-	c->gzipped_value.str = p;
-	p += 10;
-	memcpy(p, ptr, len);
-	p += len;
-	allocator_free(ptr);
+	memcpy(c->gzipped_value.str, gzip_header, 10);
 	
-	_BEGIN_LOCAL_SECTION_
-	static uint32_t gzip_ending[2];
 	gzip_ending[0] = crc32(0, c->value.str, c->value.len);
 	gzip_ending[1] = c->value.len;
 	#if __BYTE_ORDER == __BIG_ENDIAN
 	gzip_ending[0] = bswap_32(gzip_ending[0]);
 	gzip_ending[1] = bswap_32(gzip_ending[1]);
 	#endif
-	memcpy(p, gzip_ending, 8);
-	_END_LOCAL_SECTION_
-	
-	c->gzipped_value.len = l;
+	memcpy(c->gzipped_value.str + len + 10, gzip_ending, 8);
 	
 	(void) deflateReset(gz_strm);
 }
@@ -136,7 +125,10 @@ void cache_update (u_str_t * name)
 		c = &(((cache_t *) cache->data)[i]);
 		if (name->len == c->key.len && memcmp(name->str, c->key.str, name->len) == 0)
 		{
-			static u_str_t * res;
+			u_str_t * res;
+			
+			if (c->update_callback == NULL)
+				return;
 			
 			res = c->update_callback(c->time, name);
 			
@@ -154,36 +146,59 @@ void cache_update (u_str_t * name)
 	}
 }
 
+static void ajust_key_ptrs (intptr_t offset)
+{
+	uint i;
+	cache_t * c;
+	
+	for (i = 0; i < cache->cur_len; i++)
+	{
+		c = &(((cache_t *) cache->data)[i]);
+		c->key.str += offset;
+	}
+}
+
 void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
 {
 	cache_t * c;
+	intptr_t offset;
+	
 	buf_expand(cache, 1);
+	offset = buf_expand(cache_names, name->len);
+	
+	if (offset)
+		ajust_key_ptrs(offset);
+	
 	c = &(((cache_t *) cache->data)[cache->cur_len - 1]);
-	c->key.str = (uchar *) allocator_malloc(name->len);
+	
+	memset(c, 0, sizeof(* c));
+	
+	c->key.str = (uchar *) cache_names->data + (cache_names->cur_len - name->len);
 	memcpy(c->key.str, name->str, name->len);
 	c->key.len = name->len;
+	
 	c->value.str = (uchar *) allocator_malloc(data->len);
 	memcpy(c->value.str, data->str, data->len);
 	c->value.len = data->len;
+	
 	c->update_callback = (cache_update_cb) update_callback;
 	c->time = current_time_sec;
+	
 	gen_gzipped_value(c);
 }
 
 void cache_free (void)
 {
-	register uint i;
-	register cache_t * c;
+	uint i;
+	cache_t * c;
 	
 	for (i = 0; i < cache->cur_len; i++)
 	{
 		c = &(((cache_t *) cache->data)[i]);
-		allocator_free(c->key.str);
 		allocator_free(c->value.str);
-		if (c->gzipped_value.len)
-			allocator_free(c->gzipped_value.str);
 	}
 	
+	buf_free(cache_names);
 	buf_free(cache);
 }
 
@@ -192,6 +207,7 @@ void cache_create (void)
 	int res;
 	
 	cache = buf_create(sizeof(cache_t), HTTP_FILES_CACHE_ELEMS_RESERVED_SIZE);
+	cache_names = buf_create(1, 0);
 	memset(gz_strm, 0, sizeof(z_stream));
 	res = deflateInit2(gz_strm, config.gzip_level, Z_DEFLATED, -MAX_WBITS, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY);
 	if (res != Z_OK)
