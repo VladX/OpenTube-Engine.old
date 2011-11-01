@@ -264,7 +264,7 @@ void buf_destroy (buf_t * b)
 	allocator_free(b);
 }
 
-long buf_expand (buf_t * b, uint add)
+intptr_t buf_expand (buf_t * b, uint add)
 {
 	register void * old_ptr;
 	
@@ -275,13 +275,13 @@ long buf_expand (buf_t * b, uint add)
 		old_ptr = b->data;
 		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
-		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+		return (intptr_t) ((uchar *) b->data - (uchar *) old_ptr);
 	}
 	
 	return 0;
 }
 
-long buf_expand_i (buf_t * b, int add)
+intptr_t buf_expand_i (buf_t * b, int add)
 {
 	register void * old_ptr;
 	
@@ -292,13 +292,13 @@ long buf_expand_i (buf_t * b, int add)
 		old_ptr = b->data;
 		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
-		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+		return (intptr_t) ((uchar *) b->data - (uchar *) old_ptr);
 	}
 	
 	return 0;
 }
 
-long buf_resize (buf_t * b, uint new_size)
+intptr_t buf_resize (buf_t * b, uint new_size)
 {
 	register void * old_ptr;
 	
@@ -309,7 +309,7 @@ long buf_resize (buf_t * b, uint new_size)
 		old_ptr = b->data;
 		b->data = allocator_realloc(b->data, b->node_size * b->cur_len);
 		
-		return (long) ((uchar *) b->data - (uchar *) old_ptr);
+		return (intptr_t) ((uchar *) b->data - (uchar *) old_ptr);
 	}
 	
 	return 0;

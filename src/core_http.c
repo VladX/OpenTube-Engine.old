@@ -59,7 +59,7 @@ static str_t header_server_string;
 static const char gzip_header[10] = GZIP_HEADER;
 
 
-static inline void http_buffer_moved (request_t * r, long offset)
+static inline void http_buffer_moved (request_t * r, intptr_t offset)
 {
 	register header_t * hdr;
 	register uint i;
@@ -1229,7 +1229,7 @@ bool http_serve_client (request_t * request)
 	register uint i;
 	register header_t * hdr;
 	register uchar * buf;
-	register long offset;
+	register intptr_t offset;
 	
 	for (;;)
 	{

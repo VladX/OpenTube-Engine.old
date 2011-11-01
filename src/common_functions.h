@@ -179,11 +179,11 @@ buf_t * buf_create (uint size, uint res_len);
 
 void buf_destroy (buf_t * b);
 
-long buf_expand (buf_t * b, uint add);
+intptr_t buf_expand (buf_t * b, uint add);
 
-long buf_expand_i (buf_t * b, int add);
+intptr_t buf_expand_i (buf_t * b, int add);
 
-long buf_resize (buf_t * b, uint new_size);
+intptr_t buf_resize (buf_t * b, uint new_size);
 
 void buf_free (buf_t * b);
 
