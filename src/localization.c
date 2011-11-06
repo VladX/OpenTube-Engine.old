@@ -42,6 +42,22 @@ static void localization_load_strings (void)
 	}
 }
 
+const char * localization_get_lang (void)
+{
+	static char lang[3] = {0, 0, 0};
+	const char * locale;
+	
+	if (lang[0])
+		return lang;
+	
+	locale = setlocale(LC_ALL, NULL);
+	
+	if (locale && strlen(locale) > 1)
+		memcpy(lang, locale, 2);
+	
+	return lang;
+}
+
 void localization_init (void)
 {
 	#ifndef _WIN

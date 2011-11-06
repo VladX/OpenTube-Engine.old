@@ -17,3 +17,9 @@
  * along with Opentube.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _STATIC_CONTENT_PREPROCESSOR_H
+#define _STATIC_CONTENT_PREPROCESSOR_H 1
+
+u_str_t static_content_preprocess_and_cache (const char * name, const char ** path_list, const uint path_list_len, const bool strip_spaces);
+
+#endif

@@ -287,13 +287,13 @@ struct loaded_config
 	u_str_t data;
 	u_str_t template_name;
 	u_str_t keepalive_timeout;
+	u_str_t cache_prefix;
 	uint keepalive_timeout_val;
 	uint keepalive_max_conn_per_client;
 	uint gzip_min_page_size;
 	uint limit_rate;
 	uint limit_delay;
 	uint limit_sim_threshold;
-	u_str_t cache_prefix;
 	uint worker_threads;
 	uint prealloc_request_structures;
 	uint restart_timeout;

@@ -1043,14 +1043,21 @@ static bool http_response (request_t * r)
 	register u_str_t * cached_content;
 	register header_t * hdr;
 	register bool accept_gzip;
+	time_t cached_content_time;
 	
 	cached_content = NULL;
 	accept_gzip = false;
 	
 	if (r->in.path.len > config.cache_prefix.len && memcmp(r->in.path.str, config.cache_prefix.str, config.cache_prefix.len) == 0)
 	{
+		bool _accept_gzip;
+		u_str_t name = r->in.path;
+		
+		name.str += config.cache_prefix.len;
+		name.len -= config.cache_prefix.len;
+		
 		if (config.cache_update == 1)
-			cache_update(&(r->in.path));
+			cache_update(&name);
 		
 		if (config.gzip)
 			for (i = 0; i < r->in.p->cur_len; i++)
@@ -1063,48 +1070,48 @@ static bool http_response (request_t * r)
 				}
 			}
 		
-		cached_content = cache_find(&(r->in.path), accept_gzip);
+		_accept_gzip = accept_gzip;
+		cached_content = cache_find(&name, &cached_content_time, &_accept_gzip);
+		accept_gzip = _accept_gzip;
 	}
 	
 	if (cached_content != NULL)
 	{
+		register ushort code = 200;
+		time_t curtime = current_time_sec;
+		struct tm c_time;
+		
 		http_set_mime_type(r);
 		
-		_BEGIN_LOCAL_SECTION_
-		register ushort code;
+		(void) gmtime_r(&cached_content_time, &c_time);
+		http_rfc822_date(r->temp.dates, &c_time);
 		
-		code = 200;
-		
-		if (config.cache_update == 0)
-			for (i = 0; i < r->in.p->cur_len; i++)
+		for (i = 0; i < r->in.p->cur_len; i++)
+		{
+			hdr = (header_t *) r->in.p->data[i];
+			if (hdr->key.len == 17 && hdr->value.len == 29 && memcmp(hdr->key.str, "if-modified-since", 17) == 0 && memcmp(hdr->value.str, r->temp.dates, 29) == 0)
 			{
-				hdr = (header_t *) r->in.p->data[i];
-				if (hdr->key.len == 17 && memcmp(hdr->key.str, "if-modified-since", 17) == 0)
-				{
-					code = 304;
-					break;
-				}
+				code = 304;
+				break;
 			}
+		}
 		
-		r->out.content_length = cached_content->len;
+		r->out.content_length = (code < 300) ? cached_content->len : 0;
 		
 		http_append_headers(r, code);
 		
-		if (accept_gzip)
+		if (accept_gzip && code < 300)
 			http_append_to_output_buf(r, "Content-Encoding: gzip" CLRF "Vary: Accept-Encoding" CLRF, 47);
 		
-		_BEGIN_LOCAL_SECTION_
-		time_t curtime = current_time_sec;
-		struct tm c_time;
 		(void) gmtime_r(&curtime, &c_time);
-		http_rfc822_date(r->temp.dates, &c_time);
+		http_rfc822_date(r->temp.dates + 30, &c_time);
 		
 		http_append_to_output_buf(r, "Last-Modified: ", 15);
 		http_append_to_output_buf(r, r->temp.dates, 29);
 		http_append_to_output_buf(r, CLRF, 2);
 		
 		http_append_to_output_buf(r, "Date: ", 6);
-		http_append_to_output_buf(r, r->temp.dates, 29);
+		http_append_to_output_buf(r, r->temp.dates + 30, 29);
 		http_append_to_output_buf(r, CLRF, 2);
 		
 		curtime += HTTP_STATIC_EXPIRES;
@@ -1114,12 +1121,9 @@ static bool http_response (request_t * r)
 		http_append_to_output_buf(r, "Expires: ", 9);
 		http_append_to_output_buf(r, r->out.expires.str, r->out.expires.len);
 		http_append_to_output_buf(r, CLRF CLRF, 4);
-		_END_LOCAL_SECTION_
 		
 		if (code != 304)
 			http_append_to_output_buf(r, cached_content->str, cached_content->len);
-		
-		_END_LOCAL_SECTION_
 		
 		return http_send(r);
 	}

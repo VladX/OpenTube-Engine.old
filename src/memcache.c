@@ -18,15 +18,13 @@
  */
 
 #include "common_functions.h"
+#include "memcache.h"
 #include <time.h>
 #include "endianness.h"
 #include "win32_utils.h"
 #include "libs/zlib.h"
 
 #define GZIP_BUFFER_SIZE 512
-
-
-typedef u_str_t * (* cache_update_cb) (time_t, u_str_t *);
 
 typedef struct
 {
@@ -48,16 +46,19 @@ static void gen_gzipped_value (cache_t * c)
 	
 	uint len = 0;
 	int r;
+	uchar * tmp;
 	
+	tmp = allocator_malloc(c->value.len);
+	memcpy(tmp, c->value.str, c->value.len);
 	gz_strm->avail_in = c->value.len;
-	gz_strm->next_in = c->value.str;
+	gz_strm->next_in = tmp;
 	
 	do
 	{
 		len += GZIP_BUFFER_SIZE;
-		gz_strm->next_in = (c->value.str = allocator_realloc(gz_strm->next_in, gz_strm->avail_in + len + 18));
+		c->value.str = allocator_realloc(c->value.str, c->value.len + len + 18);
 		gz_strm->avail_out = GZIP_BUFFER_SIZE;
-		gz_strm->next_out = gz_strm->next_in + ((gz_strm->avail_in + len + 10) - GZIP_BUFFER_SIZE);
+		gz_strm->next_out = c->value.str + ((c->value.len + len + 10) - GZIP_BUFFER_SIZE);
 		r = deflate(gz_strm, Z_FINISH);
 		if (r == Z_STREAM_END)
 			break;
@@ -67,6 +68,8 @@ static void gen_gzipped_value (cache_t * c)
 			c->value.str = allocator_realloc(c->value.str, c->value.len);
 			c->gzipped_value.str = NULL;
 			c->gzipped_value.len = 0;
+			allocator_free(tmp);
+			
 			return;
 		}
 	}
@@ -77,6 +80,8 @@ static void gen_gzipped_value (cache_t * c)
 		len -= gz_strm->avail_out;
 		c->value.str = allocator_realloc(c->value.str, c->value.len + len + 18);
 	}
+	
+	allocator_free(tmp);
 	
 	c->gzipped_value.str = c->value.str + c->value.len;
 	c->gzipped_value.len = len + 18;
@@ -94,7 +99,7 @@ static void gen_gzipped_value (cache_t * c)
 	(void) deflateReset(gz_strm);
 }
 
-u_str_t * cache_find (u_str_t * name, bool accept_gzip)
+u_str_t * cache_find (u_str_t * name, time_t * time, bool * accept_gzip)
 {
 	register uint i;
 	register cache_t * c;
@@ -105,10 +110,17 @@ u_str_t * cache_find (u_str_t * name, bool accept_gzip)
 		if (name->len == c->key.len && memcmp(name->str, c->key.str, name->len) == 0)
 		{
 			debug_print_2("\"%s\" loaded from cache.", (char *) c->key.str);
-			if (accept_gzip && c->gzipped_value.len)
+			
+			* time = c->time;
+			
+			if (* accept_gzip && c->gzipped_value.len)
 				return &(c->gzipped_value);
 			else
+			{
+				* accept_gzip = false;
+				
 				return &(c->value);
+			}
 		}
 	}
 	
@@ -158,7 +170,7 @@ static void ajust_key_ptrs (intptr_t offset)
 	}
 }
 
-void cache_store (u_str_t * name, u_str_t * data, void * update_callback)
+void cache_store (u_str_t * name, u_str_t * data, cache_update_cb update_callback)
 {
 	cache_t * c;
 	intptr_t offset;

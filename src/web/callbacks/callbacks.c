@@ -25,6 +25,7 @@
 #include "../sleep.c"
 #include "../echo.c"
 #include "../form.c"
+#include "../init.c"
 #include "../hello.c"
 #include "../video.c"
 #include "../captcha_test.c"
@@ -46,6 +47,8 @@ void set_callbacks (void)
 void run_init_callbacks (void)
 {
 	/* Automatically inserted by script generate-callbacks.c.py */
+	WEB_INIT_CALLBACK_TO_C_FUNC(init) ();
+	WEB_INIT_CALLBACK_TO_C_FUNC(init_once) ();
 	WEB_INIT_CALLBACK_TO_C_FUNC(video) ();
 	WEB_INIT_CALLBACK_TO_C_FUNC(captcha_test) ();
 }

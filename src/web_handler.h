@@ -23,6 +23,7 @@
 #include "common_functions.h"
 #include "templates.h"
 #include "localization.h"
+#include "static_content_preprocessor.h"
 #include "libs/mongo.h"
 
 #define WEB_CALLBACK_TO_C_FUNC(NAME) web_cb__##NAME

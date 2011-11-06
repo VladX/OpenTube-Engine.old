@@ -17,20 +17,33 @@
  * along with Opentube.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LOCALIZATION_H
-#define LOCALIZATION_H 1
+#include <pthread.h>
 
-#include <libintl.h>
+WEB_INIT(init)
+{
+	
+}
 
-#undef _l
-#define _l(ID) ((void *) localization_get_string(ID))
-#undef _
-#define _(TEXT) gettext(TEXT)
-
-const uchar * localization_get_string (uint id);
-
-const char * localization_get_lang (void);
-
-void localization_init (void);
-
-#endif
+WEB_INIT(init_once)
+{
+	static bool once = false;
+	static pthread_mutex_t mutex[1] = {PTHREAD_MUTEX_INITIALIZER};
+	u_str_t uri;
+	const char * path_list[] = {"css/normalize.css", "css/common.css"};
+	
+	pthread_mutex_lock(mutex);
+	
+	if (once)
+	{
+		pthread_mutex_unlock(mutex);
+		
+		return;
+	}
+	
+	once = true;
+	pthread_mutex_unlock(mutex);
+	
+	uri = static_content_preprocess_and_cache("style.css", path_list, ARRAY_LENGTH(path_list), false);
+	tpl_set_global_var_static("template-stylesheet", (const char *) uri.str);
+	tpl_set_global_var_static("lang", localization_get_lang());
+}

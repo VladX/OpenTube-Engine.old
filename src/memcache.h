@@ -17,12 +17,19 @@
  * along with Opentube.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-u_str_t * cache_find (u_str_t * name, bool accept_gzip);
+#ifndef _INT_MEMCACHE_H
+#define _INT_MEMCACHE_H 1
 
-void cache_store (u_str_t * name, u_str_t * data, void * update_callback);
+typedef u_str_t * (* cache_update_cb) (time_t, u_str_t *);
+
+u_str_t * cache_find (u_str_t * name, time_t * time, bool * accept_gzip);
+
+void cache_store (u_str_t * name, u_str_t * data, cache_update_cb update_callback);
 
 void cache_update (u_str_t * name);
 
 void cache_free (void);
 
 void cache_create (void);
+
+#endif

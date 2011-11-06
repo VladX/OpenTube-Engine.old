@@ -18,7 +18,9 @@
  */
 
 #ifndef __ALLOCATOR_H
-#define __ALLOCATOR_H
+#define __ALLOCATOR_H 1
+
+#ifndef ALLOCATOR_USE_STDLIB_FUNCTIONS
 
 #define ALLOCATOR_MALLOC_FN je_malloc
 #define ALLOCATOR_CALLOC_FN je_calloc
@@ -37,6 +39,18 @@ bool malloc_init_hard (void);
  #define allocator_init() malloc_init_hard()
 #else
  #define allocator_init()
+#endif
+
+#else
+
+#define ALLOCATOR_MALLOC_FN malloc
+#define ALLOCATOR_CALLOC_FN calloc
+#define ALLOCATOR_REALLOC_FN realloc
+#define ALLOCATOR_MEMALIGN_FN memalign
+#define ALLOCATOR_FREE_FN free
+
+#define allocator_init()
+
 #endif
 
 #define allocator_malloc(SIZE) ALLOCATOR_MALLOC_FN(SIZE)
